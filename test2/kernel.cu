@@ -1,121 +1,299 @@
+#include "mycommon.cuh"
+#include "vec3.cuh"
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-
-#include <stdio.h>
-
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-
-__global__ void addKernel(int *c, const int *a, const int *b)
+template<typename T = float>
+__device__ T operator/(T lhs, T rhs)
 {
-    int i = threadIdx.x;
-    c[i] = a[i] + b[i];
+	return (rhs == 0) ? (T)MYINFINITY : lhs / rhs;
 }
+
+template<typename T = float>
+class raysegment
+{
+public:
+	vec3<T> pos, dir;
+	int status = 1; // 1 is active, 0 is deactive, more to come
+
+	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0,0,-1)):
+		pos(pos), dir(dir)
+	{
+		LOG1("ray segment created")
+	}
+
+	__host__ __device__ ~raysegment()
+	{
+		LOG1("ray segment destructor called")
+	}
+
+	template<typename T>
+	friend std::ostream& operator<<(std::ostream& os, const raysegment<T>& rs);
+};
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const raysegment<T>& rs)
+{
+	os << "ray at " << rs.pos << " pointing " << rs.dir;
+	return os;
+}
+
+
+template<typename T = float>
+class mysurface
+{
+public:
+	vec3<T> pos; // at first no rotation of axis
+	T diameter; // default to 10 mm, see constructor
+	int type; //0 is image surface, 1 is power surface, 2 is stop surface
+
+	mysurface(const vec3<T>& pos = vec3<T>(0,0,0), T diameter = 10, int type = 0) :
+		pos(pos), diameter(diameter), type(type)
+	{
+		LOG1("my surface created")
+	}
+
+	~mysurface()
+	{
+		LOG1("surface destructor called")
+	}
+};
+
+
+template<typename T = float>
+class powersurface:public mysurface<T>
+{
+public:
+	T power;//just random number, default to 0.1 mm^-1
+
+	powersurface(T power = 0.1, const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10) :
+		mysurface(pos, diameter, 1), power(power)
+	{
+		LOG1("power surface created")
+	}
+
+	~powersurface()
+	{
+		LOG1("power surface destructor called")
+	}
+};
+
+
+template <typename T = float>
+__global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const mysurface<T>* nextsurface)
+{
+	// get thread index
+	int idx = threadIdx.x;
+	
+	//return if it is an inactive ray segment
+	if (inbundle[idx].status == 0)
+	{
+		outbundle[idx] = inbundle[idx];
+		return;
+	}
+
+	auto surfacetype = nextsurface->type;
+
+    // coordinate transformation
+	auto before = raysegment<MYFLOATTYPE>(inbundle[idx].pos - nextsurface->pos,inbundle[idx].dir);
+
+
+	// intersection find 
+	auto t = ((MYFLOATTYPE)0 - before.pos.z) / (before.dir.z);// in surface's own coordinate, the surface is at z = 0
+	auto at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir,before.dir);
+	
+	// determine if valid intersection
+	if (norm(vec3<MYFLOATTYPE>(at.pos.x, at.pos.y, 0)) > (nextsurface->diameter) / 2)
+	{
+		inbundle[idx].status = 0;
+		outbundle[idx] = inbundle[idx];
+		return;
+	}
+
+	if (surfacetype == 1) // if next surface is a power surface
+	{
+		//surface transfer
+		auto normalvec = vec3<MYFLOATTYPE>(0, 0, 1);
+		auto radialvec = vec3<MYFLOATTYPE>(at.pos.x, at.pos.y, 0);
+		auto binormal = normalize(cross(normalvec, radialvec));
+		auto tangential = dot(at.dir, binormal)*binormal;
+		auto radial = at.dir - tangential;
+		auto u = acosf(dot(normalize(radial), normalize(-normalvec)));
+		auto uprime = u - norm(radialvec)*((powersurface<MYFLOATTYPE>*)nextsurface)->power;
+
+		auto newradial = norm(radial)*normalize(((-normalvec) + 
+			normalize(radialvec)*((MYFLOATTYPE)tanf(uprime))));
+		auto after = raysegment<MYFLOATTYPE>(at.pos, tangential + newradial);
+
+		//printf("%d at u = %f, u' = %f\n", idx, u, uprime);
+
+		// coordinate detransformation
+		after.pos = after.pos + nextsurface->pos;
+
+		// write results
+		outbundle[idx] = after;
+	}
+	else if (surfacetype == 0) // if next surface is an image surface
+	{
+		// coordinate detransformation
+		at.pos = at.pos + nextsurface->pos;
+		at.status = 0;
+
+		// write results
+		outbundle[idx] = at;
+	}
+
+	
+
+	/*printf("%d at t = %f at dir (%f,%f,%f), after dir (%f,%f,%f)\n", idx, t, at.dir.x, at.dir.y, 
+		at.dir.z, after.dir.x, after.dir.y, after.dir.z );*/
+}
+#ifdef nothing
+#endif
+
+__global__ void tester()
+{
+#ifdef nothing
+	vec3<MYFLOATTYPE> lhs(sqrtf((float)2), sqrtf((float)2), 0);
+	vec3<MYFLOATTYPE> rhs(-sqrtf((float)2), sqrtf((float)2), 0);
+	auto result1 = lhs + rhs;
+	auto result2 = lhs - rhs;
+	auto result3 = dot(lhs, rhs);
+	auto result4 = cross(lhs, rhs);
+	auto result5 = norm(lhs);
+	printf("(%f,%f,%f) (%f,%f,%f) %f (%f,%f,%f) %f", result1.x, result1.y, result1.z, result2.x, result2.y, result2.z,
+		result3, result4.x, result4.y, result4.z, result5);
+#endif
+	float a = 5;
+	float b = 6;
+	float c = a / b;
+	printf("%f", c);
+}
+
+
+class test
+{
+public:
+	int t;
+	void method()
+	{
+		LOG1("test method")
+	}
+	test(int t = 0):t(t)
+	{
+		LOG1("test object created")
+	}
+	~test()
+	{
+		LOG1("test destructor called")
+	}
+};
 
 int main()
 {
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
+	LOG1("this is main program");
+	//create event for timing
+	cudaEvent_t start, stop;
+	CUDARUN(cudaEventCreate(&start));
+	CUDARUN(cudaEventCreate(&stop));
 
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return 1;
-    }
+	//set up the test case
+	float diam = 10;
+	auto psurface1 = new powersurface<MYFLOATTYPE>(0.1, vec3<MYFLOATTYPE>(0, 0, diam));
+	auto psurface2 = new mysurface<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), diam);
 
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
+	raysegment<MYFLOATTYPE>* bundle = new raysegment<MYFLOATTYPE>[bundlesize];
+	for (int i = 0; i < bundlesize; i++)
+	{
 
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
+		static float step = diam / 32;
+		static float start = -(diam / 2) + (step / 2);
+		bundle[i] = raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(start + step * i, 0, 20), vec3<MYFLOATTYPE>(0, 0, -1));
+		//LOG2(i <<" "<< bundle[i]);
+	}
 
-    return 0;
-}
+	// allocate device memory
+	size_t batchsize = bundlesize * sizeof(raysegment<MYFLOATTYPE>);
 
-// Helper function for using CUDA to add vectors in parallel.
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
-{
-    int *dev_a = 0;
-    int *dev_b = 0;
-    int *dev_c = 0;
-    cudaError_t cudaStatus;
+	raysegment<MYFLOATTYPE>* d_inbundle;
+	CUDARUN(cudaMalloc((void**)&d_inbundle, batchsize));
+	raysegment<MYFLOATTYPE>* d_outbundle;
+	CUDARUN(cudaMalloc((void**)&d_outbundle, batchsize));
+	mysurface<MYFLOATTYPE> * d_surface1;
+	CUDARUN(cudaMalloc((void**)&d_surface1, sizeof(*psurface1)));
+	mysurface<MYFLOATTYPE> * d_surface2;
+	CUDARUN(cudaMalloc((void**)&d_surface2, sizeof(*psurface2)));
 
-    // Choose which GPU to run on, change this on a multi-GPU system.
-    cudaStatus = cudaSetDevice(0);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-        goto Error;
-    }
+	//start timing, start copy memory to device
+	CUDARUN(cudaEventRecord(start, 0));
 
-    // Allocate GPU buffers for three vectors (two input, one output)    .
-    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
+	CUDARUN(cudaMemcpy(d_inbundle, bundle, batchsize, cudaMemcpyHostToDevice));
+	CUDARUN(cudaMemcpy(d_surface1, psurface1, sizeof(*psurface1), cudaMemcpyHostToDevice));
+	CUDARUN(cudaMemcpy(d_surface2, psurface2, sizeof(*psurface2), cudaMemcpyHostToDevice));
 
-    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
+	
 
-    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
+#ifdef something
+	
+	{tracer << <1, 32 >> > (d_inbundle, d_outbundle, d_surface1);
+		cudaError_t cudaStatus = cudaGetLastError(); 
+		if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__); 
+				fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus)); 
+		}
+	}
+#endif
+#ifdef nothing
+	{tester << <1, 1 >> > (); 
+		cudaError_t cudaStatus = cudaGetLastError(); 
+		if (cudaStatus != cudaSuccess) {
+				fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__); 
+				fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus)); 
+		}
+	}
+#endif
 
-    // Copy input vectors from host memory to GPU buffers.
-    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
+	//to do: copy result out
+	raysegment<MYFLOATTYPE>* bundle2 = new raysegment<MYFLOATTYPE>[bundlesize];
+	CUDARUN(cudaMemcpy(bundle2, d_outbundle, batchsize, cudaMemcpyDeviceToHost));
 
-    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
+	//swap memory, relaunch kernel, copy result out
+	{
+		tracer << <1, 32 >> > (d_outbundle, d_inbundle, d_surface2);
+		cudaError_t cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
+			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
+		}
+	}
+	raysegment<MYFLOATTYPE>* bundle3 = new raysegment<MYFLOATTYPE>[bundlesize];
+	CUDARUN(cudaMemcpy(bundle3, d_inbundle, batchsize, cudaMemcpyDeviceToHost));
 
-    // Launch a kernel on the GPU with one thread for each element.
-    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
+	//kernel finished, stop timing, print out elapsed time
+	CUDARUN(cudaEventRecord(stop, 0));
+	CUDARUN(cudaEventSynchronize(stop));
+	float elapsedtime;
+	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
+	LOG2("kernel run time: " << elapsedtime << " ms\n");
 
-    // Check for any errors launching the kernel
-    cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error;
-    }
-    
-    // cudaDeviceSynchronize waits for the kernel to finish, and returns
-    // any errors encountered during the launch.
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-        goto Error;
-    }
+	//writing results out
+	for (int i = 0; i < bundlesize; i++)
+	{
+		LOG2(i <<" "<< bundle[i] << "\n" << bundle2[i] << "\n" << bundle3[i]);
+	}
 
-    // Copy output vector from GPU buffer to host memory.
-    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
+	//destroy cuda timing events
+	CUDARUN(cudaEventDestroy(start));
+	CUDARUN(cudaEventDestroy(stop));
 
-Error:
-    cudaFree(dev_c);
-    cudaFree(dev_a);
-    cudaFree(dev_b);
-    
-    return cudaStatus;
+	// free device heap momory
+	cudaFree(d_inbundle);
+	cudaFree(d_outbundle);
+	cudaFree(d_surface1);
+	cudaFree(d_surface2);
+
+	//free host heap momory
+	delete psurface1;
+	delete psurface2;
+	delete[] bundle;
+	delete[] bundle2;
+	delete[] bundle3;
 }
