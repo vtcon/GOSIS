@@ -213,10 +213,14 @@ __global__ void tester()
 	auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1,1,1,0,0,0,0,0,0,-1));
 	auto pray = new raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), vec3<MYFLOATTYPE>(0, 1, 1));
 
-	// copy to the stack
-	auto quadric = *pquad;
-	auto before = *pray; 
+	// copy to the shared memory
+	__shared__ quadricsurface<MYFLOATTYPE> quadric;
+	quadric = *pquad;
+	__shared__ raysegment<MYFLOATTYPE> loadedbundle[bundlesize];
+	loadedbundle[idx] = *pray;
+	auto before = loadedbundle[idx];
 
+	//define references, else it will look too muddy
 	MYFLOATTYPE &A = quadric.param.A,
 		&B = quadric.param.B,
 		&C = quadric.param.C,
