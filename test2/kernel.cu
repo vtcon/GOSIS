@@ -21,7 +21,7 @@ class raysegment
 {
 public:
 	vec3<T> pos, dir;
-	int status = 1; // 1 is active, 0 is deactive, more to come
+	int status = 1; // 1 is active, 0 is deactive, 2 is finised, more to come
 
 	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0,0,-1)):
 		pos(pos), dir(dir)
@@ -154,7 +154,7 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 	{
 		// coordinate detransformation
 		at.pos = at.pos + nextsurface->pos;
-		at.status = 0;
+		at.status = 2;
 
 		// write results
 		outbundle[idx] = at;
@@ -165,8 +165,6 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 	/*printf("%d at t = %f at dir (%f,%f,%f), after dir (%f,%f,%f)\n", idx, t, at.dir.x, at.dir.y, 
 		at.dir.z, after.dir.x, after.dir.y, after.dir.z );*/
 }
-#ifdef nothing
-#endif
 
 __global__ void tester()
 {
@@ -187,7 +185,7 @@ __global__ void tester()
 	printf("%f", c);
 }
 
-
+#ifdef nothing
 class test
 {
 public:
@@ -205,6 +203,7 @@ public:
 		LOG1("test destructor called")
 	}
 };
+#endif
 
 int main()
 {
@@ -217,12 +216,13 @@ int main()
 	CUDARUN(cudaEventCreate(&stop));
 
 
-	//set up the surfaces
+	//set up the surfaces manually !!!!
 	float diam = 10;
-	int numofsurfaces = 2;
+	int numofsurfaces = 3;
 	mysurface<MYFLOATTYPE>** psurfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
-	psurfaces[0] = new powersurface<MYFLOATTYPE>(0.1, vec3<MYFLOATTYPE>(0, 0, diam));
-	psurfaces[1] = new mysurface<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), diam);
+	psurfaces[0] = new powersurface<MYFLOATTYPE>(-0.1, vec3<MYFLOATTYPE>(0, 0, 13),diam);
+	psurfaces[1] = new powersurface<MYFLOATTYPE>(0.2, vec3<MYFLOATTYPE>(0, 0, 11), diam);
+	psurfaces[2] = new mysurface<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), diam);
 	
 
 	//create ray bundles for tracing
@@ -233,10 +233,9 @@ int main()
 	}
 
 
-	//set up the original bundle
+	//set up the original bundle, manually
 	for (int i = 0; i < bundlesize; i++)
 	{
-
 		static float step = diam / 32;
 		static float start = -(diam / 2) + (step / 2);
 		bundles[0][i] = raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(start + step * i, 0, 20), vec3<MYFLOATTYPE>(0, 0, -1));
@@ -274,16 +273,10 @@ int main()
 	for (int i = 0; i < numofsurfaces; i++)
 	{
 		CUDARUN(cudaMemcpy(d_psurfaces[i], psurfaces[i], psurfaces[i]->size(), cudaMemcpyHostToDevice));
-		int a = psurfaces[i]->size();
-		LOG2(a);
 	}
-
-	auto test = powersurface<MYFLOATTYPE>(1);
-	int a = sizeof(test);
-	LOG2(a);
 	
 	// launch kernel, copy result out, swap memory
-#ifdef something
+
 	for (int i = 0; i < numofsurfaces; i++)
 	{
 		tracer <<<1, 32 >>> (d_inbundle, d_outbundle, static_cast<mysurface<MYFLOATTYPE>*>(d_psurfaces[i]));
@@ -295,7 +288,8 @@ int main()
 		CUDARUN(cudaMemcpy(bundles[i+1], d_outbundle, batchsize, cudaMemcpyDeviceToHost));
 		swap(d_inbundle, d_outbundle);
 	}
-#endif
+
+
 #ifdef nothing
 	{tester << <1, 1 >> > (); 
 		cudaError_t cudaStatus = cudaGetLastError(); 
@@ -304,24 +298,6 @@ int main()
 				fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus)); 
 		}
 	}
-#endif
-
-#ifdef nothing
-	//to do: copy result out
-	raysegment<MYFLOATTYPE>* bundle2 = new raysegment<MYFLOATTYPE>[bundlesize];
-	CUDARUN(cudaMemcpy(bundle2, d_outbundle, batchsize, cudaMemcpyDeviceToHost));
-
-	//swap memory, relaunch kernel, copy result out
-	{
-		tracer << <1, 32 >> > (d_outbundle, d_inbundle, d_surface2);
-		cudaError_t cudaStatus = cudaGetLastError();
-		if (cudaStatus != cudaSuccess) {
-			fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
-			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
-		}
-	}
-	raysegment<MYFLOATTYPE>* bundle3 = new raysegment<MYFLOATTYPE>[bundlesize];
-	CUDARUN(cudaMemcpy(bundle3, d_inbundle, batchsize, cudaMemcpyDeviceToHost));
 #endif
 
 	//kernel finished, stop timing, print out elapsed time
@@ -334,7 +310,24 @@ int main()
 	//writing results out
 	for (int i = 0; i < bundlesize; i++)
 	{
-		LOG2(i <<" "<< bundles[0][i] << "\n" << bundles[1][i] << "\n" << bundles[2][i]);
+		LOG2("ray " << i);
+		for (int j = 0; j < numofsurfaces+1; j++)
+		{
+			switch (bundles[j][i].status)
+			{
+			case 0:
+				LOG2(" deactivated")
+				break;
+			case 1:
+				LOG2(" " << bundles[j][i])
+				break;
+			case 2:
+				if (bundles[j-1][i].status != 0)
+					LOG2(" " << bundles[j][i] << " done")
+				break;
+			}
+		}
+		LOG2("\n");
 	}
 
 	//destroy cuda timing events
