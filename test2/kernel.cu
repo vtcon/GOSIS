@@ -7,6 +7,15 @@ __device__ T operator/(T lhs, T rhs)
 	return (rhs == 0) ? (T)MYINFINITY : lhs / rhs;
 }
 
+template<typename pT>
+__host__ __device__ inline void swap(pT& a, pT& b)
+{
+	pT temp = a;
+	a = b;
+	b = temp;
+}
+
+
 template<typename T = float>
 class raysegment
 {
@@ -55,6 +64,11 @@ public:
 	{
 		LOG1("surface destructor called")
 	}
+
+	virtual int size()
+	{
+		return sizeof(*this);
+	}
 };
 
 
@@ -73,6 +87,11 @@ public:
 	~powersurface()
 	{
 		LOG1("power surface destructor called")
+	}
+
+	int size()
+	{
+		return sizeof(*this);
 	}
 };
 
@@ -190,55 +209,91 @@ public:
 int main()
 {
 	LOG1("this is main program");
+
+
 	//create event for timing
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
 
-	//set up the test case
-	float diam = 10;
-	auto psurface1 = new powersurface<MYFLOATTYPE>(0.1, vec3<MYFLOATTYPE>(0, 0, diam));
-	auto psurface2 = new mysurface<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), diam);
 
-	raysegment<MYFLOATTYPE>* bundle = new raysegment<MYFLOATTYPE>[bundlesize];
+	//set up the surfaces
+	float diam = 10;
+	int numofsurfaces = 2;
+	mysurface<MYFLOATTYPE>** psurfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	psurfaces[0] = new powersurface<MYFLOATTYPE>(0.1, vec3<MYFLOATTYPE>(0, 0, diam));
+	psurfaces[1] = new mysurface<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), diam);
+	
+
+	//create ray bundles for tracing
+	raysegment<MYFLOATTYPE>** bundles = new raysegment<MYFLOATTYPE>*[numofsurfaces+1];
+	for (int i = 0; i < numofsurfaces+1; i++)
+	{
+		bundles[i] = new raysegment<MYFLOATTYPE>[bundlesize];
+	}
+
+
+	//set up the original bundle
 	for (int i = 0; i < bundlesize; i++)
 	{
 
 		static float step = diam / 32;
 		static float start = -(diam / 2) + (step / 2);
-		bundle[i] = raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(start + step * i, 0, 20), vec3<MYFLOATTYPE>(0, 0, -1));
+		bundles[0][i] = raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(start + step * i, 0, 20), vec3<MYFLOATTYPE>(0, 0, -1));
 		//LOG2(i <<" "<< bundle[i]);
 	}
 
-	// allocate device memory
+
+	// allocate device memory for 2 bundles
 	size_t batchsize = bundlesize * sizeof(raysegment<MYFLOATTYPE>);
 
 	raysegment<MYFLOATTYPE>* d_inbundle;
 	CUDARUN(cudaMalloc((void**)&d_inbundle, batchsize));
 	raysegment<MYFLOATTYPE>* d_outbundle;
 	CUDARUN(cudaMalloc((void**)&d_outbundle, batchsize));
-	mysurface<MYFLOATTYPE> * d_surface1;
-	CUDARUN(cudaMalloc((void**)&d_surface1, sizeof(*psurface1)));
-	mysurface<MYFLOATTYPE> * d_surface2;
-	CUDARUN(cudaMalloc((void**)&d_surface2, sizeof(*psurface2)));
 
-	//start timing, start copy memory to device
+
+	//allocate device memory for surfaces
+	void** d_psurfaces = new void*[numofsurfaces];
+
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		CUDARUN(cudaMalloc((void**)&(d_psurfaces[i]), psurfaces[i]->size()));
+	}
+
+
+	//start timing 
 	CUDARUN(cudaEventRecord(start, 0));
 
-	CUDARUN(cudaMemcpy(d_inbundle, bundle, batchsize, cudaMemcpyHostToDevice));
-	CUDARUN(cudaMemcpy(d_surface1, psurface1, sizeof(*psurface1), cudaMemcpyHostToDevice));
-	CUDARUN(cudaMemcpy(d_surface2, psurface2, sizeof(*psurface2), cudaMemcpyHostToDevice));
 
+	//copy original bundle data to device
+	CUDARUN(cudaMemcpy(d_inbundle, bundles[0], batchsize, cudaMemcpyHostToDevice));
+
+
+	//copy surfaces data to device
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		CUDARUN(cudaMemcpy(d_psurfaces[i], psurfaces[i], psurfaces[i]->size(), cudaMemcpyHostToDevice));
+		int a = psurfaces[i]->size();
+		LOG2(a);
+	}
+
+	auto test = powersurface<MYFLOATTYPE>(1);
+	int a = sizeof(test);
+	LOG2(a);
 	
-
+	// launch kernel, copy result out, swap memory
 #ifdef something
-	
-	{tracer << <1, 32 >> > (d_inbundle, d_outbundle, d_surface1);
-		cudaError_t cudaStatus = cudaGetLastError(); 
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		tracer <<<1, 32 >>> (d_inbundle, d_outbundle, static_cast<mysurface<MYFLOATTYPE>*>(d_psurfaces[i]));
+		cudaError_t cudaStatus = cudaGetLastError();
 		if (cudaStatus != cudaSuccess) {
-				fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__); 
-				fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus)); 
+			fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
+			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
 		}
+		CUDARUN(cudaMemcpy(bundles[i+1], d_outbundle, batchsize, cudaMemcpyDeviceToHost));
+		swap(d_inbundle, d_outbundle);
 	}
 #endif
 #ifdef nothing
@@ -251,6 +306,7 @@ int main()
 	}
 #endif
 
+#ifdef nothing
 	//to do: copy result out
 	raysegment<MYFLOATTYPE>* bundle2 = new raysegment<MYFLOATTYPE>[bundlesize];
 	CUDARUN(cudaMemcpy(bundle2, d_outbundle, batchsize, cudaMemcpyDeviceToHost));
@@ -266,6 +322,7 @@ int main()
 	}
 	raysegment<MYFLOATTYPE>* bundle3 = new raysegment<MYFLOATTYPE>[bundlesize];
 	CUDARUN(cudaMemcpy(bundle3, d_inbundle, batchsize, cudaMemcpyDeviceToHost));
+#endif
 
 	//kernel finished, stop timing, print out elapsed time
 	CUDARUN(cudaEventRecord(stop, 0));
@@ -277,7 +334,7 @@ int main()
 	//writing results out
 	for (int i = 0; i < bundlesize; i++)
 	{
-		LOG2(i <<" "<< bundle[i] << "\n" << bundle2[i] << "\n" << bundle3[i]);
+		LOG2(i <<" "<< bundles[0][i] << "\n" << bundles[1][i] << "\n" << bundles[2][i]);
 	}
 
 	//destroy cuda timing events
@@ -287,13 +344,23 @@ int main()
 	// free device heap momory
 	cudaFree(d_inbundle);
 	cudaFree(d_outbundle);
-	cudaFree(d_surface1);
-	cudaFree(d_surface2);
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		cudaFree(d_psurfaces[i]);
+	}
+	delete[] d_psurfaces;
 
 	//free host heap momory
-	delete psurface1;
-	delete psurface2;
-	delete[] bundle;
-	delete[] bundle2;
-	delete[] bundle3;
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		delete psurfaces[i];
+	}
+	delete[] psurfaces;
+	
+	for (int i = 0; i < numofsurfaces+1; i++)
+	{
+		delete[] bundles[i];
+	}
+
+	delete[] bundles;
 }
