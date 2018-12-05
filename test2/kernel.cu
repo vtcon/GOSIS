@@ -99,7 +99,7 @@ template<typename T = float>
 class quadricparam
 {
 public:
-	T A, B, C, D, E, F, G, H, I, J; //implicit equation A*x^2+B*y^2+C*z^2+D*x*y+E*y*z+F*x*z+G*x+H*y+I*z+J = 0
+	T A, B, C, D, E, F, G, H, I, J; //implicit equation A*x^2+B*y^2+C*z^2+D*x*y+E*x*z+F*y*z+G*x+H*y+I*z+J = 0
 
 	__host__ __device__ quadricparam(T A = 1, T B = 1, T C = 1, T D = 0, T E = 0, T F = 0, T G = 0, T H = 0, T I = 0, T J = 0) :
 		A(A), B(B), C(C), D(D), E(E), F(F), G(G), H(H), I(I), J(J)
@@ -207,25 +207,32 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 //tester kernel
 __global__ void tester()
 {
+	int idx = threadIdx.x;
+
+	//test case
 	auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1,1,1,0,0,0,0,0,0,-1));
-	auto pray = new raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), vec3<MYFLOATTYPE>(0, 0, 1));
-	MYFLOATTYPE &A = pquad->param.A,
-		&B = pquad->param.B,
-		&C = pquad->param.C,
-		&D = pquad->param.D,
-		&E = pquad->param.E,
-		&F = pquad->param.F,
-		&G = pquad->param.G,
-		&H = pquad->param.H,
-		&K = pquad->param.I, // in order not to mix with imaginary unit, due to the symbolic calculation in Maple
-		&J = pquad->param.J;
-	MYFLOATTYPE &p1 = pray->pos.x,
-		&p2 = pray->pos.y,
-		&p3 = pray->pos.z,
-		&d1 = pray->dir.x,
-		&d2 = pray->dir.y,
-		&d3 = pray->dir.z;
-	MYFLOATTYPE t1,t2;
+	auto pray = new raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), vec3<MYFLOATTYPE>(0, 1, 1));
+
+	// copy to the stack
+	auto quadric = *pquad;
+	auto before = *pray; 
+
+	MYFLOATTYPE &A = quadric.param.A,
+		&B = quadric.param.B,
+		&C = quadric.param.C,
+		&D = quadric.param.D,
+		&E = quadric.param.E,
+		&F = quadric.param.F,
+		&G = quadric.param.G,
+		&H = quadric.param.H,
+		&K = quadric.param.I, // in order not to mix with imaginary unit, due to the symbolic calculation in Maple
+		&J = quadric.param.J;
+	MYFLOATTYPE &p1 = before.pos.x,
+		&p2 = before.pos.y,
+		&p3 = before.pos.z,
+		&d1 = before.dir.x,
+		&d2 = before.dir.y,
+		&d3 = before.dir.z;
 	MYFLOATTYPE delta = - 4*A*B*d1*d1*p2*p2 + 8*A*B*d1*d2*p1*p2 - 4*A*B*d2*d2*p1*p1 
 		- 4*A*C*d1*d1*p3*p3 + 8 * A*C*d1*d3*p1*p3 - 4 * A*C*d3*d3*p1*p1 - 4*A*F*d1*d1*p2*p3 
 		+ 4*A*F*d1*d2*p1*p3 + 4*A*F*d1*d3*p1*p2 - 4*A*F*d2*d3*p1*p1 - 4 * B*C*d2*d2*p3*p3 
@@ -248,13 +255,59 @@ __global__ void tester()
 		+ 2*G*K*d1*d3 + H*H*d2*d2+ 2*H*K*d2*d3 + K*K*d3*d3;
 	MYFLOATTYPE deno = -2 * (A*d1*d1 + B*d2*d2 + C*d3*d3 + D*d1*d2 + E*d1*d3 + F*d2*d3);
 	MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) + E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
+	MYFLOATTYPE t, t1, t2;
 	t1 = (delta >= 0) ? (beforedelta + sqrtf(delta)) / deno : MYINFINITY + 1;
 	t2 = (delta >= 0) ? (beforedelta - sqrtf(delta)) / deno : MYINFINITY + 1;
+	if (t1 >= 0 && t2 >= 0)
+		t = (t1 < t2) ? t1 : t2;
+	else if (t1 < 0 && t2 >= 0)
+		t = t2;
+	else if (t2 < 0 && t1 >= 0)
+		t = t1;
+	else
+		t = MYINFINITY + 1;
 
-	printf("delta = %f ,beforedelta = %f ,deno = %f", delta, beforedelta, deno);
-	printf("t1 = %f ,t2 = %f \n", t1, t2);
+	auto at = raysegment<MYFLOATTYPE>();
+	auto after = raysegment<MYFLOATTYPE>();
+	auto surfnormal = vec3<MYFLOATTYPE>();
+	MYFLOATTYPE factor1;
 
+	if (t < MYINFINITY)
+	{
+		at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
+		after = raysegment<MYFLOATTYPE>(at.pos, at.dir);
+		MYFLOATTYPE &x = at.pos.x,
+			&y = at.pos.y,
+			&z = at.pos.z;
+		surfnormal = normalize(vec3<MYFLOATTYPE>(2*A*x+D*y+E*z+G, 2*B*y+D*x+F*z+H,2*C*z+E*x+F*y+K));
+
+		auto ddotn = dot(at.dir, surfnormal);
+		ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
+
+		factor1 = 1 - quadric.n1*quadric.n1 / (quadric.n2*quadric.n2)
+			*(1 - ddotn*ddotn);
+		if (factor1 < 0)
+		{
+			printf("something is wrong with transfer refractive vectors");
+			//deactivate ray and 
+			return;
+		}
+		
+		after.dir = quadric.n1*(at.dir - surfnormal * ddotn) / quadric.n2 - surfnormal*(MYFLOATTYPE)sqrtf(factor1);
+	}
+	//TODO: else deactivate the ray
+
+	printf("delta = %f ,beforedelta = %f ,deno = %f \n", delta, beforedelta, deno);
+	printf("t1 = %f ,t2 = %f ,t = %f\n", t1, t2,t);
+	printf("%d at t = %f ,pos = (%f,%f,%f), surfnormal (%f,%f,%f), factor1 = %f, at dir (%f,%f,%f), after dir (%f,%f,%f)\n", 
+		idx, t, at.pos.x, at.pos.y, at.pos.z, 
+		surfnormal.x, surfnormal.y,surfnormal.z,factor1,
+		at.dir.x, at.dir.y, at.dir.z,
+		after.dir.x, after.dir.y, after.dir.z );
+
+	//clean up the test case
 	delete pquad;
+	delete pray;
 }
 
 #ifdef nothing
