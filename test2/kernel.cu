@@ -15,16 +15,31 @@ __host__ __device__ inline void swap(pT& a, pT& b)
 	b = temp;
 }
 
+template<typename T = float>
+class samplingpos
+{
+public:
+	T u = 0;
+	T v = 0;
+	__host__ __device__ samplingpos(T u = 0, T v = 0)
+		:u(u), v(v)
+	{}
+	__host__ __device__ ~samplingpos()
+	{}
+};
 
 template<typename T = float>
 class raysegment
 {
 public:
 	vec3<T> pos, dir;
+	samplingpos<T> spos;
+	T intensity = 0; //radiant intensity in W/sr
+
 	int status = 1; // 1 is active, 0 is deactive, 2 is finised, more to come
 
-	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0,0,-1)):
-		pos(pos), dir(dir)
+	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0,0,-1), const samplingpos<T>& spos = samplingpos<T>(0,0),T intensity =0):
+		pos(pos), dir(dir),spos(spos),intensity(intensity)
 	{
 		LOG1("ray segment created")
 	}
