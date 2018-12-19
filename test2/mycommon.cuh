@@ -3,6 +3,7 @@
 #include "cuda_runtime.h"
 #include "device_functions.h"
 #include "device_launch_parameters.h"
+#include "math.h"
 #include <iostream>
 
 #include <stdio.h>
@@ -12,6 +13,7 @@
 #define MYZERO (double)0.000000001
 #define MYINFINITY (double)999999999
 #define MYFLOATTYPE double
+#define MYPI (double)3.14159265358979323846264338327950288419716939937510582097494 
 
 #define NULLVECTOR vec3<MYFLOATTYPE>(0,0,0)
 

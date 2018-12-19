@@ -28,6 +28,7 @@ public:
 	{}
 };
 
+//the grammar is: device can manipulate both ray objects and pointers
 template<typename T = float>
 class raysegment
 {
@@ -60,6 +61,215 @@ std::ostream& operator<<(std::ostream& os, const raysegment<T>& rs)
 	return os;
 }
 
+//the grammar is: host manipulate the bundle objects, device can only manipulate the bundle pointers...
+template <typename T>
+class raybundle
+{
+public:
+	int size; //modifiable by member function
+	T wavelength = 555; //wavelength in nm
+	raysegment<T>*prays = nullptr;
+	samplingpos<T>*samplinggrid = nullptr;
+	raybundle<T>* d_sibling = nullptr; //sibling to this bundle on the device
+									   //one bundle can only have one sibling at a time
+									   //attempt to create a new sibling will delete the existing one
+
+	//constructor and destructor, creation is limited to host only, to transfer ray bundle to device...
+	//...must create the device sibling of the bundle
+	__host__ raybundle(int size = bundlesize, T wavelength = 555)
+		:size(size),wavelength(wavelength)
+	{
+		prays = new raysegment<T>[size];
+		samplinggrid = new samplingpos<T>[size];
+	}
+	__host__  ~raybundle()
+	{
+		if (d_sibling != nullptr) freesibling();
+		delete[] prays;
+		delete[] samplinggrid;
+	}
+	
+	//copy constructor
+	__host__ raybundle(const raybundle <T>& origin)
+		:size(origin.size), wavelength(origin.wavelength)
+	{
+		prays = new raysegment<T>[size];
+		samplinggrid = new samplingpos<T>[size];
+		memcpy(prays, origin.prays, size * sizeof(raysegment<T>));
+		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(samplingpos<T>));
+	}
+
+	//copy assignment operator
+	__host__ raybundle<T>& operator=(const raybundle<T>& origin)
+	{
+		size = origin.size;
+		wavelength = origin.wavelength;
+		prays = new raysegment<T>[size];
+		samplinggrid = new samplingpos<T>[size];
+		memcpy(prays, origin.prays, size * sizeof(raysegment<T>));
+		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(samplingpos<T>));
+		return *this;
+	}
+
+	//free the current sibling
+	__host__ void freesibling()
+	{
+		cudaFree(d_sibling->prays);
+		cudaFree(d_sibling->samplinggrid);
+		cudaFree(d_sibling);
+		d_sibling = nullptr;
+	}
+
+	//create the sibling raybundle on GPU, copy this raybundle to it, and return a device pointer
+	__host__ raybundle<T>* copytosibling()
+	{
+		//delete the current sibling
+		if (d_sibling != nullptr)
+		{
+			freesibling();
+		}
+
+		//allocate memory on device
+		CUDARUN(cudaMalloc((void**)&d_sibling, sizeof(raybundle<T>)));
+		CUDARUN(cudaMalloc((void**)&(d_sibling->prays), size * sizeof(raysegment<T>)));
+		CUDARUN(cudaMalloc((void**)&(d_sibling->samplinggrid), size * sizeof(samplingpos<T>)));
+
+		//copy data to device
+		d_sibling->size = size;
+		d_sibling->wavelength = wavelength;
+		CUDARUN(cudaMemcpy(d_sibling->prays, prays, size * sizeof(raysegment<T>), cudaMemcpyHostToDevice));
+		CUDARUN(cudaMemcpy(d_sibling->samplinggrid, samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyHostToDevice));
+
+		if (cudaGetLastError() != cudaSuccess)
+		{
+			freesibling();
+			return nullptr;
+		}
+		else
+			return d_sibling;
+	}
+
+	//copy the sibling bundle from GPU to this ray bundle, return a this pointer
+	__host__ raybundle<T>* copyfromsibling()
+	{
+		if (d_sibling != nullptr)
+		{
+			//copy new data in, assume size and wavelength is correctly mirrored between siblings
+			CUDARUN(cudaMemcpy(prays, d_sibling->prays, size * sizeof(raysegment<T>), cudaMemcpyDeviceToHost));
+			CUDARUN(cudaMemcpy(samplinggrid, d_sibling->samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyDeviceToHost));
+		}
+		return this;
+	}
+
+	//simplest initializer: generate 1D parallel ray fan along vertical direction
+	__host__ raybundle<T>& init_1D_parallel(vec3<T> dir, T diam, T z_position)
+	{
+		float step = diam / size;
+		float start = -(diam / 2) + (step / 2);
+		for (int i = 0; i < size; i++)
+		{
+			prays[i] = raysegment<T>(vec3<T>(start + step * i, 0, z_position), dir);
+			samplinggrid[i] = samplingpos<T>(i - size / 2, 0);
+			printf("i = %d, (u,v) = (%f,%f), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
+				, samplinggrid[i].u, samplinggrid[i].v
+				, prays[i].pos.x, prays[i].pos.y, prays[i].pos.z
+				, prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
+		}
+		return *this;
+	}
+
+	//more sophisticated 2D equi-spherical-area initializer, note: x is horizontal, y is vertical, z is towards observer
+	__host__ raybundle<T>& init_2D_dualpolar(vec3<T> originpos, T min_horz, T max_horz, T min_vert, T max_vert, T step)
+	{
+		//clamping the limits to pi/2
+		min_horz = (min_horz < -MYPI / 2) ? -MYPI / 2 : min_horz;
+		min_vert = (min_vert < -MYPI / 2) ? -MYPI / 2 : min_vert;
+		max_horz = (max_horz > MYPI / 2) ? MYPI / 2 : max_horz;
+		max_vert = (max_vert > MYPI / 2) ? MYPI / 2 : max_vert;
+
+		//checking the max and min limits, they must be at least one step apart
+		min_horz = (min_horz > max_horz - step) ? (max_horz - step) : min_horz;
+		min_vert = (min_vert > max_vert - step) ? (max_vert - step) : min_vert;
+		
+
+		int temp_size = static_cast<int>((max_horz / step - min_horz / step + 1)* 
+			(max_vert / step - min_vert / step + 1));
+
+		//for safety, reclean the object before initialization
+		if (d_sibling != nullptr) freesibling();
+		delete[] prays;
+		delete[] samplinggrid;
+		size = 0;
+
+		//assign temporary memory
+		raysegment<T>* temp_prays = new raysegment<T>[temp_size];
+		samplingpos<T>* temp_samplinggrid = new samplingpos<T>[temp_size];
+
+		//declaration
+		T angle_horz;
+		T angle_vert;
+		T semi_axis_horz;
+		T semi_axis_vert;
+		T x, y, z;
+
+		for (int i = static_cast<int>(min_horz / step); i < (max_horz / step)+1; i++)
+		{
+			for (int j = static_cast<int>(min_vert / step); j < (max_vert / step)+1; j++)
+			{
+				//if the sampling point is within ellipse-bound and smaller than pi/2
+				angle_horz = i * step;
+				angle_vert = j * step;
+				semi_axis_horz = (angle_horz < 0) ? min_horz : max_horz;
+				semi_axis_vert = (angle_vert < 0) ? min_vert : max_vert;
+				if (((angle_horz / semi_axis_horz)*(angle_horz / semi_axis_horz) +
+					(angle_vert / semi_axis_vert)*(angle_vert / semi_axis_vert)
+					<= 1) 
+					&& (angle_horz < MYPI/2 && angle_vert < MYPI/2)
+					&& (sin(angle_horz)*sin(angle_horz)+sin(angle_vert)*sin(angle_vert)<=1)
+					)
+				{
+					//register
+					temp_samplinggrid[size] = samplingpos<T>(i, j);
+					/*
+					z = -1 / sqrt(1 + tan(angle_horz)*tan(angle_horz) + tan(angle_vert)*tan(angle_vert));
+					x = -z * tan(angle_horz);
+					y = -z * tan(angle_vert);
+					*/
+					x = sin(angle_horz);
+					y = sin(angle_vert);
+					z = sqrt(1 - x * x - y * y);
+					temp_prays[size] = raysegment<T>(originpos, vec3<T>(x, y, z));
+					size += 1;
+				}
+			}
+		}
+
+		//copy temporary arrays to final arrays
+		prays = new raysegment<T>[size];
+		samplinggrid = new samplingpos<T>[size];
+		memcpy(prays, temp_prays, size * sizeof(raysegment<T>));
+		memcpy(samplinggrid, temp_samplinggrid, size * sizeof(samplingpos<T>));
+		delete[] temp_prays;
+		delete[] temp_samplinggrid;
+
+		//debugging: printout trace
+#ifdef _DEBUGMODE2
+		if (samplinggrid != nullptr && prays != nullptr)
+		{
+			for (int i = 0; i < size; i++)
+			{
+				printf("i = %d\t (u,v) = (%f,%f)\t at (%f,%f,%f)\t pointing (%f,%f,%f)\n", i,
+					samplinggrid[i].u, samplinggrid[i].v,
+					prays[i].pos.x, prays[i].pos.y, prays[i].pos.z,
+					prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
+			}
+		}
+		else printf("error: null ptr detected");
+#endif
+
+		return *this;
+	}
+};
 
 template<typename T = float>
 class mysurface
@@ -80,12 +290,28 @@ public:
 		LOG1("surface destructor called")
 	}
 
-	virtual int size()
+	//TO DO: needed a more sophisticated implementation of this hit box function
+	// return true if position is inside hit box
+	__host__ __device__ inline virtual bool hitbox(const vec3<T>& pos)
+	{
+		return ((pos.x*pos.x + pos.y*pos.y) <= (diameter*diameter / 4)) ? true : false;
+	}
+
+	__host__ __device__ inline virtual raysegment<T> coordinate_transform(const raysegment<T>& original)
+	{
+		return raysegment<T>(original.pos - this->pos, original.dir);
+	}
+
+	__host__ __device__ inline virtual raysegment<T> coordinate_detransform(const raysegment<T>& original)
+	{
+		return raysegment<T>(original.pos + this->pos, original.dir);
+	}
+
+	__host__ __device__ virtual int size()
 	{
 		return sizeof(*this);
 	}
 };
-
 
 template<typename T = float>
 class powersurface:public mysurface<T>
@@ -140,7 +366,8 @@ public:
 		LOG1("quadric surface destructor called")
 	}
 
-	int size()
+	//needs to overwrite this function in every sub class inorder for it to return proper result
+	__host__ __device__ int size()
 	{
 		return sizeof(*this);
 	}
@@ -219,21 +446,48 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 }
 #endif
 
-//tester kernel
-__global__ void tester()
+//quadric tracer kernel, each block handles one bundle, each thread handles one ray
+template<typename T = float>
+__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles, int kernelparams[5])
 {
+
+	//TO DO: adapt this kernel to the new structure
+	//get the indices
+	int blockidx = blockIdx.x;
 	int idx = threadIdx.x;
 
+	//grab the correct in and out ray bundles
+	raybundle<T>* inbundle = d_inbundles[blockidx];
+	raybundle<T>* outbundle = d_outbundles[blockidx];
+
+	//grab the correct ray of this thread
+	raysegment<T> before = (inbundle->prays)[idx];
+
+	//quit if ray is deactivated
+	if (before.status == 0)
+	{
+		(outbundle->prays)[idx] = (inbundle->prays)[idx];
+		return;
+	}
+
+	//TO DO: load the surface
 	//test case
-	auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1,1,1,0,0,0,0,0,0,-1));
-	auto pray = new raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), vec3<MYFLOATTYPE>(0, 1, 1));
+	auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1));
 
 	// copy to the shared memory
 	__shared__ quadricsurface<MYFLOATTYPE> quadric;
 	quadric = *pquad;
+
+	//coordinate transformation
+	before = quadric.coordinate_transform(before);
+
+	/*
 	__shared__ raysegment<MYFLOATTYPE> loadedbundle[bundlesize];
 	loadedbundle[idx] = *pray;
 	auto before = loadedbundle[idx];
+	*/
+
+	//find intersection
 
 	//define references, else it will look too muddy
 	MYFLOATTYPE &A = quadric.param.A,
@@ -275,8 +529,10 @@ __global__ void tester()
 	MYFLOATTYPE deno = -2 * (A*d1*d1 + B*d2*d2 + C*d3*d3 + D*d1*d2 + E*d1*d3 + F*d2*d3);
 	MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) + E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
 	MYFLOATTYPE t, t1, t2;
-	t1 = (delta >= 0) ? (beforedelta + sqrtf(delta)) / deno : MYINFINITY + 1;
-	t2 = (delta >= 0) ? (beforedelta - sqrtf(delta)) / deno : MYINFINITY + 1;
+	t1 = (delta >= 0) ? (beforedelta + sqrtf(delta)) / deno : INFINITY;
+	t2 = (delta >= 0) ? (beforedelta - sqrtf(delta)) / deno : INFINITY;
+
+	//pick the nearest positive intersection
 	if (t1 >= 0 && t2 >= 0)
 		t = (t1 < t2) ? t1 : t2;
 	else if (t1 < 0 && t2 >= 0)
@@ -284,38 +540,67 @@ __global__ void tester()
 	else if (t2 < 0 && t1 >= 0)
 		t = t1;
 	else
-		t = MYINFINITY + 1;
+		t = INFINITY;
 
-	auto at = raysegment<MYFLOATTYPE>();
-	auto after = raysegment<MYFLOATTYPE>();
-	auto surfnormal = vec3<MYFLOATTYPE>();
-	MYFLOATTYPE factor1;
-
-	if (t < MYINFINITY)
+	// if there is an intersection
+	if (t < INFINITY)
 	{
-		at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
-		after = raysegment<MYFLOATTYPE>(at.pos, at.dir);
-		MYFLOATTYPE &x = at.pos.x,
-			&y = at.pos.y,
-			&z = at.pos.z;
-		surfnormal = normalize(vec3<MYFLOATTYPE>(2*A*x+D*y+E*z+G, 2*B*y+D*x+F*z+H,2*C*z+E*x+F*y+K));
+		auto at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
 
-		auto ddotn = dot(at.dir, surfnormal);
-		ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
-
-		factor1 = 1 - quadric.n1*quadric.n1 / (quadric.n2*quadric.n2)
-			*(1 - ddotn*ddotn);
-		if (factor1 < 0)
-		{
-			printf("something is wrong with transfer refractive vectors");
-			//deactivate ray and 
-			return;
-		}
+		//is the intersection within hit box ? if not, then deactivate the ray
+		if (!quadric.hitbox(at.pos)) goto deactivate_ray;
 		
-		after.dir = quadric.n1*(at.dir - surfnormal * ddotn) / quadric.n2 - surfnormal*(MYFLOATTYPE)sqrtf(factor1);
-	}
-	//TODO: else deactivate the ray
+		// if it is a refractive surface, do refractive ray transfer
+		if (quadric.type == 1)
+		{
+			//refractive surface transfer
+			auto after = raysegment<MYFLOATTYPE>(at.pos, at.dir);
+			MYFLOATTYPE &x = at.pos.x,
+				&y = at.pos.y,
+				&z = at.pos.z;
+			auto surfnormal = normalize(vec3<MYFLOATTYPE>(2 * A*x + D * y + E * z + G, 2 * B*y + D * x + F * z + H, 2 * C*z + E * x + F * y + K));
 
+			auto ddotn = dot(at.dir, surfnormal);
+			ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
+
+			MYFLOATTYPE factor1 = 1 - quadric.n1*quadric.n1 / (quadric.n2*quadric.n2)
+				*(1 - ddotn * ddotn);
+			if (factor1 < 0)
+			{
+#ifdef _DEBUGMODE2
+				printf("something is wrong with transfer refractive vectors");
+#endif
+				goto deactivate_ray;
+			}
+
+			after.dir = quadric.n1*(at.dir - surfnormal * ddotn) / quadric.n2 - surfnormal * (MYFLOATTYPE)sqrtf(factor1);
+
+			//coordinate detransformation, write out result
+			after = quadric.coordinate_detransform(after);
+			(outbundle->prays)[idx] = after;
+		}
+		// else if it is an image surface
+		else if (quadric.type == 0)
+		{
+			//coordinate detranformation of at and write out result
+			at = quadric.coordinate_detransform(at);
+			at.status = 2;
+			(outbundle->prays)[idx] = at;
+		}
+	}
+	//else there is no intersection, deactivate the ray
+	else
+		goto deactivate_ray;
+
+deactivate_ray:
+	{
+		// TO DO: write out ray status, copy input to output
+		(outbundle->prays)[idx] = (inbundle->prays)[idx];
+		(outbundle->prays)[idx].status = 0;
+	};
+
+
+	/*
 	printf("delta = %f ,beforedelta = %f ,deno = %f \n", delta, beforedelta, deno);
 	printf("t1 = %f ,t2 = %f ,t = %f\n", t1, t2,t);
 	printf("%d at t = %f ,pos = (%f,%f,%f), surfnormal (%f,%f,%f), factor1 = %f, at dir (%f,%f,%f), after dir (%f,%f,%f)\n", 
@@ -323,10 +608,11 @@ __global__ void tester()
 		surfnormal.x, surfnormal.y,surfnormal.z,factor1,
 		at.dir.x, at.dir.y, at.dir.z,
 		after.dir.x, after.dir.y, after.dir.z );
+	*/
+
 
 	//clean up the test case
 	delete pquad;
-	delete pray;
 }
 
 #ifdef nothing
@@ -352,7 +638,27 @@ public:
 int main()
 {
 	LOG1("this is main program");
+
+
+
+	//testing bundle creation
 #ifdef something
+	//creating an array of ray bundles
+	float diam = 10;
+	int numofsurfaces = 3;
+	raybundle<MYFLOATTYPE>* bundles = new raybundle<MYFLOATTYPE>[numofsurfaces + 1];
+	for (int i = 0; i < numofsurfaces + 1; i++)
+	{
+		bundles[i] = raybundle<MYFLOATTYPE>();
+	}
+
+	//initialize the first bundle
+	bundles[0].init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 20), -3, 3, -2, 2, 0.707);
+#endif
+
+
+
+#ifdef nothing
 	//create event for timing
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
