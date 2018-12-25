@@ -332,12 +332,12 @@ int main()
 
 	//testing new structure
 #ifdef something
-	//create event for timing
+	//create event for timing: to GPU manager
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
 
-	//set up the surfaces manually and create sibling!!!!
+	//set up the surfaces manually and create sibling: in Optical Component manager, data from console
 	LOG1("[main]setup the surfaces\n");
 	float diam = 10;
 	int numofsurfaces = 2;
@@ -356,7 +356,7 @@ int main()
 	for (int i = 0; i < numofsurfaces; i++)
 		surfaces[i]->copytosibling();
 
-	//creating an array of ray bundles
+	//creating an array of ray bundles: in tracing job manager, data from object and image manager 
 	LOG1("[main]creating ray bundles\n");
 	raybundle<MYFLOATTYPE>* bundles = new raybundle<MYFLOATTYPE>[numofsurfaces + 1];
 
@@ -374,7 +374,7 @@ int main()
 
 	
 
-	//create 2 bundles to pass in and out the kernel 
+	//create 2 bundles to pass in and out the kernel: also in tracing job manager
 	LOG1("[main]creating 2 siblings bundles\n");
 	raybundle<MYFLOATTYPE> h_inbundle = bundles[0];
 	raybundle<MYFLOATTYPE> h_outbundle = bundles[0];
@@ -386,7 +386,7 @@ int main()
 	//start timing 
 	CUDARUN(cudaEventRecord(start, 0));
 
-	//job creation by cuda malloc
+	//job creation by cuda malloc: also in tracing job manager
 	int job_size = 1;
 	raybundle<MYFLOATTYPE>** d_injob;	
 	cudaMalloc((void**)&d_injob, job_size * sizeof(raybundle<MYFLOATTYPE>*));
@@ -396,12 +396,13 @@ int main()
 	cudaMemcpy(d_outjob, &(h_outbundle.d_sibling), sizeof(raybundle<MYFLOATTYPE>*), cudaMemcpyHostToDevice);
 	
 	
-	// launch kernel, copy result out, swap memory
+	// launch kernel, copy result out, swap memory: goal, only pass one object to kernel
+	// while (job.state!= finished) { kernel launch; job.update();}
 	for (int i = 0; i < numofsurfaces; i++)
 	{
 		LOG1("[main]kernel launch \n");
 
-		//create an object for param
+		//create an object for param: should already be done in the job manager
 		kernel_launch_params<> thisparam;
 		thisparam.params[0] = job_size;
 		thisparam.params[1] = rays_per_bundle;
@@ -418,6 +419,7 @@ int main()
 			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
 		}
 		
+		//all the following should be in tracing job manager
 		//TODO: should be a for loop for a job with many bundles
 		cudaDeviceSynchronize();
 		LOG1("[main]copy sibling out");
@@ -426,14 +428,14 @@ int main()
 		swap(d_injob, d_outjob);
 	}
 
-	//kernel finished, stop timing, print out elapsed time
+	//kernel finished, stop timing, print out elapsed time: in gpu manager
 	CUDARUN(cudaEventRecord(stop, 0));
 	CUDARUN(cudaEventSynchronize(stop));
 	float elapsedtime;
 	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
 	LOG2("kernel run time: " << elapsedtime << " ms\n");
 
-	//writing results out
+	//writing results out: could be in tracing job manager?
 	for (int i = 0; i < rays_per_bundle; i++)
 	{
 		LOG2("ray " << i);
@@ -462,7 +464,8 @@ int main()
 
 	// free device heap momory now automatically when object goes out of scale
 	// free host heap memory when object goes out of scale
-	//TODO: construct GPU job object
+
+	//these lines should be in the optical component manager
 	for (int i = 0; i < numofsurfaces; i++)
 	{
 		delete surfaces[i];
