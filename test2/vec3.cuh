@@ -1,5 +1,7 @@
-#include "mycommon.cuh"
 #pragma once
+
+#include "mycommon.cuh"
+
 
 
 //floating point comparison
@@ -68,19 +70,20 @@ public:
 		LOG1("vec3 destructor called")
 	}
 
-	__host__ __device__ inline vec3<T> operator+(const vec3<T>& rhs)
+	__host__ __device__ inline vec3<T> operator+(const vec3<T>& rhs) const
 	{
 		return vec3<T>(x + rhs.x, y + rhs.y, z + rhs.z);
 	}
 
-	__host__ __device__ inline vec3<T> operator-(const vec3<T>& rhs)
+
+	__host__ __device__ inline vec3<T> operator-(const vec3<T>& rhs) const
 	{
 		return vec3<T>(x - rhs.x, y - rhs.y, z - rhs.z);
 	}
 
 	
 
-	__host__ __device__ inline bool operator!=(const vec3<T>& rhs)
+	__host__ __device__ inline bool operator!=(const vec3<T>& rhs) const
 	{
 		return !(*this == rhs);
 	}

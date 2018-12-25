@@ -43,3 +43,20 @@ if (cudaStatus != cudaSuccess) {\
 #else
 #define LOG2(x)
 #endif
+
+//pointer swap by reference
+template<typename pT>
+__host__ __device__ inline void swap(pT& a, pT& b)
+{
+	pT temp = a;
+	a = b;
+	b = temp;
+}
+
+/*
+template<typename T = float>
+__device__ T operator/(T lhs, T rhs)
+{
+	return (rhs == 0) ? (T)MYINFINITY : lhs / rhs;
+}
+*/ //IEEE 754 to the rescue!
