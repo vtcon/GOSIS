@@ -1,379 +1,17 @@
 #include "mycommon.cuh"
 #include "vec3.cuh"
+#include "class_hierarchy.cuh"
+
 
 template<typename T = float>
-__device__ T operator/(T lhs, T rhs)
+__global__ void printoutdevicedatakernel(mysurface<T>* testobject)
 {
-	return (rhs == 0) ? (T)MYINFINITY : lhs / rhs;
+	printf(testobject->p_data);
 }
 
-template<typename pT>
-__host__ __device__ inline void swap(pT& a, pT& b)
-{
-	pT temp = a;
-	a = b;
-	b = temp;
-}
 
-template<typename T = float>
-class samplingpos
-{
-public:
-	T u = 0;
-	T v = 0;
-	__host__ __device__ samplingpos(T u = 0, T v = 0)
-		:u(u), v(v)
-	{}
-	__host__ __device__ ~samplingpos()
-	{}
-};
 
-//the grammar is: device can manipulate both ray objects and pointers
-template<typename T = float>
-class raysegment
-{
-public:
-	vec3<T> pos, dir;
-	samplingpos<T> spos;
-	T intensity = 0; //radiant intensity in W/sr
-
-	int status = 1; // 1 is active, 0 is deactive, 2 is finised, more to come
-
-	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0,0,-1), const samplingpos<T>& spos = samplingpos<T>(0,0),T intensity =0):
-		pos(pos), dir(dir),spos(spos),intensity(intensity)
-	{
-		LOG1("ray segment created")
-	}
-
-	__host__ __device__ ~raysegment()
-	{
-		LOG1("ray segment destructor called")
-	}
-
-	template<typename T>
-	friend std::ostream& operator<<(std::ostream& os, const raysegment<T>& rs);
-};
-
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const raysegment<T>& rs)
-{
-	os << "ray at " << rs.pos << " pointing " << rs.dir;
-	return os;
-}
-
-//the grammar is: host manipulate the bundle objects, device can only manipulate the bundle pointers...
-template <typename T>
-class raybundle
-{
-public:
-	int size; //modifiable by member function
-	T wavelength = 555; //wavelength in nm
-	raysegment<T>*prays = nullptr;
-	samplingpos<T>*samplinggrid = nullptr;
-	raybundle<T>* d_sibling = nullptr; //sibling to this bundle on the device
-									   //one bundle can only have one sibling at a time
-									   //attempt to create a new sibling will delete the existing one
-
-	//constructor and destructor, creation is limited to host only, to transfer ray bundle to device...
-	//...must create the device sibling of the bundle
-	__host__ raybundle(int size = bundlesize, T wavelength = 555)
-		:size(size),wavelength(wavelength)
-	{
-		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
-	}
-	__host__  ~raybundle()
-	{
-		if (d_sibling != nullptr) freesibling();
-		delete[] prays;
-		delete[] samplinggrid;
-	}
-	
-	//copy constructor
-	__host__ raybundle(const raybundle <T>& origin)
-		:size(origin.size), wavelength(origin.wavelength)
-	{
-		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
-		memcpy(prays, origin.prays, size * sizeof(raysegment<T>));
-		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(samplingpos<T>));
-	}
-
-	//copy assignment operator
-	__host__ raybundle<T>& operator=(const raybundle<T>& origin)
-	{
-		size = origin.size;
-		wavelength = origin.wavelength;
-		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
-		memcpy(prays, origin.prays, size * sizeof(raysegment<T>));
-		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(samplingpos<T>));
-		return *this;
-	}
-
-	//free the current sibling
-	__host__ void freesibling()
-	{
-		cudaFree(d_sibling->prays);
-		cudaFree(d_sibling->samplinggrid);
-		cudaFree(d_sibling);
-		d_sibling = nullptr;
-	}
-
-	//create the sibling raybundle on GPU, copy this raybundle to it, and return a device pointer
-	__host__ raybundle<T>* copytosibling()
-	{
-		//delete the current sibling
-		if (d_sibling != nullptr)
-		{
-			freesibling();
-		}
-
-		//allocate memory on device
-		CUDARUN(cudaMalloc((void**)&d_sibling, sizeof(raybundle<T>)));
-		CUDARUN(cudaMalloc((void**)&(d_sibling->prays), size * sizeof(raysegment<T>)));
-		CUDARUN(cudaMalloc((void**)&(d_sibling->samplinggrid), size * sizeof(samplingpos<T>)));
-
-		//copy data to device
-		d_sibling->size = size;
-		d_sibling->wavelength = wavelength;
-		CUDARUN(cudaMemcpy(d_sibling->prays, prays, size * sizeof(raysegment<T>), cudaMemcpyHostToDevice));
-		CUDARUN(cudaMemcpy(d_sibling->samplinggrid, samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyHostToDevice));
-
-		if (cudaGetLastError() != cudaSuccess)
-		{
-			freesibling();
-			return nullptr;
-		}
-		else
-			return d_sibling;
-	}
-
-	//copy the sibling bundle from GPU to this ray bundle, return a this pointer
-	__host__ raybundle<T>* copyfromsibling()
-	{
-		if (d_sibling != nullptr)
-		{
-			//copy new data in, assume size and wavelength is correctly mirrored between siblings
-			CUDARUN(cudaMemcpy(prays, d_sibling->prays, size * sizeof(raysegment<T>), cudaMemcpyDeviceToHost));
-			CUDARUN(cudaMemcpy(samplinggrid, d_sibling->samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyDeviceToHost));
-		}
-		return this;
-	}
-
-	//simplest initializer: generate 1D parallel ray fan along vertical direction
-	__host__ raybundle<T>& init_1D_parallel(vec3<T> dir, T diam, T z_position)
-	{
-		float step = diam / size;
-		float start = -(diam / 2) + (step / 2);
-		for (int i = 0; i < size; i++)
-		{
-			prays[i] = raysegment<T>(vec3<T>(start + step * i, 0, z_position), dir);
-			samplinggrid[i] = samplingpos<T>(i - size / 2, 0);
-			printf("i = %d, (u,v) = (%f,%f), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
-				, samplinggrid[i].u, samplinggrid[i].v
-				, prays[i].pos.x, prays[i].pos.y, prays[i].pos.z
-				, prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
-		}
-		return *this;
-	}
-
-	//more sophisticated 2D equi-spherical-area initializer, note: x is horizontal, y is vertical, z is towards observer
-	__host__ raybundle<T>& init_2D_dualpolar(vec3<T> originpos, T min_horz, T max_horz, T min_vert, T max_vert, T step)
-	{
-		//clamping the limits to pi/2
-		min_horz = (min_horz < -MYPI / 2) ? -MYPI / 2 : min_horz;
-		min_vert = (min_vert < -MYPI / 2) ? -MYPI / 2 : min_vert;
-		max_horz = (max_horz > MYPI / 2) ? MYPI / 2 : max_horz;
-		max_vert = (max_vert > MYPI / 2) ? MYPI / 2 : max_vert;
-
-		//checking the max and min limits, they must be at least one step apart
-		min_horz = (min_horz > max_horz - step) ? (max_horz - step) : min_horz;
-		min_vert = (min_vert > max_vert - step) ? (max_vert - step) : min_vert;
-		
-
-		int temp_size = static_cast<int>((max_horz / step - min_horz / step + 1)* 
-			(max_vert / step - min_vert / step + 1));
-
-		//for safety, reclean the object before initialization
-		if (d_sibling != nullptr) freesibling();
-		delete[] prays;
-		delete[] samplinggrid;
-		size = 0;
-
-		//assign temporary memory
-		raysegment<T>* temp_prays = new raysegment<T>[temp_size];
-		samplingpos<T>* temp_samplinggrid = new samplingpos<T>[temp_size];
-
-		//declaration
-		T angle_horz;
-		T angle_vert;
-		T semi_axis_horz;
-		T semi_axis_vert;
-		T x, y, z;
-
-		for (int i = static_cast<int>(min_horz / step); i < (max_horz / step)+1; i++)
-		{
-			for (int j = static_cast<int>(min_vert / step); j < (max_vert / step)+1; j++)
-			{
-				//if the sampling point is within ellipse-bound and smaller than pi/2
-				angle_horz = i * step;
-				angle_vert = j * step;
-				semi_axis_horz = (angle_horz < 0) ? min_horz : max_horz;
-				semi_axis_vert = (angle_vert < 0) ? min_vert : max_vert;
-				if (((angle_horz / semi_axis_horz)*(angle_horz / semi_axis_horz) +
-					(angle_vert / semi_axis_vert)*(angle_vert / semi_axis_vert)
-					<= 1) 
-					&& (angle_horz < MYPI/2 && angle_vert < MYPI/2)
-					&& (sin(angle_horz)*sin(angle_horz)+sin(angle_vert)*sin(angle_vert)<=1)
-					)
-				{
-					//register
-					temp_samplinggrid[size] = samplingpos<T>(i, j);
-					/*
-					z = -1 / sqrt(1 + tan(angle_horz)*tan(angle_horz) + tan(angle_vert)*tan(angle_vert));
-					x = -z * tan(angle_horz);
-					y = -z * tan(angle_vert);
-					*/
-					x = sin(angle_horz);
-					y = sin(angle_vert);
-					z = sqrt(1 - x * x - y * y);
-					temp_prays[size] = raysegment<T>(originpos, vec3<T>(x, y, z));
-					size += 1;
-				}
-			}
-		}
-
-		//copy temporary arrays to final arrays
-		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
-		memcpy(prays, temp_prays, size * sizeof(raysegment<T>));
-		memcpy(samplinggrid, temp_samplinggrid, size * sizeof(samplingpos<T>));
-		delete[] temp_prays;
-		delete[] temp_samplinggrid;
-
-		//debugging: printout trace
-#ifdef _DEBUGMODE2
-		if (samplinggrid != nullptr && prays != nullptr)
-		{
-			for (int i = 0; i < size; i++)
-			{
-				printf("i = %d\t (u,v) = (%f,%f)\t at (%f,%f,%f)\t pointing (%f,%f,%f)\n", i,
-					samplinggrid[i].u, samplinggrid[i].v,
-					prays[i].pos.x, prays[i].pos.y, prays[i].pos.z,
-					prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
-			}
-		}
-		else printf("error: null ptr detected");
-#endif
-
-		return *this;
-	}
-};
-
-template<typename T = float>
-class mysurface
-{
-public:
-	vec3<T> pos; // at first no rotation of axis
-	T diameter; // default to 10 mm, see constructor
-	int type; //0 is image surface, 1 is power surface, 2 is stop surface
-
-	__host__ __device__ mysurface(const vec3<T>& pos = vec3<T>(0,0,0), T diameter = 10, int type = 0) :
-		pos(pos), diameter(diameter), type(type)
-	{
-		LOG1("my surface created")
-	}
-
-	__host__ __device__ ~mysurface()
-	{
-		LOG1("surface destructor called")
-	}
-
-	//TO DO: needed a more sophisticated implementation of this hit box function
-	// return true if position is inside hit box
-	__host__ __device__ inline virtual bool hitbox(const vec3<T>& pos)
-	{
-		return ((pos.x*pos.x + pos.y*pos.y) <= (diameter*diameter / 4)) ? true : false;
-	}
-
-	__host__ __device__ inline virtual raysegment<T> coordinate_transform(const raysegment<T>& original)
-	{
-		return raysegment<T>(original.pos - this->pos, original.dir);
-	}
-
-	__host__ __device__ inline virtual raysegment<T> coordinate_detransform(const raysegment<T>& original)
-	{
-		return raysegment<T>(original.pos + this->pos, original.dir);
-	}
-
-	__host__ __device__ virtual int size()
-	{
-		return sizeof(*this);
-	}
-};
-
-template<typename T = float>
-class powersurface:public mysurface<T>
-{
-public:
-	T power;//just random number, default to 0.1 mm^-1
-
-	__host__ __device__ powersurface(T power = 0.1, const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10) :
-		mysurface(pos, diameter, 1), power(power)
-	{
-		LOG1("power surface created")
-	}
-
-	__host__ __device__ ~powersurface()
-	{
-		LOG1("power surface destructor called")
-	}
-
-	int size()
-	{
-		return sizeof(*this);
-	}
-};
-
-template<typename T = float>
-class quadricparam
-{
-public:
-	T A, B, C, D, E, F, G, H, I, J; //implicit equation A*x^2+B*y^2+C*z^2+D*x*y+E*x*z+F*y*z+G*x+H*y+I*z+J = 0
-
-	__host__ __device__ quadricparam(T A = 1, T B = 1, T C = 1, T D = 0, T E = 0, T F = 0, T G = 0, T H = 0, T I = 0, T J = 0) :
-		A(A), B(B), C(C), D(D), E(E), F(F), G(G), H(H), I(I), J(J)
-	{}
-};
-
-template<typename T = float>
-class quadricsurface :public mysurface<T>
-{
-public:
-	quadricparam<T> param;
-	T n1, n2;
-
-	__host__ __device__ quadricsurface(const quadricparam<T>& param = quadricparam<T>(1,1,1,0,0,0,0,0,0,-1),
-		T n1 = 1, T n2 = 1, const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10):
-		mysurface(pos, diameter, 1), param(param), n1(n1), n2(n2)
-	{
-		LOG1("quadric surface created")
-	}
-
-	__host__ __device__ ~quadricsurface()
-	{
-		LOG1("quadric surface destructor called")
-	}
-
-	//needs to overwrite this function in every sub class inorder for it to return proper result
-	__host__ __device__ int size()
-	{
-		return sizeof(*this);
-	}
-};
-
-//main tracing kernel
+//deprecated: general purpose tracer kernel
 #ifdef nothing
 template <typename T = float>
 __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const mysurface<T>* nextsurface)
@@ -447,14 +85,15 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 #endif
 
 //quadric tracer kernel, each block handles one bundle, each thread handles one ray
-template<typename T = float>
-__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles, int kernelparams[5])
+template<typename T = float,int numofparams = 5>
+__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles,quadricsurface<T>* pquad, kernel_launch_params<numofparams> kernelparams)
 {
+	//testing
 
-	//TO DO: adapt this kernel to the new structure
+	//adapt this kernel to the new structure
 	//get the indices
-	int blockidx = blockIdx.x;
-	int idx = threadIdx.x;
+	int blockidx = (blockIdx.x < kernelparams.params[0]) ? blockIdx.x : kernelparams.params[0]; //first param is number of bundles
+	int idx = (threadIdx.x < kernelparams.params[1]) ? threadIdx.x : kernelparams.params[1]; //second param is number of rays in a bundle
 
 	//grab the correct in and out ray bundles
 	raybundle<T>* inbundle = d_inbundles[blockidx];
@@ -470,17 +109,19 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 		return;
 	}
 
-	//TO DO: load the surface
-	//test case
-	auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1));
+	//load the surface
+	//quadricsurface<MYFLOATTYPE>& quadric = *pquad;
 
-	// copy to the shared memory
-	__shared__ quadricsurface<MYFLOATTYPE> quadric;
-	quadric = *pquad;
+	//test case
+	//auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1));
+
+	// copy to the shared memory (at the time not possible)
 
 	//coordinate transformation
-	before = quadric.coordinate_transform(before);
-
+	//todo: memory access violation here, check my surface copy to device
+	//before = quadric.coordinate_transform(before);
+	//before = pquad->coordinate_transform(before);
+	before.pos = before.pos - pquad->pos;
 	/*
 	__shared__ raysegment<MYFLOATTYPE> loadedbundle[bundlesize];
 	loadedbundle[idx] = *pray;
@@ -490,48 +131,59 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 	//find intersection
 
 	//define references, else it will look too muddy
-	MYFLOATTYPE &A = quadric.param.A,
-		&B = quadric.param.B,
-		&C = quadric.param.C,
-		&D = quadric.param.D,
-		&E = quadric.param.E,
-		&F = quadric.param.F,
-		&G = quadric.param.G,
-		&H = quadric.param.H,
-		&K = quadric.param.I, // in order not to mix with imaginary unit, due to the symbolic calculation in Maple
-		&J = quadric.param.J;
-	MYFLOATTYPE &p1 = before.pos.x,
-		&p2 = before.pos.y,
-		&p3 = before.pos.z,
-		&d1 = before.dir.x,
-		&d2 = before.dir.y,
-		&d3 = before.dir.z;
-	MYFLOATTYPE delta = - 4*A*B*d1*d1*p2*p2 + 8*A*B*d1*d2*p1*p2 - 4*A*B*d2*d2*p1*p1 
-		- 4*A*C*d1*d1*p3*p3 + 8 * A*C*d1*d3*p1*p3 - 4 * A*C*d3*d3*p1*p1 - 4*A*F*d1*d1*p2*p3 
-		+ 4*A*F*d1*d2*p1*p3 + 4*A*F*d1*d3*p1*p2 - 4*A*F*d2*d3*p1*p1 - 4 * B*C*d2*d2*p3*p3 
-		+ 8*B*C*d2*d3*p2*p3 - 4*B*C*d3*d2*p2*p2 + 4*B*E*d1*d2*p2*p3 - 4*B*E*d1*d3*p2*p2 
-		- 4*B*E*d2*d2*p1*p3 + 4*B*E*d2*d3*p1*p2 - 4*C*D*d1*d2*p3*p3 + 4*C*D*d1*d3*p2*p3 
-		+ 4*C*D*d2*d3*p1*p3 - 4*C*D*d3*d3*p1*p2 + D*D*d1*d1*p2*p2 - 2*D*D*d1*d2*p1*p2 
-		+ D*D*d2*d2*p1*p1 + 2*D*E*d1*d1*p2*p3 - 2*D*E*d1*d2*p1*p3 - 2*D*E*d1*d3*p1*p2 
-		+ 2*D*E*d2*d3*p1*p1 - 2*D*F*d1*d2*p2*p3 + 2*D*F*d1*d3*p2*p2 + 2*D*F*d2*d2*p1*p3 
-		- 2*D*F*d2*d3*p1*p2 + E*E*d1*d1*p3*p3 - 2*E*E*d1*d3*p1*p3 + E*E*d3*d3*p1*p1 
-		+ 2*E*F*d1*d2*p3*p3 - 2*E*F*d1*d3*p2*p3 - 2*E*F*d2*d3*p1*p3 + 2*E*F*d3*d3*p1*p2 
-		+ F*F*d2*d2*p3*p3 - 2*F*F*d2*d3*p2*p3 + F*F*d3*d3*p2*p2 - 4*A*H*d1*d1*p2 
-		+ 4*A*H*d1*d2*p1 - 4*A*K*d1*d1*p3 + 4*A*K*d1*d3*p1 + 4*B*G*d1*d2*p2 - 4*B*G*d2*d2*p1 
-		- 4*B*K*d2*d2*p3 + 4*B*K*d2*d3*p2 + 4*C*G*d1*d3*p3 - 4*C*G*d3*d3*p1 + 4*C*H*d2*d3*p3 
-		- 4*C*H*d3*d3*p2 + 2*D*G*d1*d1*p2 - 2*D*G*d1*d2*p1 - 2*D*H*d1*d2*p2 
-		+ 2*D*H*d2*d2*p1 - 4*D*K*d1*d2*p3 + 2*D*K*d1*d3*p2 + 2*D*K*d2*d3*p1 + 2*E*G*d1*d1*p3 
-		- 2*E*G*d1*d3*p1 + 2*E*H*d1*d2*p3 - 4*E*H*d1*d3*p2 + 2*E*H*d2*d3*p1 - 2*E*K*d1*d3*p3 
-		+ 2*E*K*d3*d3*p1 + 2*F*G*d1*d2*p3 + 2*F*G*d1*d3*p2 - 4*F*G*d2*d3*p1 + 2*F*H*d2*d2*p3 
-		- 2*F*H*d2*d3*p2 - 2*F*K*d2*d3*p3 + 2*F*K*d3*d3*p2 - 4*A*J*d1*d1 - 4*B*J*d2*d2 
-		- 4*C*J*d3*d3 - 4*D*J*d1*d2 - 4*E*J*d1*d3 - 4*F*J*d2*d3 + G*G*d1*d1 + 2*G*H*d1*d2 
-		+ 2*G*K*d1*d3 + H*H*d2*d2+ 2*H*K*d2*d3 + K*K*d3*d3;
-	MYFLOATTYPE deno = -2 * (A*d1*d1 + B*d2*d2 + C*d3*d3 + D*d1*d2 + E*d1*d3 + F*d2*d3);
-	MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) + E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
+	MYFLOATTYPE A = pquad->param.A,
+		B = pquad->param.B,
+		C = pquad->param.C,
+		D = pquad->param.D,
+		E = pquad->param.E,
+		F = pquad->param.F,
+		G = pquad->param.G,
+		H = pquad->param.H,
+		K = pquad->param.I, // in order not to mix with imaginary unit, due to the symbolic calculation in Maple
+		J = pquad->param.J;
+	MYFLOATTYPE p1 = before.pos.x,
+		p2 = before.pos.y,
+		p3 = before.pos.z,
+		d1 = before.dir.x,
+		d2 = before.dir.y,
+		d3 = before.dir.z;
 	MYFLOATTYPE t, t1, t2;
-	t1 = (delta >= 0) ? (beforedelta + sqrtf(delta)) / deno : INFINITY;
-	t2 = (delta >= 0) ? (beforedelta - sqrtf(delta)) / deno : INFINITY;
-
+	MYFLOATTYPE deno = -2 * (A*d1*d1 + B * d2*d2 + C * d3*d3 + D * d1*d2 + E * d1*d3 + F * d2*d3);
+	if (deno != 0)
+	{
+		MYFLOATTYPE delta = -4 * A*B*d1*d1*p2*p2 + 8 * A*B*d1*d2*p1*p2 - 4 * A*B*d2*d2*p1*p1
+			- 4 * A*C*d1*d1*p3*p3 + 8 * A*C*d1*d3*p1*p3 - 4 * A*C*d3*d3*p1*p1 - 4 * A*F*d1*d1*p2*p3
+			+ 4 * A*F*d1*d2*p1*p3 + 4 * A*F*d1*d3*p1*p2 - 4 * A*F*d2*d3*p1*p1 - 4 * B*C*d2*d2*p3*p3
+			+ 8 * B*C*d2*d3*p2*p3 - 4 * B*C*d3*d2*p2*p2 + 4 * B*E*d1*d2*p2*p3 - 4 * B*E*d1*d3*p2*p2
+			- 4 * B*E*d2*d2*p1*p3 + 4 * B*E*d2*d3*p1*p2 - 4 * C*D*d1*d2*p3*p3 + 4 * C*D*d1*d3*p2*p3
+			+ 4 * C*D*d2*d3*p1*p3 - 4 * C*D*d3*d3*p1*p2 + D * D*d1*d1*p2*p2 - 2 * D*D*d1*d2*p1*p2
+			+ D * D*d2*d2*p1*p1 + 2 * D*E*d1*d1*p2*p3 - 2 * D*E*d1*d2*p1*p3 - 2 * D*E*d1*d3*p1*p2
+			+ 2 * D*E*d2*d3*p1*p1 - 2 * D*F*d1*d2*p2*p3 + 2 * D*F*d1*d3*p2*p2 + 2 * D*F*d2*d2*p1*p3
+			- 2 * D*F*d2*d3*p1*p2 + E * E*d1*d1*p3*p3 - 2 * E*E*d1*d3*p1*p3 + E * E*d3*d3*p1*p1
+			+ 2 * E*F*d1*d2*p3*p3 - 2 * E*F*d1*d3*p2*p3 - 2 * E*F*d2*d3*p1*p3 + 2 * E*F*d3*d3*p1*p2
+			+ F * F*d2*d2*p3*p3 - 2 * F*F*d2*d3*p2*p3 + F * F*d3*d3*p2*p2 - 4 * A*H*d1*d1*p2
+			+ 4 * A*H*d1*d2*p1 - 4 * A*K*d1*d1*p3 + 4 * A*K*d1*d3*p1 + 4 * B*G*d1*d2*p2 - 4 * B*G*d2*d2*p1
+			- 4 * B*K*d2*d2*p3 + 4 * B*K*d2*d3*p2 + 4 * C*G*d1*d3*p3 - 4 * C*G*d3*d3*p1 + 4 * C*H*d2*d3*p3
+			- 4 * C*H*d3*d3*p2 + 2 * D*G*d1*d1*p2 - 2 * D*G*d1*d2*p1 - 2 * D*H*d1*d2*p2
+			+ 2 * D*H*d2*d2*p1 - 4 * D*K*d1*d2*p3 + 2 * D*K*d1*d3*p2 + 2 * D*K*d2*d3*p1 + 2 * E*G*d1*d1*p3
+			- 2 * E*G*d1*d3*p1 + 2 * E*H*d1*d2*p3 - 4 * E*H*d1*d3*p2 + 2 * E*H*d2*d3*p1 - 2 * E*K*d1*d3*p3
+			+ 2 * E*K*d3*d3*p1 + 2 * F*G*d1*d2*p3 + 2 * F*G*d1*d3*p2 - 4 * F*G*d2*d3*p1 + 2 * F*H*d2*d2*p3
+			- 2 * F*H*d2*d3*p2 - 2 * F*K*d2*d3*p3 + 2 * F*K*d3*d3*p2 - 4 * A*J*d1*d1 - 4 * B*J*d2*d2
+			- 4 * C*J*d3*d3 - 4 * D*J*d1*d2 - 4 * E*J*d1*d3 - 4 * F*J*d2*d3 + G * G*d1*d1 + 2 * G*H*d1*d2
+			+ 2 * G*K*d1*d3 + H * H*d2*d2 + 2 * H*K*d2*d3 + K * K*d3*d3;
+		MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) + 
+			E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
+		t1 = (delta >= 0) ? (beforedelta + sqrt(delta)) / deno : INFINITY;
+		t2 = (delta >= 0) ? (beforedelta - sqrt(delta)) / deno : INFINITY;
+	}
+	else
+	{
+		MYFLOATTYPE num = -A * p1*p1 - B * p2*p2 - C * p3*p3 - D * p1*p2 - E * p1*p3 - F * p2*p3 - G * p1 - H * p2 - K * p3 - J;
+		MYFLOATTYPE den = 2*A*d1*p1 + 2*B*d2*p2 + 2*C*d3*p3 + D*d1*p2 + D*d2*p1 + E*d1*p3 + E*d3*p1 
+			+ F*d2*p3 + F*d3*p2 + G*d1 + H*d2 + K*d3;
+		t1 = num / den;
+		t2 = -INFINITY;
+	}
 	//pick the nearest positive intersection
 	if (t1 >= 0 && t2 >= 0)
 		t = (t1 < t2) ? t1 : t2;
@@ -548,10 +200,10 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 		auto at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
 
 		//is the intersection within hit box ? if not, then deactivate the ray
-		if (!quadric.hitbox(at.pos)) goto deactivate_ray;
+		if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4)) goto deactivate_ray;
 		
 		// if it is a refractive surface, do refractive ray transfer
-		if (quadric.type == 1)
+		if (pquad->type == 1)
 		{
 			//refractive surface transfer
 			auto after = raysegment<MYFLOATTYPE>(at.pos, at.dir);
@@ -563,7 +215,7 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 			auto ddotn = dot(at.dir, surfnormal);
 			ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
 
-			MYFLOATTYPE factor1 = 1 - quadric.n1*quadric.n1 / (quadric.n2*quadric.n2)
+			MYFLOATTYPE factor1 = 1 - pquad->n1*pquad->n1 / (pquad->n2*pquad->n2)
 				*(1 - ddotn * ddotn);
 			if (factor1 < 0)
 			{
@@ -573,19 +225,34 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 				goto deactivate_ray;
 			}
 
-			after.dir = quadric.n1*(at.dir - surfnormal * ddotn) / quadric.n2 - surfnormal * (MYFLOATTYPE)sqrtf(factor1);
+			after.dir = (pquad->n1)*(at.dir - surfnormal * ddotn) / (pquad->n2) - surfnormal * (MYFLOATTYPE)sqrtf(factor1);
 
 			//coordinate detransformation, write out result
-			after = quadric.coordinate_detransform(after);
+			after.pos = after.pos + pquad->pos;
+
 			(outbundle->prays)[idx] = after;
+
+			//printout calculation
+			/*
+			printf("delta = %f ,beforedelta = %f ,deno = %f \n", delta, beforedelta, deno);
+			printf("t1 = %f ,t2 = %f ,t = %f\n", t1, t2, t);
+			printf("%d at t = %f ,pos = (%f,%f,%f), surfnormal (%f,%f,%f), factor1 = %f, at dir (%f,%f,%f), after dir (%f,%f,%f)\n",
+				idx, t, at.pos.x, at.pos.y, at.pos.z,
+				surfnormal.x, surfnormal.y, surfnormal.z, factor1,
+				at.dir.x, at.dir.y, at.dir.z,
+				after.dir.x, after.dir.y, after.dir.z);
+			*/
+			goto final;
 		}
 		// else if it is an image surface
-		else if (quadric.type == 0)
+		else if (pquad->type == 0)
 		{
 			//coordinate detranformation of at and write out result
-			at = quadric.coordinate_detransform(at);
+			//at = pquad->coordinate_detransform(at);
+			at.pos = at.pos + pquad->pos;
 			at.status = 2;
 			(outbundle->prays)[idx] = at;
+			goto final;
 		}
 	}
 	//else there is no intersection, deactivate the ray
@@ -599,22 +266,12 @@ deactivate_ray:
 		(outbundle->prays)[idx].status = 0;
 	};
 
-
-	/*
-	printf("delta = %f ,beforedelta = %f ,deno = %f \n", delta, beforedelta, deno);
-	printf("t1 = %f ,t2 = %f ,t = %f\n", t1, t2,t);
-	printf("%d at t = %f ,pos = (%f,%f,%f), surfnormal (%f,%f,%f), factor1 = %f, at dir (%f,%f,%f), after dir (%f,%f,%f)\n", 
-		idx, t, at.pos.x, at.pos.y, at.pos.z, 
-		surfnormal.x, surfnormal.y,surfnormal.z,factor1,
-		at.dir.x, at.dir.y, at.dir.z,
-		after.dir.x, after.dir.y, after.dir.z );
-	*/
-
-
 	//clean up the test case
-	delete pquad;
+final:
 }
 
+
+//testing dummy object
 #ifdef nothing
 class test
 {
@@ -635,25 +292,182 @@ public:
 };
 #endif
 
+//dummy kernel for lambdas
+__global__ void dummykernel(raybundle<MYFLOATTYPE>* a)
+{ 
+	printf("dummy kernel"); 
+	a->prays[0].status = 2;
+}
+
 int main()
 {
 	LOG1("this is main program");
 
-
-
-	//testing bundle creation
-#ifdef something
-	//creating an array of ray bundles
-	float diam = 10;
-	int numofsurfaces = 3;
-	raybundle<MYFLOATTYPE>* bundles = new raybundle<MYFLOATTYPE>[numofsurfaces + 1];
-	for (int i = 0; i < numofsurfaces + 1; i++)
+	//testing sibling feature
+#ifdef nothing
 	{
-		bundles[i] = raybundle<MYFLOATTYPE>();
+		char* teststr = "hello";
+		mysurface<MYFLOATTYPE>* testsurface = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1,
+			1.5, vec3<MYFLOATTYPE>(0, 0, -10), 10);
+		testsurface->add_data(teststr, 6);
+		
+		testsurface->copytosibling();
+		printoutdevicedatakernel<<<1, 1 >>>(testsurface->d_sibling);
 	}
+#endif
+
+	//testing sibling feature episode 2
+#ifdef nothing
+	{
+		raybundle<MYFLOATTYPE> testbundle;
+		testbundle.init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 20), -3, 3, -2, 2, 0.707);
+		testbundle.copytosibling();
+		raybundle<MYFLOATTYPE>* a = testbundle.d_sibling;
+		dummykernel <<< 1, 1 >>> (a);
+		cudaDeviceSynchronize();
+		auto anotherbundle = testbundle.copyfromsibling();
+	}
+#endif
+
+
+	//testing new structure
+#ifdef something
+	//create event for timing
+	cudaEvent_t start, stop;
+	CUDARUN(cudaEventCreate(&start));
+	CUDARUN(cudaEventCreate(&stop));
+
+	//set up the surfaces manually and create sibling!!!!
+	LOG1("[main]setup the surfaces\n");
+	float diam = 10;
+	int numofsurfaces = 2;
+	mysurface<MYFLOATTYPE>** surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	//construct the surfaces
+	surfaces[0] = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 
+		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
+	surfaces[1] = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
+		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
+
+	//test adding data
+	char* teststr = "hello";
+	surfaces[0]->add_data(teststr, 6);
+
+	LOG1("[main]create sibling surfaces\n");
+	for (int i = 0; i < numofsurfaces; i++)
+		surfaces[i]->copytosibling();
+
+	//creating an array of ray bundles
+	LOG1("[main]creating ray bundles\n");
+	raybundle<MYFLOATTYPE>* bundles = new raybundle<MYFLOATTYPE>[numofsurfaces + 1];
 
 	//initialize the first bundle
-	bundles[0].init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 20), -3, 3, -2, 2, 0.707);
+	LOG1("[main]initialize 1st bundle\n");
+	//bundles[0].init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 20), -0.5, 0.5, -0.5, 0.5, 0.25);
+	bundles[0].init_1D_parallel(vec3<double>(0, 0, -1), 5, 80);
+	int rays_per_bundle = bundles[0].size;
+
+	//initializes other bundles
+	for (int i = 1; i < numofsurfaces + 1; i++)
+	{
+		bundles[i] = raybundle<MYFLOATTYPE>(rays_per_bundle);
+	}
+
+	
+
+	//create 2 bundles to pass in and out the kernel 
+	LOG1("[main]creating 2 siblings bundles\n");
+	raybundle<MYFLOATTYPE> h_inbundle = bundles[0];
+	raybundle<MYFLOATTYPE> h_outbundle = bundles[0];
+	h_inbundle.copytosibling();
+	h_outbundle.copytosibling();
+	//bundles[0].copytosibling();
+	//bundles[numofsurfaces].copytosibling();
+
+	//start timing 
+	CUDARUN(cudaEventRecord(start, 0));
+
+	//job creation by cuda malloc
+	int job_size = 1;
+	raybundle<MYFLOATTYPE>** d_injob;	
+	cudaMalloc((void**)&d_injob, job_size * sizeof(raybundle<MYFLOATTYPE>*));
+	cudaMemcpy(d_injob, &(h_inbundle.d_sibling), sizeof(raybundle<MYFLOATTYPE>*), cudaMemcpyHostToDevice);
+	raybundle<MYFLOATTYPE>** d_outjob;
+	cudaMalloc((void**)&d_outjob, job_size * sizeof(raybundle<MYFLOATTYPE>*));
+	cudaMemcpy(d_outjob, &(h_outbundle.d_sibling), sizeof(raybundle<MYFLOATTYPE>*), cudaMemcpyHostToDevice);
+	
+	
+	// launch kernel, copy result out, swap memory
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		LOG1("[main]kernel launch \n");
+
+		//create an object for param
+		kernel_launch_params<> thisparam;
+		thisparam.params[0] = job_size;
+		thisparam.params[1] = rays_per_bundle;
+		thisparam.params[2] = i;
+
+		quadrictracer<MYFLOATTYPE><<<job_size, rays_per_bundle>>>(
+			d_injob, 
+			d_outjob, 
+			static_cast<quadricsurface<MYFLOATTYPE>*>(surfaces[i]->d_sibling), 
+			thisparam);
+		cudaError_t cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
+			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
+		}
+		
+		//TODO: should be a for loop for a job with many bundles
+		cudaDeviceSynchronize();
+		LOG1("[main]copy sibling out");
+		bundles[i + 1] = (i % 2 == 0) ? h_outbundle.copyfromsibling() : h_inbundle.copyfromsibling();
+		
+		swap(d_injob, d_outjob);
+	}
+
+	//kernel finished, stop timing, print out elapsed time
+	CUDARUN(cudaEventRecord(stop, 0));
+	CUDARUN(cudaEventSynchronize(stop));
+	float elapsedtime;
+	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
+	LOG2("kernel run time: " << elapsedtime << " ms\n");
+
+	//writing results out
+	for (int i = 0; i < rays_per_bundle; i++)
+	{
+		LOG2("ray " << i);
+		for (int j = 0; j < numofsurfaces + 1; j++)
+		{
+			switch ((bundles[j].prays)[i].status)
+			{
+			case 0:
+				LOG2(" deactivated")
+					break;
+			case 1:
+				LOG2(" " << (bundles[j].prays)[i])
+					break;
+			case 2:
+				if ((bundles[j-1].prays)[i].status != 0)
+					LOG2(" " << (bundles[j].prays)[i] << " done")
+					break;
+			}
+		}
+		LOG2("\n");
+	}
+
+	//destroy cuda timing events
+	CUDARUN(cudaEventDestroy(start));
+	CUDARUN(cudaEventDestroy(stop));
+
+	// free device heap momory now automatically when object goes out of scale
+	// free host heap memory when object goes out of scale
+	//TODO: construct GPU job object
+	for (int i = 0; i < numofsurfaces; i++)
+	{
+		delete surfaces[i];
+	}
+	delete[] surfaces;
 #endif
 
 
