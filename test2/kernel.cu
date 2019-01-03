@@ -2,6 +2,49 @@
 #include "vec3.cuh"
 #include "class_hierarchy.cuh"
 
+/**************************************************************************************************/
+/****************                   EXPERIMENTAL ZONE STARTS                         **************/
+/**************************************************************************************************/
+#ifdef nothing
+
+class Test
+{
+public:
+	static int a;
+	static int geta()
+	{
+		return a;
+	}
+
+	static int getb()
+	{
+		return b;
+	}
+
+private:
+	static int b;
+};
+
+int testfunction1()
+{
+	std::cout << Test::geta();
+	return 0;
+}
+
+int testfunction2()
+{
+	Test::a = 6;
+	return 0;
+}
+
+
+
+
+
+#endif
+/**************************************************************************************************/
+/*******************                EXPERIMENTAL ZONE ENDS                 ************************/
+/**************************************************************************************************/
 
 template<typename T = float>
 __global__ void printoutdevicedatakernel(mysurface<T>* testobject)
@@ -84,16 +127,63 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 }
 #endif
 
+
+//kernel launch parameters
+//template<int numofparams =5>
+class KernelLaunchParams
+{
+};
+
+template<int numofparams = 5>
+class QuadricTracerKernelLaunchParams:public KernelLaunchParams//<numofparams>
+{
+public:
+	int otherparams[numofparams];
+};
+
+template<int numofparams = 5>
+class RendererKernelLaunchParams :public KernelLaunchParams//<numofparams>
+{
+};
+
+//testing GPUJob
+//template<typename T = float, int numofparams = 5>
+class GPUJob
+{
+public:
+	int paramcounts = 5;
+	KernelLaunchParams/*<numofparams>*/* hp_params; // will pass as reintepret_cast<...*>(*(GPUJob.hp_params)) into the kernel
+
+	void initiate()
+	{
+		//add surface pointers, add data, create siblings
+	}
+
+	void updateKernelLaunchParams()
+	{
+		stages_left--;
+		
+		//update the kernel launch parameters
+	}
+
+	bool goAhead()
+	{
+		return (stages_left > 0) ? true : false;
+	}
+private:
+	int stages_left = 3;
+};
+
 //quadric tracer kernel, each block handles one bundle, each thread handles one ray
-template<typename T = float,int numofparams = 5>
-__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles,quadricsurface<T>* pquad, kernel_launch_params<numofparams> kernelparams)
+template<typename T = float, int numofparams = 5>
+__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles, quadricsurface<T>* pquad, QuadricTracerKernelLaunchParams<numofparams> kernelparams)
 {
 	//testing
 
 	//adapt this kernel to the new structure
 	//get the indices
-	int blockidx = (blockIdx.x < kernelparams.params[0]) ? blockIdx.x : kernelparams.params[0]; //first param is number of bundles
-	int idx = (threadIdx.x < kernelparams.params[1]) ? threadIdx.x : kernelparams.params[1]; //second param is number of rays in a bundle
+	int blockidx = (blockIdx.x < kernelparams.otherparams[0]) ? blockIdx.x : kernelparams.otherparams[0]; //first param is number of bundles
+	int idx = (threadIdx.x < kernelparams.otherparams[1]) ? threadIdx.x : kernelparams.otherparams[1]; //second param is number of rays in a bundle
 
 	//grab the correct in and out ray bundles
 	raybundle<T>* inbundle = d_inbundles[blockidx];
@@ -171,7 +261,7 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 			- 2 * F*H*d2*d3*p2 - 2 * F*K*d2*d3*p3 + 2 * F*K*d3*d3*p2 - 4 * A*J*d1*d1 - 4 * B*J*d2*d2
 			- 4 * C*J*d3*d3 - 4 * D*J*d1*d2 - 4 * E*J*d1*d3 - 4 * F*J*d2*d3 + G * G*d1*d1 + 2 * G*H*d1*d2
 			+ 2 * G*K*d1*d3 + H * H*d2*d2 + 2 * H*K*d2*d3 + K * K*d3*d3;
-		MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) + 
+		MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) +
 			E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
 		t1 = (delta >= 0) ? (beforedelta + sqrt(delta)) / deno : INFINITY;
 		t2 = (delta >= 0) ? (beforedelta - sqrt(delta)) / deno : INFINITY;
@@ -179,8 +269,8 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 	else
 	{
 		MYFLOATTYPE num = -A * p1*p1 - B * p2*p2 - C * p3*p3 - D * p1*p2 - E * p1*p3 - F * p2*p3 - G * p1 - H * p2 - K * p3 - J;
-		MYFLOATTYPE den = 2*A*d1*p1 + 2*B*d2*p2 + 2*C*d3*p3 + D*d1*p2 + D*d2*p1 + E*d1*p3 + E*d3*p1 
-			+ F*d2*p3 + F*d3*p2 + G*d1 + H*d2 + K*d3;
+		MYFLOATTYPE den = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * d1*p2 + D * d2*p1 + E * d1*p3 + E * d3*p1
+			+ F * d2*p3 + F * d3*p2 + G * d1 + H * d2 + K * d3;
 		t1 = num / den;
 		t2 = -INFINITY;
 	}
@@ -201,7 +291,7 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 
 		//is the intersection within hit box ? if not, then deactivate the ray
 		if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4)) goto deactivate_ray;
-		
+
 		// if it is a refractive surface, do refractive ray transfer
 		if (pquad->type == 1)
 		{
@@ -267,39 +357,11 @@ deactivate_ray:
 	};
 
 	//clean up the test case
-final:
+	final :
 }
 
 
-//testing dummy object
-#ifdef nothing
-class test
-{
-public:
-	int t;
-	void method()
-	{
-		LOG1("test method")
-	}
-	test(int t = 0):t(t)
-	{
-		LOG1("test object created")
-	}
-	~test()
-	{
-		LOG1("test destructor called")
-	}
-};
-#endif
-
-//dummy kernel for lambdas
-__global__ void dummykernel(raybundle<MYFLOATTYPE>* a)
-{ 
-	printf("dummy kernel"); 
-	a->prays[0].status = 2;
-}
-
-int main()
+int GPUmanager()
 {
 	LOG1("this is main program");
 
@@ -403,10 +465,10 @@ int main()
 		LOG1("[main]kernel launch \n");
 
 		//create an object for param: should already be done in the job manager
-		kernel_launch_params<> thisparam;
-		thisparam.params[0] = job_size;
-		thisparam.params[1] = rays_per_bundle;
-		thisparam.params[2] = i;
+		QuadricTracerKernelLaunchParams<> thisparam;
+		thisparam.otherparams[0] = job_size;
+		thisparam.otherparams[1] = rays_per_bundle;
+		thisparam.otherparams[2] = i;
 
 		quadrictracer<MYFLOATTYPE><<<job_size, rays_per_bundle>>>(
 			d_injob, 
@@ -471,6 +533,7 @@ int main()
 		delete surfaces[i];
 	}
 	delete[] surfaces;
+	return 0;
 #endif
 
 
@@ -638,4 +701,10 @@ int main()
 
 	delete[] bundles;
 #endif
+}
+
+//TODO: let's first write class GPUJob
+int JobManager()
+{
+	return 0;
 }

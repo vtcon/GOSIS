@@ -521,9 +521,3 @@ public:
 	*/
 };
 
-template<int numofparams = 5>
-class kernel_launch_params
-{
-public:
-	int params[numofparams];
-};
