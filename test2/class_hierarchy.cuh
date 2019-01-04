@@ -27,7 +27,10 @@ public:
 	samplingpos<T> spos;
 	T intensity = 0; //radiant intensity in W/sr
 
-	int status = 1; // 1 is active, 0 is deactive, 2 is finised, more to come
+	//obsolete: 1 is active, 0 is deactivated, 2 is finised, more to come
+
+	enum Status {active, deactivated, finished, inactive};
+	Status status = active;
 
 	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const samplingpos<T>& spos = samplingpos<T>(0, 0), T intensity = 0) :
 		pos(pos), dir(dir), spos(spos), intensity(intensity)
@@ -276,14 +279,18 @@ class mysurface
 public:
 	vec3<T> pos; // at first no rotation of axis
 	T diameter; // default to 10 mm, see constructor
-	int type; //0 is image surface, 1 is power surface, 2 is stop surface
+
+	//int type; 
+	//0 is image surface, 1 is power surface, 2 is stop surface
+	enum SurfaceTypes {image, refractive, stop};
+	SurfaceTypes type;
 
 	char* p_data = nullptr; // each char is 1 byte...
 	int data_size = 0;//... so that the data size and offset is in bytes
 
 	mysurface<T>* d_sibling = nullptr;
 
-	__host__ mysurface(const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10, int type = 0) :
+	__host__ mysurface(const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10, SurfaceTypes type = image) :
 		pos(pos), diameter(diameter), type(type)
 	{
 		LOG1("my surface created")
@@ -481,9 +488,9 @@ public:
 	quadricparam<T> param;
 	T n1, n2;
 
-	__host__ __device__ quadricsurface(const quadricparam<T>& param = quadricparam<T>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1),
+	__host__ __device__ quadricsurface(SurfaceTypes type, const quadricparam<T>& param = quadricparam<T>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1),
 		T n1 = 1, T n2 = 1, const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10) :
-		mysurface(pos, diameter, 1), param(param), n1(n1), n2(n2)
+		mysurface(pos, diameter, type), param(param), n1(n1), n2(n2)
 	{
 		LOG1("quadric surface created")
 	}
@@ -494,7 +501,7 @@ public:
 	}
 
 	//needs to overwrite this function in every sub class inorder for it to return proper result
-	__host__ __device__ int size()
+	__host__ __device__ int size() override
 	{
 		//int size = sizeof(*this);
 		//int size1 = sizeof(mysurface<MYFLOATTYPE>);

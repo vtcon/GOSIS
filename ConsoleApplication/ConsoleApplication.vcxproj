@@ -157,7 +157,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CppCommon.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ThreadObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ConsoleApplication.cpp" />

@@ -7,38 +7,21 @@
 /**************************************************************************************************/
 #ifdef nothing
 
-class Test
+class Test3
 {
 public:
-	static int a;
-	static int geta()
+	Test3()
 	{
-		return a;
+		printf("Hello from kernel.cu");
 	}
-
-	static int getb()
-	{
-		return b;
-	}
-
-private:
-	static int b;
 };
 
-int testfunction1()
+auto ptest3 = new Test3;
+
+void test3function()
 {
-	std::cout << Test::geta();
-	return 0;
+	ptest3;
 }
-
-int testfunction2()
-{
-	Test::a = 6;
-	return 0;
-}
-
-
-
 
 
 #endif
@@ -51,7 +34,6 @@ __global__ void printoutdevicedatakernel(mysurface<T>* testobject)
 {
 	printf(testobject->p_data);
 }
-
 
 
 //deprecated: general purpose tracer kernel
@@ -128,55 +110,57 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 #endif
 
 
-//kernel launch parameters
-//template<int numofparams =5>
-class KernelLaunchParams
-{
-};
-
-template<int numofparams = 5>
-class QuadricTracerKernelLaunchParams:public KernelLaunchParams//<numofparams>
+class QuadricTracerKernelLaunchParams
 {
 public:
-	int otherparams[numofparams];
+	raybundle<MYFLOATTYPE>** d_inbundles = nullptr;
+	raybundle<MYFLOATTYPE>** d_outbundles = nullptr;
+	quadricsurface<MYFLOATTYPE>* pquad = nullptr;
+	int otherparams[7];
 };
 
-template<int numofparams = 5>
-class RendererKernelLaunchParams :public KernelLaunchParams//<numofparams>
+
+class RendererKernelLaunchParams
 {
+public:
+	int otherparams[5];
 };
 
-//testing GPUJob
-//template<typename T = float, int numofparams = 5>
+//just an interface
 class GPUJob
 {
 public:
-	int paramcounts = 5;
-	KernelLaunchParams/*<numofparams>*/* hp_params; // will pass as reintepret_cast<...*>(*(GPUJob.hp_params)) into the kernel
+	enum JobStatus {unconstructed, underconstruction, readytolaunch, jobinprogress, jobfinised};
 
-	void initiate()
+	JobStatus jobStatus = unconstructed;
+
+	//update the kernel launch parameters, decrease stages_left count, swap pointers etc.
+	virtual void updateKernelLaunchParams() = 0;
+	
+	// should the kernel launcher launch again?
+	virtual bool goAhead() const = 0;
+};
+
+class QuadricTracerJob :public GPUJob
+{
+	QuadricTracerKernelLaunchParams kernelLaunchParams;
+
+	//update the kernel launch parameters, decrease stages_left count, swap pointers etc.
+	void updateKernelLaunchParams() override
 	{
-		//add surface pointers, add data, create siblings
+		jobStatus = unconstructed;
 	}
 
-	void updateKernelLaunchParams()
+	// should the kernel launcher launch again?
+	bool goAhead() const override
 	{
-		stages_left--;
-		
-		//update the kernel launch parameters
+		return false;
 	}
-
-	bool goAhead()
-	{
-		return (stages_left > 0) ? true : false;
-	}
-private:
-	int stages_left = 3;
 };
 
 //quadric tracer kernel, each block handles one bundle, each thread handles one ray
-template<typename T = float, int numofparams = 5>
-__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles, quadricsurface<T>* pquad, QuadricTracerKernelLaunchParams<numofparams> kernelparams)
+template<typename T = float>
+__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles, quadricsurface<T>* pquad, QuadricTracerKernelLaunchParams kernelparams)
 {
 	//testing
 
@@ -193,7 +177,7 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 	raysegment<T> before = (inbundle->prays)[idx];
 
 	//quit if ray is deactivated
-	if (before.status == 0)
+	if (before.status == (raysegment<MYFLOATTYPE>::Status::deactivated))
 	{
 		(outbundle->prays)[idx] = (inbundle->prays)[idx];
 		return;
@@ -293,7 +277,7 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 		if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4)) goto deactivate_ray;
 
 		// if it is a refractive surface, do refractive ray transfer
-		if (pquad->type == 1)
+		if (pquad->type == mysurface<MYFLOATTYPE>::SurfaceTypes::refractive)
 		{
 			//refractive surface transfer
 			auto after = raysegment<MYFLOATTYPE>(at.pos, at.dir);
@@ -335,12 +319,13 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 			goto final;
 		}
 		// else if it is an image surface
-		else if (pquad->type == 0)
+		else if (pquad->type == mysurface<MYFLOATTYPE>::SurfaceTypes::image)
 		{
 			//coordinate detranformation of at and write out result
 			//at = pquad->coordinate_detransform(at);
 			at.pos = at.pos + pquad->pos;
-			at.status = 2;
+			//at.status = 2;
+			at.status = raysegment<MYFLOATTYPE>::Status::finished;
 			(outbundle->prays)[idx] = at;
 			goto final;
 		}
@@ -353,7 +338,7 @@ deactivate_ray:
 	{
 		// TO DO: write out ray status, copy input to output
 		(outbundle->prays)[idx] = (inbundle->prays)[idx];
-		(outbundle->prays)[idx].status = 0;
+		(outbundle->prays)[idx].status = raysegment<MYFLOATTYPE>::Status::deactivated;
 	};
 
 	//clean up the test case
@@ -361,7 +346,7 @@ deactivate_ray:
 }
 
 
-int GPUmanager()
+int GPUmanager(int argc = 0, char** argv = nullptr)
 {
 	LOG1("this is main program");
 
@@ -405,9 +390,9 @@ int GPUmanager()
 	int numofsurfaces = 2;
 	mysurface<MYFLOATTYPE>** surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
 	//construct the surfaces
-	surfaces[0] = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 
+	surfaces[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive ,quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 
 		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
-	surfaces[1] = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
+	surfaces[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
 		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
 
 	//test adding data
@@ -465,7 +450,7 @@ int GPUmanager()
 		LOG1("[main]kernel launch \n");
 
 		//create an object for param: should already be done in the job manager
-		QuadricTracerKernelLaunchParams<> thisparam;
+		QuadricTracerKernelLaunchParams thisparam;
 		thisparam.otherparams[0] = job_size;
 		thisparam.otherparams[1] = rays_per_bundle;
 		thisparam.otherparams[2] = i;
@@ -505,14 +490,14 @@ int GPUmanager()
 		{
 			switch ((bundles[j].prays)[i].status)
 			{
-			case 0:
+			case (raysegment<MYFLOATTYPE>::Status::deactivated):
 				LOG2(" deactivated")
 					break;
-			case 1:
+			case (raysegment<MYFLOATTYPE>::Status::active):
 				LOG2(" " << (bundles[j].prays)[i])
 					break;
-			case 2:
-				if ((bundles[j-1].prays)[i].status != 0)
+			case (raysegment<MYFLOATTYPE>::Status::finished):
+				if ((bundles[j-1].prays)[i].status != raysegment<MYFLOATTYPE>::Status::deactivated)
 					LOG2(" " << (bundles[j].prays)[i] << " done")
 					break;
 			}
