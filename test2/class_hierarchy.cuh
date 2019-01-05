@@ -2,6 +2,8 @@
 
 #include "mycommon.cuh"
 #include "vec3.cuh"
+#include <vector>
+#include <mutex>
 
 //forward declaration
 
@@ -29,7 +31,7 @@ public:
 
 	//obsolete: 1 is active, 0 is deactivated, 2 is finised, more to come
 
-	enum Status {active, deactivated, finished, inactive};
+	static enum Status {active, deactivated, finished, inactive};
 	Status status = active;
 
 	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const samplingpos<T>& spos = samplingpos<T>(0, 0), T intensity = 0) :
@@ -282,7 +284,7 @@ public:
 
 	//int type; 
 	//0 is image surface, 1 is power surface, 2 is stop surface
-	enum SurfaceTypes {image, refractive, stop};
+	static enum SurfaceTypes {image, refractive, stop};
 	SurfaceTypes type;
 
 	char* p_data = nullptr; // each char is 1 byte...
@@ -527,4 +529,82 @@ public:
 	}
 	*/
 };
+
+class OpticalConfig
+{
+public:
+	int numofsurfaces = 2;
+	mysurface<MYFLOATTYPE>** surfaces = nullptr;
+
+	OpticalConfig(int numberOfSurfaces) :numofsurfaces(numberOfSurfaces)
+	{
+		surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	}
+
+	~OpticalConfig()
+	{
+		freesiblings();
+		for (int i = 0; i < numofsurfaces; i++)
+		{
+			delete surfaces[i];
+		}
+		delete[] surfaces;
+	}
+
+	void copytosiblings()
+	{
+		for (int i = 0; i < numofsurfaces; i++)
+			surfaces[i]->copytosibling();
+	}
+
+	void freesiblings()
+	{
+		for (int i = 0; i < numofsurfaces; i++)
+			surfaces[i]->freesibling();
+	}
+private:
+
+	//disable both of them, OpticalConfig are meant to only be created and destroyed, not passing around
+	OpticalConfig(const OpticalConfig& origin);
+	OpticalConfig operator=(const OpticalConfig& origin);
+
+};
+
+class QuadricTracerKernelLaunchParams
+{
+public:
+	raybundle<MYFLOATTYPE>** d_inbundles = nullptr;
+	raybundle<MYFLOATTYPE>** d_outbundles = nullptr;
+	quadricsurface<MYFLOATTYPE>* pquad = nullptr;
+	int otherparams[7];
+};
+
+class StorageManager
+{
+public:
+	
+	bool jobCheckOut(OpticalConfig*& job, int numofsurfaces) //.. and yes, it is a reference to a pointer
+	{
+		OpticalConfig* newconfig(new OpticalConfig(numofsurfaces));
+		job = newconfig; //just that
+		//save newconfig to the ledger
+		{
+			std::lock_guard<std::mutex> lock(opticalConfigLedgerLock);
+			opticalConfigLedger.push_back(newconfig);
+		}
+		return true;
+	}
+
+	bool infoCheckOut(OpticalConfig*& requiredinfo)
+	{
+		if (opticalConfigLedger.empty()) return false;
+		requiredinfo = opticalConfigLedger[0];
+		return true;
+	}
+
+private:
+	std::mutex opticalConfigLedgerLock;
+	std::vector<OpticalConfig*> opticalConfigLedger;
+};
+
 

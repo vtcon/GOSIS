@@ -4,7 +4,7 @@
 #include "pch.h"
 #include "CppCommon.h"
 #include "ThreadObject.h"
-#include "CommonClasses.h"
+
 //#include <test2API.h>
 #include <thread>
 #include <mutex>
@@ -48,12 +48,6 @@ bool jobCheckIn(p_input, p_output);
 + data structure to hold the pointers to jobs
 */
 
-class StorageManager
-{
-public:
-	
-private:
-};
 
 #ifdef crap
 //everything inside is static, as we have only one signal repo, used singleton pattern

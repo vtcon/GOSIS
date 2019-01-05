@@ -30,12 +30,24 @@ void test3function()
 /*******************                EXPERIMENTAL ZONE ENDS                 ************************/
 /**************************************************************************************************/
 
+
+/**************************************************************************************************/
+/****************                       GLOBAL VARIABLES STARTS                      **************/
+/**************************************************************************************************/
+
+//as the storage lies in this project, the regulator function should also be here
+StorageManager mainStorageManager;
+
+/**************************************************************************************************/
+/*******************                 GLOBAL VARIABLES ENDS                 ************************/
+/**************************************************************************************************/
+
+
 template<typename T = float>
 __global__ void printoutdevicedatakernel(mysurface<T>* testobject)
 {
 	printf(testobject->p_data);
 }
-
 
 //deprecated: general purpose tracer kernel
 #ifdef nothing
@@ -110,17 +122,6 @@ __global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const 
 }
 #endif
 
-
-class QuadricTracerKernelLaunchParams
-{
-public:
-	raybundle<MYFLOATTYPE>** d_inbundles = nullptr;
-	raybundle<MYFLOATTYPE>** d_outbundles = nullptr;
-	quadricsurface<MYFLOATTYPE>* pquad = nullptr;
-	int otherparams[7];
-};
-
-
 class RendererKernelLaunchParams
 {
 public:
@@ -159,8 +160,8 @@ class QuadricTracerJob :public GPUJob
 	}
 };
 
+
 //quadric tracer kernel, each block handles one bundle, each thread handles one ray
-//template<typename T = float>
 __global__ void quadrictracer(
 	//raybundle<T>** d_inbundles
 	//, raybundle<T>** d_outbundles
@@ -353,6 +354,31 @@ deactivate_ray:
 	final :
 }
 
+int OpticalConfigManager(int argc = 0, char** argv = nullptr)
+{
+	//set up the surfaces manually and create sibling: in Optical Component manager, data from console
+	LOG1("[main]setup the surfaces\n");
+	MYFLOATTYPE diam = 10;
+	int numofsurfaces = 2;
+
+	OpticalConfig* newConfig = nullptr;
+	mainStorageManager.jobCheckOut(newConfig,numofsurfaces);
+
+	//construct the surfaces
+	(newConfig->surfaces)[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive, quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1,
+		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
+	(newConfig->surfaces)[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
+		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
+
+	//test adding data
+	char* teststr = "hello";
+	((newConfig->surfaces)[0])->add_data(teststr, 6);
+
+	LOG1("[main]create sibling surfaces\n");
+	newConfig->copytosiblings();
+
+	return 0;
+}
 
 int GPUmanager(int argc = 0, char** argv = nullptr)
 {
@@ -365,24 +391,34 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
 
+	//load the optical configuration
+	OpticalConfigManager();
+	OpticalConfig* thisOpticalConfig = nullptr;
+	mainStorageManager.infoCheckOut(thisOpticalConfig);
+	int numofsurfaces = thisOpticalConfig->numofsurfaces;
+	/*
 	//set up the surfaces manually and create sibling: in Optical Component manager, data from console
 	LOG1("[main]setup the surfaces\n");
-	float diam = 10;
+	MYFLOATTYPE diam = 10;
 	int numofsurfaces = 2;
-	mysurface<MYFLOATTYPE>** surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	//mysurface<MYFLOATTYPE>** surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	OpticalConfig* thisOpticalConfig(new OpticalConfig(numofsurfaces)); // explicit initializer
+
 	//construct the surfaces
-	surfaces[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive ,quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 
+	(thisOpticalConfig->surfaces)[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive ,quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 
 		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
-	surfaces[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
+	(thisOpticalConfig->surfaces)[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
 		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
 
 	//test adding data
 	char* teststr = "hello";
-	surfaces[0]->add_data(teststr, 6);
+	((thisOpticalConfig->surfaces)[0])->add_data(teststr, 6);
 
 	LOG1("[main]create sibling surfaces\n");
-	for (int i = 0; i < numofsurfaces; i++)
-		surfaces[i]->copytosibling();
+	//for (int i = 0; i < numofsurfaces; i++)
+	//	surfaces[i]->copytosibling();
+	thisOpticalConfig->copytosiblings();
+	*/
 
 	//creating an array of ray bundles: in tracing job manager, data from object and image manager 
 	LOG1("[main]creating ray bundles\n");
@@ -438,7 +474,7 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 		//create an object for param: should already be done in the job manager
 		
 		thisparam.otherparams[2] = i;
-		thisparam.pquad = static_cast<quadricsurface<MYFLOATTYPE>*>(surfaces[i]->d_sibling);
+		thisparam.pquad = static_cast<quadricsurface<MYFLOATTYPE>*>(((thisOpticalConfig->surfaces)[i])->d_sibling);
 
 		quadrictracer<<<job_size, rays_per_bundle>>>(
 			//d_injob, 
@@ -498,11 +534,14 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	// free host heap memory when object goes out of scale
 
 	//these lines should be in the optical component manager
+	//delete thisOpticalConfig;
+	/*
 	for (int i = 0; i < numofsurfaces; i++)
 	{
 		delete surfaces[i];
 	}
 	delete[] surfaces;
+	*/
 	return 0;
 #endif
 }
@@ -512,9 +551,4 @@ int GPUMain(int argc = 0, char** argv = nullptr)
 	return 0;
 }
 
-//prototype for manager functions: 
-/*
-bool jobCheckOut(p_input); returns whether a job can be fetched or not
-manipulate the input and write to output;
-bool jobCheckIn(p_output);
-*/
+
