@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "CppCommon.h"
 #include "ThreadObject.h"
+#include "CommonClasses.h"
 //#include <test2API.h>
 #include <thread>
 #include <mutex>
@@ -37,7 +38,7 @@ int function2(int argc, char** argv)
 ... candidate: unordered_map, key is job type, value is the thread(s)
 */
 
-//TODO: JobManager class
+//TODO: StorageManager class
 /*
 + functions: job check in and check out with signature:
 manager first call: bool jobCheckOut(p_input, p_output); returns whether a job can be fetched or not
@@ -46,6 +47,13 @@ bool jobCheckIn(p_input, p_output);
 + data management: job and job data inititator, destructor
 + data structure to hold the pointers to jobs
 */
+
+class StorageManager
+{
+public:
+	
+private:
+};
 
 #ifdef crap
 //everything inside is static, as we have only one signal repo, used singleton pattern

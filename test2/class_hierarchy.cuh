@@ -305,7 +305,7 @@ public:
 		LOG1("surface destructor called")
 	}
 
-	//for the two "copies" the sibling is not copied
+	//for the two "copies" the sibling is NOT copied
 	//copy constructor
 	__host__ mysurface(const mysurface <T>& origin)
 		:pos(origin.pos), diameter(origin.diameter), type(origin.type), data_size(origin.data_size)

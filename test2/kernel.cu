@@ -1,4 +1,5 @@
 #include "mycommon.cuh"
+#include "CommonClasses.h"
 #include "vec3.cuh"
 #include "class_hierarchy.cuh"
 
@@ -159,8 +160,14 @@ class QuadricTracerJob :public GPUJob
 };
 
 //quadric tracer kernel, each block handles one bundle, each thread handles one ray
-template<typename T = float>
-__global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbundles, quadricsurface<T>* pquad, QuadricTracerKernelLaunchParams kernelparams)
+//template<typename T = float>
+__global__ void quadrictracer(
+	//raybundle<T>** d_inbundles
+	//, raybundle<T>** d_outbundles
+	//, quadricsurface<T>* pquad
+	//, 
+	QuadricTracerKernelLaunchParams kernelparams
+	)
 {
 	//testing
 
@@ -170,11 +177,11 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 	int idx = (threadIdx.x < kernelparams.otherparams[1]) ? threadIdx.x : kernelparams.otherparams[1]; //second param is number of rays in a bundle
 
 	//grab the correct in and out ray bundles
-	raybundle<T>* inbundle = d_inbundles[blockidx];
-	raybundle<T>* outbundle = d_outbundles[blockidx];
+	raybundle<MYFLOATTYPE>* inbundle = (kernelparams.d_inbundles)[blockidx];
+	raybundle<MYFLOATTYPE>* outbundle = (kernelparams.d_outbundles)[blockidx];
 
 	//grab the correct ray of this thread
-	raysegment<T> before = (inbundle->prays)[idx];
+	raysegment<MYFLOATTYPE> before = (inbundle->prays)[idx];
 
 	//quit if ray is deactivated
 	if (before.status == (raysegment<MYFLOATTYPE>::Status::deactivated))
@@ -185,6 +192,7 @@ __global__ void quadrictracer(raybundle<T>** d_inbundles, raybundle<T>** d_outbu
 
 	//load the surface
 	//quadricsurface<MYFLOATTYPE>& quadric = *pquad;
+	quadricsurface<MYFLOATTYPE>* pquad = kernelparams.pquad;
 
 	//test case
 	//auto pquad = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1));
@@ -350,34 +358,7 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 {
 	LOG1("this is main program");
 
-	//testing sibling feature
-#ifdef nothing
-	{
-		char* teststr = "hello";
-		mysurface<MYFLOATTYPE>* testsurface = new quadricsurface<MYFLOATTYPE>(quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1,
-			1.5, vec3<MYFLOATTYPE>(0, 0, -10), 10);
-		testsurface->add_data(teststr, 6);
-		
-		testsurface->copytosibling();
-		printoutdevicedatakernel<<<1, 1 >>>(testsurface->d_sibling);
-	}
-#endif
-
-	//testing sibling feature episode 2
-#ifdef nothing
-	{
-		raybundle<MYFLOATTYPE> testbundle;
-		testbundle.init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 20), -3, 3, -2, 2, 0.707);
-		testbundle.copytosibling();
-		raybundle<MYFLOATTYPE>* a = testbundle.d_sibling;
-		dummykernel <<< 1, 1 >>> (a);
-		cudaDeviceSynchronize();
-		auto anotherbundle = testbundle.copyfromsibling();
-	}
-#endif
-
-
-	//testing new structure
+	//new structure
 #ifdef something
 	//create event for timing: to GPU manager
 	cudaEvent_t start, stop;
@@ -419,8 +400,6 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 		bundles[i] = raybundle<MYFLOATTYPE>(rays_per_bundle);
 	}
 
-	
-
 	//create 2 bundles to pass in and out the kernel: also in tracing job manager
 	LOG1("[main]creating 2 siblings bundles\n");
 	raybundle<MYFLOATTYPE> h_inbundle = bundles[0];
@@ -441,8 +420,15 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	raybundle<MYFLOATTYPE>** d_outjob;
 	cudaMalloc((void**)&d_outjob, job_size * sizeof(raybundle<MYFLOATTYPE>*));
 	cudaMemcpy(d_outjob, &(h_outbundle.d_sibling), sizeof(raybundle<MYFLOATTYPE>*), cudaMemcpyHostToDevice);
+
+	//create the launch parameters
+	QuadricTracerKernelLaunchParams thisparam;
+	thisparam.d_inbundles = d_injob;
+	thisparam.d_outbundles = d_outjob;
 	
-	
+	thisparam.otherparams[0] = job_size;
+	thisparam.otherparams[1] = rays_per_bundle;
+
 	// launch kernel, copy result out, swap memory: goal, only pass one object to kernel
 	// while (job.state!= finished) { kernel launch; job.update();}
 	for (int i = 0; i < numofsurfaces; i++)
@@ -450,15 +436,14 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 		LOG1("[main]kernel launch \n");
 
 		//create an object for param: should already be done in the job manager
-		QuadricTracerKernelLaunchParams thisparam;
-		thisparam.otherparams[0] = job_size;
-		thisparam.otherparams[1] = rays_per_bundle;
+		
 		thisparam.otherparams[2] = i;
+		thisparam.pquad = static_cast<quadricsurface<MYFLOATTYPE>*>(surfaces[i]->d_sibling);
 
-		quadrictracer<MYFLOATTYPE><<<job_size, rays_per_bundle>>>(
-			d_injob, 
-			d_outjob, 
-			static_cast<quadricsurface<MYFLOATTYPE>*>(surfaces[i]->d_sibling), 
+		quadrictracer<<<job_size, rays_per_bundle>>>(
+			//d_injob, 
+			//d_outjob, 
+			//static_cast<quadricsurface<MYFLOATTYPE>*>(surfaces[i]->d_sibling), 
 			thisparam);
 		cudaError_t cudaStatus = cudaGetLastError();
 		if (cudaStatus != cudaSuccess) {
@@ -472,7 +457,7 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 		LOG1("[main]copy sibling out");
 		bundles[i + 1] = (i % 2 == 0) ? h_outbundle.copyfromsibling() : h_inbundle.copyfromsibling();
 		
-		swap(d_injob, d_outjob);
+		swap(thisparam.d_inbundles, thisparam.d_outbundles);
 	}
 
 	//kernel finished, stop timing, print out elapsed time: in gpu manager
@@ -520,176 +505,16 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	delete[] surfaces;
 	return 0;
 #endif
-
-
-
-#ifdef nothing
-	//create event for timing
-	cudaEvent_t start, stop;
-	CUDARUN(cudaEventCreate(&start));
-	CUDARUN(cudaEventCreate(&stop));
-
-	//start timing 
-	CUDARUN(cudaEventRecord(start, 0));
-
-	//launch kernel
-	{tester << <1, 1 >> > ();
-	cudaError_t cudaStatus = cudaGetLastError();
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
-		fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
-	}
-	}
-
-	//kernel finished, stop timing, print out elapsed time
-	CUDARUN(cudaEventRecord(stop, 0));
-	CUDARUN(cudaEventSynchronize(stop));
-	float elapsedtime;
-	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
-	LOG2("kernel run time: " << elapsedtime << " ms\n");
-#endif
-
-#ifdef nothing
-	//create event for timing
-	cudaEvent_t start, stop;
-	CUDARUN(cudaEventCreate(&start));
-	CUDARUN(cudaEventCreate(&stop));
-
-	//set up the surfaces manually !!!!
-	float diam = 10;
-	int numofsurfaces = 3;
-	mysurface<MYFLOATTYPE>** psurfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
-	psurfaces[0] = new powersurface<MYFLOATTYPE>(-0.1, vec3<MYFLOATTYPE>(0, 0, 13),diam);
-	psurfaces[1] = new powersurface<MYFLOATTYPE>(0.2, vec3<MYFLOATTYPE>(0, 0, 11), diam);
-	psurfaces[2] = new mysurface<MYFLOATTYPE>(vec3<MYFLOATTYPE>(0, 0, 0), diam);
-	
-
-	//create ray bundles for tracing
-	raysegment<MYFLOATTYPE>** bundles = new raysegment<MYFLOATTYPE>*[numofsurfaces+1];
-	for (int i = 0; i < numofsurfaces+1; i++)
-	{
-		bundles[i] = new raysegment<MYFLOATTYPE>[bundlesize];
-	}
-
-
-	//set up the original bundle, manually
-	for (int i = 0; i < bundlesize; i++)
-	{
-		static float step = diam / 32;
-		static float start = -(diam / 2) + (step / 2);
-		bundles[0][i] = raysegment<MYFLOATTYPE>(vec3<MYFLOATTYPE>(start + step * i, 0, 20), vec3<MYFLOATTYPE>(0, 0, -1));
-		//LOG2(i <<" "<< bundle[i]);
-	}
-
-
-	// allocate device memory for 2 bundles
-	size_t batchsize = bundlesize * sizeof(raysegment<MYFLOATTYPE>);
-
-	raysegment<MYFLOATTYPE>* d_inbundle;
-	CUDARUN(cudaMalloc((void**)&d_inbundle, batchsize));
-	raysegment<MYFLOATTYPE>* d_outbundle;
-	CUDARUN(cudaMalloc((void**)&d_outbundle, batchsize));
-
-
-	//allocate device memory for surfaces
-	void** d_psurfaces = new void*[numofsurfaces];
-
-	for (int i = 0; i < numofsurfaces; i++)
-	{
-		CUDARUN(cudaMalloc((void**)&(d_psurfaces[i]), psurfaces[i]->size()));
-	}
-
-
-	//start timing 
-	CUDARUN(cudaEventRecord(start, 0));
-
-
-	//copy original bundle data to device
-	CUDARUN(cudaMemcpy(d_inbundle, bundles[0], batchsize, cudaMemcpyHostToDevice));
-
-
-	//copy surfaces data to device
-	for (int i = 0; i < numofsurfaces; i++)
-	{
-		CUDARUN(cudaMemcpy(d_psurfaces[i], psurfaces[i], psurfaces[i]->size(), cudaMemcpyHostToDevice));
-	}
-	
-	// launch kernel, copy result out, swap memory
-
-	for (int i = 0; i < numofsurfaces; i++)
-	{
-		tracer <<<1, 32 >>> (d_inbundle, d_outbundle, static_cast<mysurface<MYFLOATTYPE>*>(d_psurfaces[i]));
-		cudaError_t cudaStatus = cudaGetLastError();
-		if (cudaStatus != cudaSuccess) {
-			fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
-			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
-		}
-		CUDARUN(cudaMemcpy(bundles[i+1], d_outbundle, batchsize, cudaMemcpyDeviceToHost));
-		swap(d_inbundle, d_outbundle);
-	}
-
-
-	//kernel finished, stop timing, print out elapsed time
-	CUDARUN(cudaEventRecord(stop, 0));
-	CUDARUN(cudaEventSynchronize(stop));
-	float elapsedtime;
-	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
-	LOG2("kernel run time: " << elapsedtime << " ms\n");
-
-	//writing results out
-	for (int i = 0; i < bundlesize; i++)
-	{
-		LOG2("ray " << i);
-		for (int j = 0; j < numofsurfaces+1; j++)
-		{
-			switch (bundles[j][i].status)
-			{
-			case 0:
-				LOG2(" deactivated")
-				break;
-			case 1:
-				LOG2(" " << bundles[j][i])
-				break;
-			case 2:
-				if (bundles[j-1][i].status != 0)
-					LOG2(" " << bundles[j][i] << " done")
-				break;
-			}
-		}
-		LOG2("\n");
-	}
-
-	//destroy cuda timing events
-	CUDARUN(cudaEventDestroy(start));
-	CUDARUN(cudaEventDestroy(stop));
-
-	// free device heap momory
-	cudaFree(d_inbundle);
-	cudaFree(d_outbundle);
-	for (int i = 0; i < numofsurfaces; i++)
-	{
-		cudaFree(d_psurfaces[i]);
-	}
-	delete[] d_psurfaces;
-
-	//free host heap momory
-	for (int i = 0; i < numofsurfaces; i++)
-	{
-		delete psurfaces[i];
-	}
-	delete[] psurfaces;
-	
-	for (int i = 0; i < numofsurfaces+1; i++)
-	{
-		delete[] bundles[i];
-	}
-
-	delete[] bundles;
-#endif
 }
 
-//TODO: let's first write class GPUJob
-int JobManager()
+int GPUMain(int argc = 0, char** argv = nullptr)
 {
 	return 0;
 }
+
+//prototype for manager functions: 
+/*
+bool jobCheckOut(p_input); returns whether a job can be fetched or not
+manipulate the input and write to output;
+bool jobCheckIn(p_output);
+*/
