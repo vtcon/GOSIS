@@ -114,12 +114,13 @@ extern int testfunction2();
 
 //define all the externs
 extern int GPUmanager(int argc = 0, char** argv = nullptr);
-
+extern void testbenchGPU();
 
 int main()
 {
     std::cout << "Hello World!\n"; 
-	GPUmanager();
+	//GPUmanager();
+	testbenchGPU();
 	/*
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	delete pthreadobject1;

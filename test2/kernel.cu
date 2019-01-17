@@ -2,6 +2,7 @@
 #include "CommonClasses.h"
 #include "vec3.cuh"
 #include "class_hierarchy.cuh"
+#include "StorageManager.cuh"
 
 /**************************************************************************************************/
 /****************                   EXPERIMENTAL ZONE STARTS                         **************/
@@ -42,6 +43,9 @@ StorageManager mainStorageManager;
 /*******************                 GLOBAL VARIABLES ENDS                 ************************/
 /**************************************************************************************************/
 
+//forward declaration
+int OpticalConfigManager(int, char**);
+int ColumnCreator(int, char**);
 
 template<typename T = float>
 __global__ void printoutdevicedatakernel(mysurface<T>* testobject)
@@ -49,116 +53,8 @@ __global__ void printoutdevicedatakernel(mysurface<T>* testobject)
 	printf(testobject->p_data);
 }
 
-//deprecated: general purpose tracer kernel
-#ifdef nothing
-template <typename T = float>
-__global__ void tracer(raysegment<T>* inbundle, raysegment<T>* outbundle, const mysurface<T>* nextsurface)
-{
-	// get thread index
-	int idx = threadIdx.x;
-	
-	//return if it is an inactive ray segment
-	if (inbundle[idx].status == 0)
-	{
-		outbundle[idx] = inbundle[idx];
-		return;
-	}
-
-	auto surfacetype = nextsurface->type;
-
-    // coordinate transformation
-	auto before = raysegment<MYFLOATTYPE>(inbundle[idx].pos - nextsurface->pos,inbundle[idx].dir);
 
 
-	// intersection find 
-	auto t = ((MYFLOATTYPE)0 - before.pos.z) / (before.dir.z);// in surface's own coordinate, the surface is at z = 0
-	auto at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir,before.dir);
-	
-	// determine if valid intersection
-	if (norm(vec3<MYFLOATTYPE>(at.pos.x, at.pos.y, 0)) > (nextsurface->diameter) / 2)
-	{
-		inbundle[idx].status = 0;
-		outbundle[idx] = inbundle[idx];
-		return;
-	}
-
-	if (surfacetype == 1) // if next surface is a power surface
-	{
-		//surface transfer
-		auto normalvec = vec3<MYFLOATTYPE>(0, 0, 1);
-		auto radialvec = vec3<MYFLOATTYPE>(at.pos.x, at.pos.y, 0);
-		auto binormal = normalize(cross(normalvec, radialvec));
-		auto tangential = dot(at.dir, binormal)*binormal;
-		auto radial = at.dir - tangential;
-		auto u = acosf(dot(normalize(radial), normalize(-normalvec)));
-		auto uprime = u - norm(radialvec)*((powersurface<MYFLOATTYPE>*)nextsurface)->power;
-
-		auto newradial = norm(radial)*normalize(((-normalvec) + 
-			normalize(radialvec)*((MYFLOATTYPE)tanf(uprime))));
-		auto after = raysegment<MYFLOATTYPE>(at.pos, tangential + newradial);
-
-		//printf("%d at u = %f, u' = %f\n", idx, u, uprime);
-
-		// coordinate detransformation
-		after.pos = after.pos + nextsurface->pos;
-
-		// write results
-		outbundle[idx] = after;
-	}
-	else if (surfacetype == 0) // if next surface is an image surface
-	{
-		// coordinate detransformation
-		at.pos = at.pos + nextsurface->pos;
-		at.status = 2;
-
-		// write results
-		outbundle[idx] = at;
-	}
-
-	
-
-	/*printf("%d at t = %f at dir (%f,%f,%f), after dir (%f,%f,%f)\n", idx, t, at.dir.x, at.dir.y, 
-		at.dir.z, after.dir.x, after.dir.y, after.dir.z );*/
-}
-#endif
-
-class RendererKernelLaunchParams
-{
-public:
-	int otherparams[5];
-};
-
-//just an interface
-class GPUJob
-{
-public:
-	enum JobStatus {unconstructed, underconstruction, readytolaunch, jobinprogress, jobfinised};
-
-	JobStatus jobStatus = unconstructed;
-
-	//update the kernel launch parameters, decrease stages_left count, swap pointers etc.
-	virtual void updateKernelLaunchParams() = 0;
-	
-	// should the kernel launcher launch again?
-	virtual bool goAhead() const = 0;
-};
-
-class QuadricTracerJob :public GPUJob
-{
-	QuadricTracerKernelLaunchParams kernelLaunchParams;
-
-	//update the kernel launch parameters, decrease stages_left count, swap pointers etc.
-	void updateKernelLaunchParams() override
-	{
-		jobStatus = unconstructed;
-	}
-
-	// should the kernel launcher launch again?
-	bool goAhead() const override
-	{
-		return false;
-	}
-};
 
 
 //quadric tracer kernel, each block handles one bundle, each thread handles one ray
@@ -173,13 +69,15 @@ __global__ void quadrictracer(
 	//testing
 
 	//adapt this kernel to the new structure
-	//get the indices
-	int blockidx = (blockIdx.x < kernelparams.otherparams[0]) ? blockIdx.x : kernelparams.otherparams[0]; //first param is number of bundles
-	int idx = (threadIdx.x < kernelparams.otherparams[1]) ? threadIdx.x : kernelparams.otherparams[1]; //second param is number of rays in a bundle
-
+	//get the block index, clamp to total number of bundles
+	int blockidx = (blockIdx.x < kernelparams.otherparams[0]) ? blockIdx.x : kernelparams.otherparams[0]; //number of bundles
+	
 	//grab the correct in and out ray bundles
 	raybundle<MYFLOATTYPE>* inbundle = (kernelparams.d_inbundles)[blockidx];
 	raybundle<MYFLOATTYPE>* outbundle = (kernelparams.d_outbundles)[blockidx];
+
+	//get the thread index, clamp to the number of rays in this bundle
+	int idx = (threadIdx.x < inbundle->size) ? threadIdx.x : inbundle->size; //number of rays in a bundle
 
 	//grab the correct ray of this thread
 	raysegment<MYFLOATTYPE> before = (inbundle->prays)[idx];
@@ -354,72 +252,221 @@ deactivate_ray:
 	final :
 }
 
-int OpticalConfigManager(int argc = 0, char** argv = nullptr)
+class QuadricTracerJob :public GPUJob
 {
-	//set up the surfaces manually and create sibling: in Optical Component manager, data from console
-	LOG1("[main]setup the surfaces\n");
-	MYFLOATTYPE diam = 10;
-	int numofsurfaces = 2;
+public:
+	QuadricTracerKernelLaunchParams kernelLaunchParams;
 
-	OpticalConfig* newConfig = nullptr;
-	mainStorageManager.jobCheckOut(newConfig,numofsurfaces);
+	int wanted_job_size = 3; //settable from outside
+	int job_size = 0; // real size of a batch depends on how many columns are left in the Storage
+	int numofsurfaces = 0;
+	int wavelength = 0;
 
-	//construct the surfaces
-	(newConfig->surfaces)[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive, quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1,
-		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
-	(newConfig->surfaces)[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
-		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
+	RayBundleColumn** pcolumns = nullptr;
+	OpticalConfig* thisOpticalConfig = nullptr;
+	raybundle<MYFLOATTYPE>* b_inbundles = nullptr;
+	raybundle<MYFLOATTYPE>* b_outbundles = nullptr;
 
-	//test adding data
-	char* teststr = "hello";
-	((newConfig->surfaces)[0])->add_data(teststr, 6);
+	int currentSurfaceCount = 0;
 
-	LOG1("[main]create sibling surfaces\n");
-	newConfig->copytosiblings();
+	dim3 blocksToLaunch = 0;
+	dim3 threadsToLaunch = 0;
 
-	return 0;
-}
+	typedef StorageHolder<RayBundleColumn*>::Status columnStatus;
 
+	QuadricTracerJob(int _wanted_job_size = 3):wanted_job_size(_wanted_job_size)
+	{
+		pcolumns = new RayBundleColumn*[wanted_job_size];
+
+		//BIG QUESTION: where does the wavelength comes from?
+		wavelength = 555;
+
+		//this is bad coding: job_size is used here as the counting variable
+		while ((job_size < wanted_job_size) && mainStorageManager.takeOne(pcolumns[job_size], columnStatus::initialized, wavelength))
+		{
+			job_size++;
+		}
+
+		if (job_size == 0)
+		{
+			isEmpty = true; //no job to be done, signal to the calling function
+		}
+		else
+		{
+			isEmpty = false;
+		}
+	}
+
+	void preLaunchPreparation() override
+	{
+		if (isEmpty) return;
+
+
+		mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength);
+		numofsurfaces = thisOpticalConfig->numofsurfaces;
+		b_inbundles = new raybundle<MYFLOATTYPE>[job_size];
+		b_outbundles = new raybundle<MYFLOATTYPE>[job_size];
+		for (int i = 0; i < job_size; i++)
+		{
+			b_inbundles[i] = (*pcolumns[i])[0];
+			b_inbundles[i].copytosibling();
+			b_outbundles[i].copytosibling();
+		}
+
+		cudaMalloc((void**)&(kernelLaunchParams.d_inbundles), job_size * sizeof(raybundle<MYFLOATTYPE>*));
+		cudaMalloc((void**)&(kernelLaunchParams.d_outbundles), job_size * sizeof(raybundle<MYFLOATTYPE>*));
+		for (int i = 0; i < job_size; i++)
+		{
+			cudaMemcpy(kernelLaunchParams.d_inbundles + i,
+				&(b_inbundles[i].d_sibling),
+				sizeof(raybundle<MYFLOATTYPE>*), cudaMemcpyHostToDevice);
+			cudaMemcpy(kernelLaunchParams.d_outbundles + i,
+				&(b_outbundles[i].d_sibling),
+				sizeof(raybundle<MYFLOATTYPE>*), cudaMemcpyHostToDevice);
+		}
+
+		kernelLaunchParams.otherparams[0] = job_size;
+		blocksToLaunch = job_size;
+		int maxBundleSize = 0;
+		for (int i = 0; i < job_size; i++)
+		{
+			int temp = (*pcolumns[i])[0].size;
+			if (maxBundleSize < temp)
+			{
+				maxBundleSize = temp;
+			}
+		}
+		threadsToLaunch = maxBundleSize;
+	}
+
+	// should the kernel launcher launch again?
+	bool goAhead() const override
+	{
+		if (isEmpty) return false;
+		return currentSurfaceCount < numofsurfaces;
+	}
+
+	void kernelLaunch() override
+	{
+		if (isEmpty) return;
+
+		kernelLaunchParams.otherparams[2] = currentSurfaceCount;
+		kernelLaunchParams.pquad = static_cast<quadricsurface<MYFLOATTYPE>*>((*thisOpticalConfig)[currentSurfaceCount]->d_sibling);
+
+		quadrictracer <<<blocksToLaunch, threadsToLaunch >>> (kernelLaunchParams);
+		cudaError_t cudaStatus = cudaGetLastError();
+		if (cudaStatus != cudaSuccess) {
+			fprintf(stderr, "Error at file %s line %d, ", __FILE__, __LINE__);
+			fprintf(stderr, "code %d, reason %s\n", cudaStatus, cudaGetErrorString(cudaStatus));
+		}
+		cudaDeviceSynchronize();
+	}
+
+	//update the kernel launch parameters, decrease stages_left count, swap pointers etc.
+	void update() override
+	{
+		if (isEmpty) return;
+
+		for (int i = 0; i < job_size; i++)
+		{
+			if (currentSurfaceCount % 2 == 0)
+			{
+				(*pcolumns[i])[currentSurfaceCount + 1] = b_outbundles[i].copyfromsibling();
+			}
+			else
+			{
+				(*pcolumns[i])[currentSurfaceCount + 1] = b_inbundles[i].copyfromsibling();
+			}
+		}
+
+		swap(kernelLaunchParams.d_inbundles, kernelLaunchParams.d_outbundles);
+
+		currentSurfaceCount += 1;
+	}
+
+	void postLaunchCleanUp() override
+	{
+		if (isEmpty) return;
+
+		//marking the traced columns as "completed1"
+		for (int i = 0; i < job_size; i++)
+		{
+			mainStorageManager.jobCheckIn(pcolumns[i], columnStatus::completed1);
+		}
+
+		//writing results out:
+		for (int i = 0; i < job_size; i++)
+		{
+			int rays_per_bundle = (*pcolumns[i])[0].size;
+			for (int j = 0; j < rays_per_bundle; j++)
+			{
+				LOG2("ray " << j);
+				for (int k = 0; k < numofsurfaces + 1; k++)
+				{
+					switch (((*pcolumns[i])[k].prays)[j].status)
+					{
+					case (raysegment<MYFLOATTYPE>::Status::deactivated):
+						LOG2(" deactivated")
+							break;
+					case (raysegment<MYFLOATTYPE>::Status::active):
+						LOG2(" " << ((*pcolumns[i])[k].prays)[j])
+							break;
+					case (raysegment<MYFLOATTYPE>::Status::finished):
+						if (((*pcolumns[i])[k - 1].prays)[j].status != raysegment<MYFLOATTYPE>::Status::deactivated)
+							LOG2(" " << ((*pcolumns[i])[k].prays)[j] << " done")
+							break;
+					}
+				}
+				LOG2("\n");
+			}
+		}
+	}
+
+	~QuadricTracerJob()
+	{
+		LOG1("QuadricTracerJob destructor called");
+		delete[] b_inbundles;
+		delete[] b_outbundles;
+		cudaFree(kernelLaunchParams.d_inbundles);
+		cudaFree(kernelLaunchParams.d_outbundles);
+	}
+
+private:
+
+	inline void swap(raybundle<MYFLOATTYPE>**& a, raybundle<MYFLOATTYPE>**& b)
+	{
+		raybundle<MYFLOATTYPE>** temp = a;
+		a = b;
+		b = temp;
+	}
+};
+
+//deprecated
+#ifdef nothing
 int GPUmanager(int argc = 0, char** argv = nullptr)
 {
 	LOG1("this is main program");
 
-	//new structure
-#ifdef something
 	//create event for timing: to GPU manager
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
 
 	//load the optical configuration
-	OpticalConfigManager();
+	OpticalConfigManager(0,nullptr);
 	OpticalConfig* thisOpticalConfig = nullptr;
 	mainStorageManager.infoCheckOut(thisOpticalConfig);
+
+
+	//test the function column creator
+	ColumnCreator(0, nullptr);
+	RayBundleColumn* pthiscolumn = nullptr;
+	mainStorageManager.takeOne(pthiscolumn);
+
+
 	int numofsurfaces = thisOpticalConfig->numofsurfaces;
-	/*
-	//set up the surfaces manually and create sibling: in Optical Component manager, data from console
-	LOG1("[main]setup the surfaces\n");
-	MYFLOATTYPE diam = 10;
-	int numofsurfaces = 2;
-	//mysurface<MYFLOATTYPE>** surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
-	OpticalConfig* thisOpticalConfig(new OpticalConfig(numofsurfaces)); // explicit initializer
 
-	//construct the surfaces
-	(thisOpticalConfig->surfaces)[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive ,quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 
-		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
-	(thisOpticalConfig->surfaces)[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
-		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
-
-	//test adding data
-	char* teststr = "hello";
-	((thisOpticalConfig->surfaces)[0])->add_data(teststr, 6);
-
-	LOG1("[main]create sibling surfaces\n");
-	//for (int i = 0; i < numofsurfaces; i++)
-	//	surfaces[i]->copytosibling();
-	thisOpticalConfig->copytosiblings();
-	*/
-
+	//TODO: DEBUG MEMORY USAGE OF INITIALIZER
 	//creating an array of ray bundles: in tracing job manager, data from object and image manager 
 	LOG1("[main]creating ray bundles\n");
 	raybundle<MYFLOATTYPE>* bundles = new raybundle<MYFLOATTYPE>[numofsurfaces + 1];
@@ -430,11 +477,13 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	bundles[0].init_1D_parallel(vec3<double>(0, 0, -1), 5, 80);
 	int rays_per_bundle = bundles[0].size;
 
-	//initializes other bundles
+	//initializes other bundles.........not really needed
+	/*
 	for (int i = 1; i < numofsurfaces + 1; i++)
 	{
 		bundles[i] = raybundle<MYFLOATTYPE>(rays_per_bundle);
 	}
+	*/
 
 	//create 2 bundles to pass in and out the kernel: also in tracing job manager
 	LOG1("[main]creating 2 siblings bundles\n");
@@ -463,7 +512,14 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	thisparam.d_outbundles = d_outjob;
 	
 	thisparam.otherparams[0] = job_size;
-	thisparam.otherparams[1] = rays_per_bundle;
+	//thisparam.otherparams[1] = rays_per_bundle;
+
+	/*
+	typedef void(*KernelFunctionType)(QuadricTracerKernelLaunchParams);
+	typedef void(*KernelType)(KernelLaunchParams);
+
+	KernelFunctionType thiskernel = quadrictracer;
+	*/
 
 	// launch kernel, copy result out, swap memory: goal, only pass one object to kernel
 	// while (job.state!= finished) { kernel launch; job.update();}
@@ -531,24 +587,149 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	CUDARUN(cudaEventDestroy(stop));
 
 	// free device heap momory now automatically when object goes out of scale
-	// free host heap memory when object goes out of scale
+	// free host heap memory STILL NEEDED
 
-	//these lines should be in the optical component manager
-	//delete thisOpticalConfig;
-	/*
-	for (int i = 0; i < numofsurfaces; i++)
-	{
-		delete surfaces[i];
-	}
-	delete[] surfaces;
-	*/
 	return 0;
+}
 #endif
-}
 
-int GPUMain(int argc = 0, char** argv = nullptr)
+//managers implementation
+int OpticalConfigManager(int argc = 0, char** argv = nullptr)
 {
+	//input: set up the surfaces manually, or get data from console
+	LOG1("[main]setup the surfaces\n");
+	MYFLOATTYPE diam = 10;
+	int numofsurfaces = 2;
+	int wavelength1 = 555;
+
+	//check out an opticalconfig as output
+	OpticalConfig* newConfig = nullptr;
+	mainStorageManager.jobCheckOut(newConfig, numofsurfaces, wavelength1);
+
+	//construct the surfaces
+	(newConfig->surfaces)[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive, quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1,
+		1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
+	(newConfig->surfaces)[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1,
+		INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
+
+	//test adding data
+	char* teststr = "hello";
+	((newConfig->surfaces)[0])->add_data(teststr, 6);
+
+	//copy to sibling on GPU side
+	LOG1("[main]create sibling surfaces\n");
+	newConfig->copytosiblings();
+
 	return 0;
 }
 
+int KernelLauncher(int argc = 0, char** argv = nullptr)//this is the non-Async variant
+{
+	GPUJob* job = new QuadricTracerJob; // still need to initialize this by new or by getting from main memory
 
+	if (job->isEmpty)//no jobs to be done
+	{
+		delete job; //TODO: fix why the destructor wasn't called
+		return -2;
+	}
+
+	//create event for timing: to GPU manager
+	cudaEvent_t start, stop;
+	CUDARUN(cudaEventCreate(&start));
+	CUDARUN(cudaEventCreate(&stop));
+
+	job->preLaunchPreparation();
+
+	//start timing 
+	CUDARUN(cudaEventRecord(start, 0));
+
+	while (job->goAhead())
+	{
+		job->kernelLaunch();
+		job->update();
+	}
+
+	//kernel finished, stop timing, print out elapsed time: in gpu manager
+	CUDARUN(cudaEventRecord(stop, 0));
+	CUDARUN(cudaEventSynchronize(stop));
+	float elapsedtime;
+	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
+	LOG2("kernel run time: " << elapsedtime << " ms\n");
+	CUDARUN(cudaEventDestroy(start));
+	CUDARUN(cudaEventDestroy(stop));
+
+	job->postLaunchCleanUp();
+	
+	//delete the jobs
+	delete job;
+
+	return 0;
+}
+
+/*int QuadricTracerJobPreparator(int argc = 0, char** argv = nullptr)
+{
+	int wanted_job_size = 3;
+	int job_size = 0; // real size of a batch depends on how many columns are left in the Storage
+
+	auto pcolumns = new RayBundleColumn*[wanted_job_size];
+
+	//this is bad coding: job_size is used here as the counting variable
+	while ((job_size < wanted_job_size) && mainStorageManager.takeOne(pcolumns[job_size]))
+	{
+		job_size++; 
+	}
+
+
+
+	QuadricTracerJob* newjob = nullptr;
+	//mainStorageManager.jobCheckOut(newjob,jobsize); // check out a new job as output
+
+	//aggregating columns and prepare the job
+
+	return 0;
+}*/
+
+int ColumnCreator(int argc = 0, char** argv = nullptr)
+{
+	//get a point/field direction as input, in this example we use field direction
+	vec3<MYFLOATTYPE> dir1(0, 0, -1);
+	int wavelength1 = 555;
+	//vec3<MYFLOATTYPE> dir12(0, 0, -0.9);
+	//if there is no job to do in the storage
+	if (false) return -2;
+
+	//get the number of surfaces
+	OpticalConfig* thisOpticalConfig = nullptr;
+	mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength1);
+	int numofsurfaces = thisOpticalConfig->numofsurfaces;
+
+	//get a column pointer from the main storage
+	RayBundleColumn* job = nullptr;
+	mainStorageManager.jobCheckOut(job, numofsurfaces, wavelength1);
+
+	//call initializer of the first bundle in column
+	(*job)[0].init_1D_parallel(dir1, 5, 80);
+
+	//mark the column as initialized after initializing it
+	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);
+
+	return 0;
+}
+
+void testbenchGPU()
+{
+	OpticalConfigManager();
+
+	ColumnCreator();
+	ColumnCreator();
+	ColumnCreator();
+
+	KernelLauncher();
+	KernelLauncher();
+
+	RayBundleColumn* pcolumn = nullptr;
+	while (mainStorageManager.takeOne(pcolumn, StorageHolder<RayBundleColumn*>::Status::completed1, 555))
+	{
+		mainStorageManager.pleaseDelete(pcolumn);
+	}
+}

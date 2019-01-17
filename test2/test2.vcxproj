@@ -98,6 +98,7 @@
     <ClInclude Include="class_hierarchy.cuh" />
     <ClInclude Include="CommonClasses.h" />
     <ClInclude Include="mycommon.cuh" />
+    <ClInclude Include="StorageManager.cuh" />
     <ClInclude Include="test2API.h" />
     <ClInclude Include="vec3.cuh" />
   </ItemGroup>
