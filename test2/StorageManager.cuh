@@ -180,6 +180,9 @@ private:
 	std::mutex wavelengthLedgerLock;
 	std::list<StorageHolder<int>> wavelengthLedger;
 
+	//TODO: points ledger
+	//TODO: image ledger
+
 	//GPUjob objects are created and destroyed on-the-fly, no need for managing them
 	//std::mutex quadricTracerJobLedgerLock;
 	//std::list<StorageHolder<QuadricTracerJob*>> quadricTracerJobLedger;

@@ -179,7 +179,7 @@ public:
 	//simplest initializer: generate 1D parallel ray fan along vertical direction
 	__host__ raybundle<T>& init_1D_parallel(vec3<T> dir, T diam, T z_position)
 	{
-		//cleanObject(false);
+		
 		float step = diam / size;
 		float start = -(diam / 2) + (step / 2);
 		for (int i = 0; i < size; i++)
@@ -299,7 +299,9 @@ private:
 	{
 		if (d_sibling != nullptr) freesibling();
 		delete[] prays;
+		prays = nullptr;
 		delete[] samplinggrid;
+		samplinggrid = nullptr;
 		if (resetSize) size = 0;
 	}
 };

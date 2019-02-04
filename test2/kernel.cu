@@ -425,6 +425,7 @@ public:
 	~QuadricTracerJob()
 	{
 		LOG1("QuadricTracerJob destructor called");
+		delete[] pcolumns;
 		delete[] b_inbundles;
 		delete[] b_outbundles;
 		cudaFree(kernelLaunchParams.d_inbundles);
@@ -721,11 +722,11 @@ void testbenchGPU()
 	OpticalConfigManager();
 
 	ColumnCreator();
-	ColumnCreator();
-	ColumnCreator();
+	//ColumnCreator();
+	//ColumnCreator();
 
 	KernelLauncher();
-	KernelLauncher();
+	//KernelLauncher();
 
 	RayBundleColumn* pcolumn = nullptr;
 	while (mainStorageManager.takeOne(pcolumn, StorageHolder<RayBundleColumn*>::Status::completed1, 555))

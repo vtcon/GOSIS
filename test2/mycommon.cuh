@@ -60,3 +60,4 @@ __device__ T operator/(T lhs, T rhs)
 	return (rhs == 0) ? (T)MYINFINITY : lhs / rhs;
 }
 */ //IEEE 754 to the rescue!
+
