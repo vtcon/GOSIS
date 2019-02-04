@@ -27,7 +27,10 @@ public:
 	samplingpos<T> spos;
 	T intensity = 0; //radiant intensity in W/sr
 
-	int status = 1; // 1 is active, 0 is deactive, 2 is finised, more to come
+	//obsolete: 1 is active, 0 is deactivated, 2 is finised, more to come
+
+	static enum Status {active, deactivated, finished, inactive};
+	Status status = active;
 
 	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const samplingpos<T>& spos = samplingpos<T>(0, 0), T intensity = 0) :
 		pos(pos), dir(dir), spos(spos), intensity(intensity)
@@ -58,7 +61,9 @@ class raybundle
 public:
 	int size; //modifiable by member function
 	T wavelength = 555; //wavelength in nm
-	raysegment<T>*prays = nullptr;
+	//to enable CUDA streams, both of those below should be converted to page-locked host memory
+	// i.e. using cudaHostAlloc and cudaFreeHost
+	raysegment<T>*prays = nullptr; 
 	samplingpos<T>*samplinggrid = nullptr;
 	raybundle<T>* d_sibling = nullptr; //sibling to this bundle on the device
 									   //one bundle can only have one sibling at a time
@@ -66,7 +71,7 @@ public:
 
 	//constructor and destructor, creation is limited to host only, to transfer ray bundle to device...
 	//...must create the device sibling of the bundle
-	__host__ raybundle(int size = bundlesize, T wavelength = 555)
+	__host__ raybundle(int size = 32, T wavelength = 555)
 		:size(size), wavelength(wavelength)
 	{
 		prays = new raysegment<T>[size];
@@ -74,9 +79,13 @@ public:
 	}
 	__host__  ~raybundle()
 	{
+		LOG2("raybundle destructor called")
+		cleanObject();
+		/*
 		if (d_sibling != nullptr) freesibling();
 		delete[] prays;
 		delete[] samplinggrid;
+		*/
 	}
 
 	//copy constructor
@@ -92,6 +101,7 @@ public:
 	//copy assignment operator
 	__host__ raybundle<T> operator=(const raybundle<T>& origin)
 	{
+		cleanObject();
 		size = origin.size;
 		wavelength = origin.wavelength;
 		prays = new raysegment<T>[size];
@@ -154,9 +164,22 @@ public:
 		return *this;
 	}
 
+	//copy the sibling bundle from GPU to this ray bundle, Asynchronous variant
+	__host__ raybundle<T> copyFromSiblingAsync(cudaStream_t thisstream)
+	{
+		if (d_sibling != nullptr)
+		{
+			//copy new data in, assume size and wavelength is correctly mirrored between siblings
+			CUDARUN(cudaMemcpyAsync(prays, d_prays, size * sizeof(raysegment<T>), cudaMemcpyDeviceToHost, thisstream));
+			CUDARUN(cudaMemcpyAsync(samplinggrid, d_samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyDeviceToHost, thisstream));
+		}
+		return *this;
+	}
+
 	//simplest initializer: generate 1D parallel ray fan along vertical direction
 	__host__ raybundle<T>& init_1D_parallel(vec3<T> dir, T diam, T z_position)
 	{
+		
 		float step = diam / size;
 		float start = -(diam / 2) + (step / 2);
 		for (int i = 0; i < size; i++)
@@ -189,10 +212,13 @@ public:
 			(max_vert / step - min_vert / step + 1));
 
 		//for safety, reclean the object before initialization
+		cleanObject();
+		/*
 		if (d_sibling != nullptr) freesibling();
 		delete[] prays;
 		delete[] samplinggrid;
 		size = 0;
+		*/
 
 		//assign temporary memory
 		raysegment<T>* temp_prays = new raysegment<T>[temp_size];
@@ -268,6 +294,16 @@ private:
 	
 	raysegment<T>* d_prays = nullptr;
 	samplingpos<T>* d_samplinggrid = nullptr;
+
+	inline void cleanObject(bool resetSize = true)
+	{
+		if (d_sibling != nullptr) freesibling();
+		delete[] prays;
+		prays = nullptr;
+		delete[] samplinggrid;
+		samplinggrid = nullptr;
+		if (resetSize) size = 0;
+	}
 };
 
 template<typename T = float>
@@ -276,14 +312,19 @@ class mysurface
 public:
 	vec3<T> pos; // at first no rotation of axis
 	T diameter; // default to 10 mm, see constructor
-	int type; //0 is image surface, 1 is power surface, 2 is stop surface
+	int group; // the index of the optical group this surface belongs to
+
+	//int type; 
+	//0 is image surface, 1 is power surface, 2 is stop surface
+	static enum SurfaceTypes {image, refractive, stop};
+	SurfaceTypes type;
 
 	char* p_data = nullptr; // each char is 1 byte...
 	int data_size = 0;//... so that the data size and offset is in bytes
 
 	mysurface<T>* d_sibling = nullptr;
 
-	__host__ mysurface(const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10, int type = 0) :
+	__host__ mysurface(const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10, SurfaceTypes type = image) :
 		pos(pos), diameter(diameter), type(type)
 	{
 		LOG1("my surface created")
@@ -298,7 +339,7 @@ public:
 		LOG1("surface destructor called")
 	}
 
-	//for the two "copies" the sibling is not copied
+	//for the two "copies" the sibling is NOT copied
 	//copy constructor
 	__host__ mysurface(const mysurface <T>& origin)
 		:pos(origin.pos), diameter(origin.diameter), type(origin.type), data_size(origin.data_size)
@@ -481,9 +522,9 @@ public:
 	quadricparam<T> param;
 	T n1, n2;
 
-	__host__ __device__ quadricsurface(const quadricparam<T>& param = quadricparam<T>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1),
+	__host__ __device__ quadricsurface(SurfaceTypes type, const quadricparam<T>& param = quadricparam<T>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1),
 		T n1 = 1, T n2 = 1, const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10) :
-		mysurface(pos, diameter, 1), param(param), n1(n1), n2(n2)
+		mysurface(pos, diameter, type), param(param), n1(n1), n2(n2)
 	{
 		LOG1("quadric surface created")
 	}
@@ -494,7 +535,7 @@ public:
 	}
 
 	//needs to overwrite this function in every sub class inorder for it to return proper result
-	__host__ __device__ int size()
+	__host__ __device__ int size() override
 	{
 		//int size = sizeof(*this);
 		//int size1 = sizeof(mysurface<MYFLOATTYPE>);
@@ -521,9 +562,141 @@ public:
 	*/
 };
 
-template<int numofparams = 5>
-class kernel_launch_params
+class OpticalConfig
 {
 public:
-	int params[numofparams];
+	int numofsurfaces = 2;
+	int wavelength = 555; // wavelength in nm, all surfaces data within this config uses this same wavelength
+	mysurface<MYFLOATTYPE>** surfaces = nullptr;
+
+	OpticalConfig(int numberOfSurfaces, int _wavelength = 555) 
+		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
+	{
+		surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	}
+
+	~OpticalConfig()
+	{
+		freesiblings();
+		for (int i = 0; i < numofsurfaces; i++)
+		{
+			delete surfaces[i];
+		}
+		delete[] surfaces;
+	}
+
+	mysurface<MYFLOATTYPE>* operator[](int i)
+	{
+		return surfaces[i];
+	}
+
+	void copytosiblings()
+	{
+		for (int i = 0; i < numofsurfaces; i++)
+			surfaces[i]->copytosibling();
+	}
+
+	void freesiblings()
+	{
+		for (int i = 0; i < numofsurfaces; i++)
+			surfaces[i]->freesibling();
+	}
+
+private:
+
+	//disable both of them, OpticalConfig are meant to only be created and destroyed, not passing around
+	OpticalConfig(const OpticalConfig& origin);
+	OpticalConfig operator=(const OpticalConfig& origin);
+
 };
+
+class KernelLaunchParams
+{
+public:
+private:
+};
+
+class QuadricTracerKernelLaunchParams:public KernelLaunchParams
+{
+public:
+	raybundle<MYFLOATTYPE>** d_inbundles = nullptr;
+	raybundle<MYFLOATTYPE>** d_outbundles = nullptr;
+	quadricsurface<MYFLOATTYPE>* pquad = nullptr;
+	int otherparams[7];
+};
+
+class RendererKernelLaunchParams
+{
+public:
+	int otherparams[5];
+};
+
+class RayBundleColumn 
+{
+public:
+	int numofsurfaces = 2;
+	int wavelength = 555;
+
+	raybundle<MYFLOATTYPE>** bundles = nullptr;
+
+	RayBundleColumn(int numberOfSurfaces, int _wavelength)
+		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
+	{
+		bundles = new raybundle<MYFLOATTYPE>*[numofsurfaces + 1];
+		for (int i = 0; i < numofsurfaces + 1; i++)
+		{
+			bundles[i] = new raybundle<MYFLOATTYPE>(32, wavelength); //initialize with 32 rays, for example
+		}
+	}
+
+	~RayBundleColumn()
+	{
+		LOG2("column destructor called")
+		for (int i = 0; i < numofsurfaces + 1; i++)
+		{
+			delete bundles[i];
+		}
+		delete[] bundles;
+	}
+
+	raybundle<MYFLOATTYPE>& operator[](int i)
+	{
+		return *(bundles[i]);
+	}
+private:
+	//disable both until an appropriate use for them can be found
+	RayBundleColumn(const RayBundleColumn& origin);
+	RayBundleColumn operator=(const RayBundleColumn& origin);
+};
+
+//just an interface
+class GPUJob
+{
+public:
+	//enum JobStatus { unconstructed, underconstruction, readytolaunch, jobinprogress, jobfinised };
+
+	bool isEmpty = true;
+
+	//JobStatus jobStatus = unconstructed;
+	virtual ~GPUJob() = 0; //virtual destructor, so that delete works properly with polymorphic object
+
+	virtual void preLaunchPreparation() = 0;
+
+	// should the kernel launcher launch again?
+	virtual bool goAhead() const = 0;
+
+	//both functions below should also have an Async variants, for CUDA streams
+	virtual void kernelLaunch() = 0;
+
+	virtual void update() = 0;
+	
+	virtual void postLaunchCleanUp() = 0;
+};
+
+inline GPUJob::~GPUJob() {} //this comes directly from stackoverflow, reason is a linker error when base destructor is unimplemented
+
+
+
+
+
+
