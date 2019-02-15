@@ -4,27 +4,27 @@
 #include "vec3.cuh"
 
 //forward declaration
-
+/*
 template<typename T = float>
-class samplingpos
+class point2D
 {
 public:
 	T u = 0;
 	T v = 0;
-	__host__ __device__ samplingpos(T u = 0, T v = 0)
+	__host__ __device__ point2D(T u = 0, T v = 0)
 		:u(u), v(v)
 	{}
-	__host__ __device__ ~samplingpos()
+	__host__ __device__ ~point2D()
 	{}
 };
-
+*/
 //the grammar is: device can manipulate both ray objects and pointers
 template<typename T = float>
 class raysegment
 {
 public:
 	vec3<T> pos, dir;
-	samplingpos<T> spos;
+	point2D<int> spos;
 	T intensity = 0; //radiant intensity in W/sr
 
 	//obsolete: 1 is active, 0 is deactivated, 2 is finised, more to come
@@ -32,7 +32,7 @@ public:
 	static enum Status {active, deactivated, finished, inactive};
 	Status status = active;
 
-	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const samplingpos<T>& spos = samplingpos<T>(0, 0), T intensity = 0) :
+	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const point2D<int>& spos = point2D<int>(0, 0), T intensity = 0) :
 		pos(pos), dir(dir), spos(spos), intensity(intensity)
 	{
 		LOG1("ray segment created")
@@ -64,7 +64,7 @@ public:
 	//to enable CUDA streams, both of those below should be converted to page-locked host memory
 	// i.e. using cudaHostAlloc and cudaFreeHost
 	raysegment<T>*prays = nullptr; 
-	samplingpos<T>*samplinggrid = nullptr;
+	point2D<int>*samplinggrid = nullptr;
 	raybundle<T>* d_sibling = nullptr; //sibling to this bundle on the device
 									   //one bundle can only have one sibling at a time
 									   //attempt to create a new sibling will delete the existing one
@@ -74,13 +74,17 @@ public:
 	__host__ raybundle(int size = 32, T wavelength = 555)
 		:size(size), wavelength(wavelength)
 	{
+		/*
 		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
+		samplinggrid = new point2D<int>[size];
+		*/
+		cleanObject();
 	}
 	__host__  ~raybundle()
 	{
 		LOG2("raybundle destructor called")
 		cleanObject();
+		freesibling();
 		/*
 		if (d_sibling != nullptr) freesibling();
 		delete[] prays;
@@ -93,9 +97,9 @@ public:
 		:size(origin.size), wavelength(origin.wavelength)
 	{
 		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
+		samplinggrid = new point2D<int>[size];
 		memcpy(prays, origin.prays, size * sizeof(raysegment<T>));
-		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(samplingpos<T>));
+		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(point2D<int>));
 	}
 
 	//copy assignment operator
@@ -105,18 +109,21 @@ public:
 		size = origin.size;
 		wavelength = origin.wavelength;
 		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
+		samplinggrid = new point2D<int>[size];
 		memcpy(prays, origin.prays, size * sizeof(raysegment<T>));
-		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(samplingpos<T>));
+		memcpy(samplinggrid, origin.samplinggrid, size * sizeof(point2D<int>));
 		return *this;
 	}
 
 	//free the current sibling
 	__host__ void freesibling()
 	{
-		cudaFree(d_prays);
-		cudaFree(d_samplinggrid);
-		cudaFree(d_sibling);
+		if (d_prays != nullptr)
+			cudaFree(d_prays);
+		if (d_samplinggrid != nullptr)
+			cudaFree(d_samplinggrid);
+		if (d_sibling != nullptr)
+			cudaFree(d_sibling);
 		d_prays = nullptr;
 		d_samplinggrid = nullptr;
 		d_sibling = nullptr;
@@ -134,12 +141,12 @@ public:
 		//allocate memory on device
 		CUDARUN(cudaMalloc((void**)&d_sibling, sizeof(raybundle<T>)));
 		CUDARUN(cudaMalloc((void**)&(d_prays), size * sizeof(raysegment<T>)));
-		CUDARUN(cudaMalloc((void**)&(d_samplinggrid), size * sizeof(samplingpos<T>)));
+		CUDARUN(cudaMalloc((void**)&(d_samplinggrid), size * sizeof(point2D<int>)));
 
 		//copy data to device
 		CUDARUN(cudaMemcpy(d_sibling, this, sizeof(*this), cudaMemcpyHostToDevice));
 		CUDARUN(cudaMemcpy(d_prays, prays, size * sizeof(raysegment<T>), cudaMemcpyHostToDevice));
-		CUDARUN(cudaMemcpy(d_samplinggrid, samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyHostToDevice));
+		CUDARUN(cudaMemcpy(d_samplinggrid, samplinggrid, size * sizeof(point2D<int>), cudaMemcpyHostToDevice));
 		CUDARUN(cudaMemcpy(&(d_sibling->prays), &d_prays, sizeof(char*), cudaMemcpyHostToDevice));
 		CUDARUN(cudaMemcpy(&(d_sibling->samplinggrid), &d_samplinggrid, sizeof(char*), cudaMemcpyHostToDevice));
 
@@ -159,7 +166,7 @@ public:
 		{
 			//copy new data in, assume size and wavelength is correctly mirrored between siblings
 			CUDARUN(cudaMemcpy(prays, d_prays, size * sizeof(raysegment<T>), cudaMemcpyDeviceToHost));
-			CUDARUN(cudaMemcpy(samplinggrid, d_samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyDeviceToHost));
+			CUDARUN(cudaMemcpy(samplinggrid, d_samplinggrid, size * sizeof(point2D<int>), cudaMemcpyDeviceToHost));
 		}
 		return *this;
 	}
@@ -171,22 +178,25 @@ public:
 		{
 			//copy new data in, assume size and wavelength is correctly mirrored between siblings
 			CUDARUN(cudaMemcpyAsync(prays, d_prays, size * sizeof(raysegment<T>), cudaMemcpyDeviceToHost, thisstream));
-			CUDARUN(cudaMemcpyAsync(samplinggrid, d_samplinggrid, size * sizeof(samplingpos<T>), cudaMemcpyDeviceToHost, thisstream));
+			CUDARUN(cudaMemcpyAsync(samplinggrid, d_samplinggrid, size * sizeof(point2D<int>), cudaMemcpyDeviceToHost, thisstream));
 		}
 		return *this;
 	}
 
 	//simplest initializer: generate 1D parallel ray fan along vertical direction
-	__host__ raybundle<T>& init_1D_parallel(vec3<T> dir, T diam, T z_position)
+	__host__ raybundle<T>& init_1D_parallel(vec3<T> dir, T diam, T z_position, int insize = 32)
 	{
-		
-		float step = diam / size;
-		float start = -(diam / 2) + (step / 2);
+		size = insize;
+		prays = new raysegment<T>[size];
+		samplinggrid = new point2D<int>[size];
+
+		T step = diam / size;
+		T start = -(diam / 2) + (step / 2);
 		for (int i = 0; i < size; i++)
 		{
 			prays[i] = raysegment<T>(vec3<T>(start + step * i, 0, z_position), dir);
-			samplinggrid[i] = samplingpos<T>(i - size / 2, 0);
-			printf("i = %d, (u,v) = (%f,%f), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
+			samplinggrid[i] = point2D<int>(i - size / 2, 0);
+			printf("i = %d, (u,v) = (%d,%d), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
 				, samplinggrid[i].u, samplinggrid[i].v
 				, prays[i].pos.x, prays[i].pos.y, prays[i].pos.z
 				, prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
@@ -222,7 +232,7 @@ public:
 
 		//assign temporary memory
 		raysegment<T>* temp_prays = new raysegment<T>[temp_size];
-		samplingpos<T>* temp_samplinggrid = new samplingpos<T>[temp_size];
+		point2D<int>* temp_samplinggrid = new point2D<int>[temp_size];
 
 		//declaration
 		T angle_horz;
@@ -248,7 +258,7 @@ public:
 					)
 				{
 					//register
-					temp_samplinggrid[size] = samplingpos<T>(i, j);
+					temp_samplinggrid[size] = point2D<int>(i, j);
 					/*
 					z = -1 / sqrt(1 + tan(angle_horz)*tan(angle_horz) + tan(angle_vert)*tan(angle_vert));
 					x = -z * tan(angle_horz);
@@ -265,25 +275,27 @@ public:
 
 		//copy temporary arrays to final arrays
 		prays = new raysegment<T>[size];
-		samplinggrid = new samplingpos<T>[size];
+		samplinggrid = new point2D<int>[size];
 		memcpy(prays, temp_prays, size * sizeof(raysegment<T>));
-		memcpy(samplinggrid, temp_samplinggrid, size * sizeof(samplingpos<T>));
+		memcpy(samplinggrid, temp_samplinggrid, size * sizeof(point2D<int>));
 		delete[] temp_prays;
 		delete[] temp_samplinggrid;
 
 		//debugging: printout trace
+#ifdef _MYDEBUGMODE
 #ifdef _DEBUGMODE2
 		if (samplinggrid != nullptr && prays != nullptr)
 		{
 			for (int i = 0; i < size; i++)
 			{
-				printf("i = %d\t (u,v) = (%f,%f)\t at (%f,%f,%f)\t pointing (%f,%f,%f)\n", i,
+				printf("i = %d\t (u,v) = (%d,%d)\t at (%f,%f,%f)\t pointing (%f,%f,%f)\n", i,
 					samplinggrid[i].u, samplinggrid[i].v,
 					prays[i].pos.x, prays[i].pos.y, prays[i].pos.z,
 					prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
 			}
 		}
 		else printf("error: null ptr detected");
+#endif
 #endif
 
 		return *this;
@@ -293,15 +305,21 @@ public:
 private:
 	
 	raysegment<T>* d_prays = nullptr;
-	samplingpos<T>* d_samplinggrid = nullptr;
+	point2D<int>* d_samplinggrid = nullptr;
 
 	inline void cleanObject(bool resetSize = true)
 	{
 		if (d_sibling != nullptr) freesibling();
-		delete[] prays;
-		prays = nullptr;
-		delete[] samplinggrid;
-		samplinggrid = nullptr;
+		if (prays != nullptr)
+		{
+			delete[] prays;
+			prays = nullptr;
+		}
+		if (samplinggrid != nullptr)
+		{
+			delete[] samplinggrid;
+			samplinggrid = nullptr;
+		}
 		if (resetSize) size = 0;
 	}
 };
@@ -419,12 +437,12 @@ public:
 		return sizeof(*this);
 	}
 
-	__host__ bool add_data(void* p_originaldata, int size)
+	__host__ bool add_data(void* p_originaldata, int datasize)
 	{
-		if (size <= 0) return false;
-		data_size = size;
-		p_data = new char[size];
-		memcpy(p_data, p_originaldata, size);
+		if (datasize <= 0) return false;
+		data_size = datasize;
+		p_data = new char[datasize];
+		memcpy(p_data, p_originaldata, datasize);
 		return true;
 	}
 
@@ -521,15 +539,23 @@ class quadricsurface :public mysurface<T>
 public:
 	quadricparam<T> param;
 	T n1, n2;
+	point2D<T> tipTilt;
+	bool antiParallel = true; //if the ray and the surface normal should be anti-parallel 
+							  //e.g. for a sphere, true for convex side, false for concave side
 
-	__host__ __device__ quadricsurface(SurfaceTypes type, const quadricparam<T>& param = quadricparam<T>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1),
-		T n1 = 1, T n2 = 1, const vec3<T>& pos = vec3<T>(0, 0, 0), T diameter = 10) :
-		mysurface(pos, diameter, type), param(param), n1(n1), n2(n2)
+	__host__ quadricsurface(SurfaceTypes type,
+		const quadricparam<T>& param = quadricparam<T>(1, 1, 1, 0, 0, 0, 0, 0, 0, -1),
+		T n1 = 1, T n2 = 1,
+		const vec3<T>& pos = vec3<T>(0, 0, 0),
+		T diameter = 10,
+		bool antiparallel = true,
+		point2D<T> tipTiltAxis = point2D<T>(0,0)) 
+		:mysurface(pos, diameter, type), param(param), n1(n1), n2(n2), antiParallel(antiparallel), tipTilt(tipTiltAxis)
 	{
 		LOG1("quadric surface created")
 	}
 
-	__host__ __device__ ~quadricsurface()
+	__host__ ~quadricsurface()
 	{
 		LOG1("quadric surface destructor called")
 	}
@@ -610,26 +636,6 @@ private:
 
 };
 
-class KernelLaunchParams
-{
-public:
-private:
-};
-
-class QuadricTracerKernelLaunchParams:public KernelLaunchParams
-{
-public:
-	raybundle<MYFLOATTYPE>** d_inbundles = nullptr;
-	raybundle<MYFLOATTYPE>** d_outbundles = nullptr;
-	quadricsurface<MYFLOATTYPE>* pquad = nullptr;
-	int otherparams[7];
-};
-
-class RendererKernelLaunchParams
-{
-public:
-	int otherparams[5];
-};
 
 class RayBundleColumn 
 {
@@ -669,31 +675,302 @@ private:
 	RayBundleColumn operator=(const RayBundleColumn& origin);
 };
 
-//just an interface
-class GPUJob
+class PixelArrayDescriptor
+	//to define your own pixel array structure, implement this pure virtual class 
 {
 public:
-	//enum JobStatus { unconstructed, underconstruction, readytolaunch, jobinprogress, jobfinised };
+	//test function
+	//__host__ __device__ virtual bool testBool() = 0;
 
-	bool isEmpty = true;
+	__host__ __device__ virtual bool cartesian2Array(const vec3<MYFLOATTYPE>& vtx, point2D<int>& pixelCoor) const = 0;
+	//convert world point to pixel coordinate, check if the point and the pixel are valid
 
-	//JobStatus jobStatus = unconstructed;
-	virtual ~GPUJob() = 0; //virtual destructor, so that delete works properly with polymorphic object
+	__host__ __device__ virtual bool array2Cartesian(const point2D<int>& pixelCoor, vec3<MYFLOATTYPE>& p1,
+		vec3<MYFLOATTYPE>& p2, vec3<MYFLOATTYPE>& p3, vec3<MYFLOATTYPE>& p4) const = 0;
+	//given a pixel coordinate, check whether it is valid and compute 4 corners of that pixel in world coordinate
 
-	virtual void preLaunchPreparation() = 0;
+	__host__ __device__ virtual inline bool checkArrayBound(const point2D<int>& pixelCoor) const = 0;
+	//check if the point is within bound
 
-	// should the kernel launcher launch again?
-	virtual bool goAhead() const = 0;
+	__host__ __device__ virtual point2D<int> getDimension() const = 0;
 
-	//both functions below should also have an Async variants, for CUDA streams
-	virtual void kernelLaunch() = 0;
-
-	virtual void update() = 0;
-	
-	virtual void postLaunchCleanUp() = 0;
+	__host__ __device__ virtual PixelArrayDescriptor* clone() const = 0;
+	//for deep copy of polymorphic object
+	//implementation's side code should be:
+	//__host__ __device__ PixelArrayDescriptor* clone() const override
+	//{	return new DerivedClassName(*this); }
 };
 
-inline GPUJob::~GPUJob() {} //this comes directly from stackoverflow, reason is a linker error when base destructor is unimplemented
+class SimpleRetinaDescriptor : public PixelArrayDescriptor
+{
+public:
+	MYFLOATTYPE m_thetaR;
+	MYFLOATTYPE m_R0;
+	MYFLOATTYPE m_maxTheta;
+	MYFLOATTYPE m_maxPhi;
+	MYFLOATTYPE m_r;
+	
+	//test function
+	__host__ __device__ inline bool testBool() 
+	{
+		return true;
+	}
+
+	__host__ __device__ SimpleRetinaDescriptor(MYFLOATTYPE thetaR = 10, MYFLOATTYPE R0 = 1,
+		MYFLOATTYPE maxTheta = 90, MYFLOATTYPE maxPhi = 90)
+		:m_thetaR(thetaR / 180 * MYPI), m_R0(R0), m_maxTheta(maxTheta / 180 * MYPI), m_maxPhi(maxPhi / 180 * MYPI)
+	{
+		m_r = m_thetaR * m_R0;
+	}
+
+	__host__ __device__ ~SimpleRetinaDescriptor()
+	{}
+
+	__host__  __device__ bool cartesian2Array(const vec3<MYFLOATTYPE>& worldCoor, point2D<int>& pixelCoor) const override
+	{
+		if (abs((worldCoor.x*worldCoor.x + worldCoor.y*worldCoor.y + worldCoor.z*worldCoor.z) - (m_R0*m_R0)) > MYEPSILONBIG) //numerical inaccuracies...
+			return false;
+
+		MYFLOATTYPE nyf = asin(worldCoor.y / m_R0) / m_thetaR;
+		MYFLOATTYPE Rp = m_R0 * cos(nyf*m_thetaR);
+		MYFLOATTYPE nxf = asin(worldCoor.x / Rp) / m_thetaR;
+		pixelCoor = { static_cast<int>(floor(nxf)) ,static_cast<int>(floor(nyf)) };
+		
+		bool returnVal = checkArrayBound(pixelCoor);
+		return returnVal;
+	}
+
+	__host__  __device__ bool array2Cartesian(const point2D<int>& pixelCoor, vec3<MYFLOATTYPE>& p1,
+		vec3<MYFLOATTYPE>& p2, vec3<MYFLOATTYPE>& p3, vec3<MYFLOATTYPE>& p4) const override
+	{
+		p1 = vec3<MYFLOATTYPE>(0, 0, 0);
+		p2 = p1; p3 = p1; p4 = p1;
+
+		MYFLOATTYPE thetaY1 = static_cast<MYFLOATTYPE>(pixelCoor.ny) * m_thetaR;
+		MYFLOATTYPE thetaY2 = (static_cast<MYFLOATTYPE>(pixelCoor.ny) + 1)*m_thetaR;
+
+		//the equal prevents numerical inaccuracies
+		if ((thetaY1 <= -m_maxTheta) || (thetaY2 >= m_maxTheta))
+			return false;
+
+
+		p1.y = m_R0 * sin(thetaY1);
+		p2.y = p1.y;
+		p3.y = m_R0 * sin(thetaY2);
+		p4.y = p3.y;
+		MYFLOATTYPE R1p = m_R0 * cos(thetaY1);
+		MYFLOATTYPE R2p = m_R0 * cos(thetaY2);
+
+		MYFLOATTYPE thetaX1;
+		MYFLOATTYPE thetaX2;
+
+		if (pixelCoor.ny >= 0)
+		{
+			thetaX1 = static_cast<MYFLOATTYPE>(pixelCoor.nx) * m_r / R1p;
+			thetaX2 = (static_cast<MYFLOATTYPE>(pixelCoor.nx) + 1)*m_r / R1p;
+		}
+		else if (pixelCoor.ny < 0)
+		{
+			thetaX1 = static_cast<MYFLOATTYPE>(pixelCoor.nx) * m_r / R2p;
+			thetaX2 = (static_cast<MYFLOATTYPE>(pixelCoor.nx) + 1)*m_r / R2p;
+		}
+
+		if ((thetaX1 <= -m_maxPhi) || (thetaX2 >= m_maxPhi))
+			return false;
+
+		p1.x = R1p * sin(thetaX1);
+		p2.x = R1p * sin(thetaX2);
+		p3.x = R2p * sin(thetaX2);
+		p4.x = R2p * sin(thetaX1);
+
+		p1.z = sqrt(m_R0*m_R0 - p1.x * p1.x - p1.y * p1.y);
+		p2.z = sqrt(m_R0*m_R0 - p2.x * p2.x - p2.y * p2.y);
+		p3.z = sqrt(m_R0*m_R0 - p3.x * p3.x - p3.y * p3.y);
+		p4.z = sqrt(m_R0*m_R0 - p4.x * p4.x - p4.y * p4.y);
+
+		return true;
+	}
+
+	__host__  __device__ inline bool checkArrayBound(const point2D<int>& pixelCoor) const override
+	{
+		MYFLOATTYPE thetaY1 = static_cast<MYFLOATTYPE>(pixelCoor.ny) * m_thetaR;
+		MYFLOATTYPE thetaY2 = (static_cast<MYFLOATTYPE>(pixelCoor.ny) + 1)*m_thetaR;
+
+		//the equal prevents numerical inaccuracies
+		if ((thetaY1 <= -m_maxTheta) || (thetaY2 >= m_maxTheta))
+			return false;
+
+		MYFLOATTYPE R1p = m_R0 * cos(thetaY1);
+		MYFLOATTYPE R2p = m_R0 * cos(thetaY2);
+
+		MYFLOATTYPE thetaX1;
+		MYFLOATTYPE thetaX2;
+
+		if (pixelCoor.ny >= 0)
+		{
+			thetaX1 = static_cast<MYFLOATTYPE>(pixelCoor.nx) * m_r / R1p;
+			thetaX2 = (static_cast<MYFLOATTYPE>(pixelCoor.nx) + 1)*m_r / R1p;
+		}
+		else if (pixelCoor.ny < 0)
+		{
+			thetaX1 = static_cast<MYFLOATTYPE>(pixelCoor.nx) * m_r / R2p;
+			thetaX2 = (static_cast<MYFLOATTYPE>(pixelCoor.nx) + 1)*m_r / R2p;
+		}
+
+		if ((thetaX1 <= -m_maxPhi) || (thetaX2 >= m_maxPhi))
+			return false;
+
+		return true;
+	}
+
+	__host__ __device__ point2D<int> getDimension() const override
+	{
+		return { (int)((m_maxPhi + m_thetaR) / m_thetaR) * 2, (int)((m_maxTheta + m_thetaR) / m_thetaR) * 2 };
+	}
+
+	__host__ __device__ PixelArrayDescriptor* clone() const override
+	{
+		return new SimpleRetinaDescriptor(*this);
+	}
+};
+
+class RetinaImageChannel
+{
+private:
+	//disable copy constructor and copy assignment operator
+	/*
+	__host__ RetinaImageChannel(const RetinaImageChannel& origin)
+	{}
+	__host__ RetinaImageChannel operator=(const RetinaImageChannel& origin)
+	{}
+	*/
+
+public:
+	point2D<int> m_dimension;
+	point2D<int> m_zeroOffset;
+	MYFLOATTYPE* hp_raw = nullptr;
+	MYFLOATTYPE* dp_raw = nullptr;
+	RetinaImageChannel* dp_sibling = nullptr;
+
+	__host__ RetinaImageChannel(const PixelArrayDescriptor& retinaDescriptor)
+		:m_dimension(retinaDescriptor.getDimension())
+	{
+		m_zeroOffset = m_dimension / 2;
+		createHostImage();
+	}
+
+	__host__ __device__  RetinaImageChannel(const RetinaImageChannel& origin)
+		: m_dimension(origin.m_dimension), m_zeroOffset(origin.m_zeroOffset),
+		hp_raw(origin.hp_raw), dp_raw(origin.dp_raw)
+	{}
+
+	__host__ __device__ ~RetinaImageChannel()
+	{
+#ifndef __CUDA_ARCH__
+		deleteSibling();
+		//clear all memory
+		deleteHostImage();
+#endif 
+	}
+
+	__host__ void createHostImage()
+	{
+		deleteHostImage();
+		hp_raw = new MYFLOATTYPE[m_dimension.x*m_dimension.y];
+		clearHostImage();
+	}
+
+	__host__ void clearHostImage()
+	{
+		if (hp_raw != nullptr)
+			memset(hp_raw, 0, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE));
+	}
+
+	__host__ void deleteHostImage()
+	{
+		if (hp_raw != nullptr)
+			delete[] hp_raw;
+		hp_raw = nullptr;
+	}
+
+	__host__ void createSibling()
+	{
+		if (hp_raw == nullptr) createHostImage();
+		deleteSibling();
+		CUDARUN(cudaMalloc((void**)&dp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE)));
+		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyHostToDevice));
+		CUDARUN(cudaMalloc((void**)&dp_sibling, sizeof(RetinaImageChannel)));
+		CUDARUN(cudaMemcpy(dp_sibling, this, sizeof(RetinaImageChannel), cudaMemcpyHostToDevice));
+		clearSibling();
+	}
+
+	__host__ void deleteSibling()
+	{
+		if (dp_sibling != nullptr) cudaFree(dp_sibling);
+		dp_sibling = nullptr;
+		if (dp_raw != nullptr) cudaFree(dp_raw);
+		dp_raw = nullptr;
+	}
+
+	__host__ void copyToSibling()
+	{
+		if (hp_raw == nullptr) createHostImage();
+		if (dp_raw == nullptr) createSibling();
+		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyHostToDevice));
+	}
+
+	__host__ void copyFromSibling()
+	{
+		if (hp_raw == nullptr) createHostImage();
+		if (dp_raw != nullptr)
+			CUDARUN(cudaMemcpy(hp_raw, dp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyDeviceToHost));
+	}
+
+	__host__ void clearSibling() //callable from host's side
+	{
+		CUDARUN(cudaMemset(dp_raw, 0, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE)));
+	}
+
+	__host__ void saveToFile(const std::string& folderpath, const std::string& filename, const std::string& format)
+	{}
+
+	__device__ void resetDeviceImage() //callable from device's side
+	{
+		memset(dp_raw, 0, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE));
+	}
+
+	__device__ void writePixel(const point2D<int>& pixelCoor, MYFLOATTYPE value)
+	{
+		dp_raw[(pixelCoor.y + m_zeroOffset.y)*m_dimension.x + (pixelCoor.x + m_zeroOffset.x)] = value;
+	}
+
+	__device__ void addToPixel(const point2D<int>& pixelCoor, MYFLOATTYPE value)
+	{
+		atomicAdd(&(dp_raw[(pixelCoor.y + m_zeroOffset.y)*m_dimension.x + (pixelCoor.x + m_zeroOffset.x)]), value);
+	}
+
+	__device__ MYFLOATTYPE getPixelValue(const point2D<int>& pixelCoor)
+	{
+		return dp_raw[(pixelCoor.y + m_zeroOffset.y)*m_dimension.x + (pixelCoor.x + m_zeroOffset.x)];
+	}
+
+private:
+
+	//CUDA doesn't have native double-precision atomicAdd
+	__device__ double atomicAdd(double* address, double val)
+	{
+		unsigned long long int* address_as_ull =
+			(unsigned long long int*)address;
+		unsigned long long int old = *address_as_ull, assumed;
+		do {
+			assumed = old;
+			old = atomicCAS(address_as_ull, assumed,
+				__double_as_longlong(val +
+					__longlong_as_double(assumed)));
+		} while (assumed != old);
+		return __longlong_as_double(old);
+	}
+};
 
 
 

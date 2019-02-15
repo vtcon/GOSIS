@@ -15,24 +15,45 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="pch.h">
+    <ClInclude Include="src\CppCommon.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ImageFacilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ThreadObject.h">
+    <ClInclude Include="src\pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SolutionGlobalInclude.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ThreadObject.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="CppCommon.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="src\ColorimetricLookup.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\OutputImage.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="pch.cpp">
+    <ClCompile Include="src\ConsoleApplication.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ConsoleApplication.cpp">
+    <ClCompile Include="src\ForTestingPurposes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ForTestingPurposes.cpp">
+    <ClCompile Include="src\ImageFacilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ColorimetricLookup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OutputImage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

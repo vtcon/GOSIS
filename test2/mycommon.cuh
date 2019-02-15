@@ -8,18 +8,27 @@
 
 #include <stdio.h>
 
+#include "../ConsoleApplication/src/SolutionGlobalInclude.h"
+
 #define something
 
+//compile time type resolution
+//#define MYFLOATTYPE float
+#define sqrt(x) sqrt((MYFLOATTYPE)(x))
+
+// compile-time constants
 #define MYZERO (double)0.000000001
 #define MYINFINITY (double)999999999
-#define MYFLOATTYPE double
 #define MYPI (double)3.14159265358979323846264338327950288419716939937510582097494 
+#define MYEPSILONBIG (MYFLOATTYPE)0.0001
+#define MYEPSILONMEDIUM (MYFLOATTYPE)0.0000001
+#define MYEPSILONSMALL (MYFLOATTYPE)0.0000000001
 
 #define NULLVECTOR vec3<MYFLOATTYPE>(0,0,0)
 
 static const int bundlesize = 32;
 
-
+#define _MYDEBUGMODE
 //#define _DEBUGMODE1
 #define _DEBUGMODE2
 
@@ -61,3 +70,12 @@ __device__ T operator/(T lhs, T rhs)
 }
 */ //IEEE 754 to the rescue!
 
+#define ASSERT(x) if (!(x)) __debugbreak();
+
+#ifdef __CUDACC__
+#define forhost __host__
+#define fordevice __device
+#else
+#define forhost
+#define fordevice
+#endif

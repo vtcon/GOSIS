@@ -4,4 +4,4 @@
 #include <mutex>
 
 
-std::mutex coutlock;
+static std::mutex coutlock;

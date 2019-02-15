@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include "ImageFacilities.h"
 
 int function2(int argc, char** argv)
 {
@@ -114,18 +115,33 @@ extern int testfunction2();
 
 //define all the externs
 extern int GPUmanager(int argc = 0, char** argv = nullptr);
+extern void testRenderer();
 extern void testbenchGPU();
+
 
 int main()
 {
     std::cout << "Hello World!\n"; 
 	//GPUmanager();
+
+	//***********testing area***************
 	testbenchGPU();
+	//testRenderer();
+
 	/*
 	std::this_thread::sleep_for(std::chrono::seconds(5));
 	delete pthreadobject1;
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 	delete pthreadobject2;
 	*/
+
+	
+	//testopencv();
+
+#ifdef NDEBUG
+	char t;
+	std::cin >> t;
+#endif
+
 	return 0;
 }

@@ -2,7 +2,79 @@
 
 #include "mycommon.cuh"
 
+template<typename T>
+class point2D
+{
+public:
+	union
+	{
+		struct { T nx; T ny; };
+		struct { T x; T y; };
+		struct { T u; T v; };
+		struct { T alpha; T beta; };
+		struct { T a; T b; };
+		struct { T theta; T phi; };
+	};
 
+	__host__ __device__ point2D(T x = 0, T y = 0) :nx(x), ny(y)
+	{}
+
+	__host__ __device__ ~point2D()
+	{}
+
+	__host__ __device__ inline point2D<T> operator+(const point2D<T>& rhs) const
+	{
+		return point2D<T>(x + rhs.x, y + rhs.y);
+	}
+
+	__host__ __device__ inline point2D<T> operator-(const point2D<T>& rhs) const
+	{
+		return point2D<T>(x - rhs.x, y - rhs.y);
+	}
+
+	__host__ __device__ inline point2D<T> operator/(T denominator) const
+	{
+		if (denominator == 0) return point2D<T>(static_cast<T>(NAN), static_cast<T>(NAN));
+		return point2D<T>(x / denominator, y / denominator);
+	}
+
+	__host__ __device__ inline bool operator==(point2D<T>& rhs) const
+	{
+		return (x == rhs.x) && (y == rhs.y);
+}
+
+	/*
+	__host__ __device__ inline bool operator==(MYFLOATTYPE rhs) const
+	{
+		ASSERT(rhs == 0)
+		return (x == 0) && (y == 0);
+	}
+	*/
+
+	__host__ __device__ inline bool operator!=(point2D<T>& rhs) const
+	{
+		return (x != rhs.x) || (y != rhs.y);
+	}
+};
+
+template<typename T>
+__host__ __device__ inline T dot(const point2D<T>& p1, const point2D<T>& p2)
+{
+	return p1.x*p2.x + p1.y*p2.y;
+}
+
+template<typename T>
+__host__ __device__ inline T norm(const point2D<T>& p1)
+{
+	return sqrt((p1.x*p1.x + p1.y*p1.y));
+}
+
+
+template<typename T>
+__host__ __device__ inline point2D<T> normalize(point2D<T>& input)
+{
+	return input / norm(input);
+}
 
 //floating point comparison
 
@@ -50,7 +122,13 @@ template<typename T = float>
 class vec3
 {
 public:
-	T x, y, z, t;
+	union
+	{
+		struct
+		{
+			T x; T y; T z; T t;
+		};
+	};
 #ifdef nothing
 	__host__ __device__ vec3(T x = 0, T y = 0, T z = 0) :
 		x(x), y(y), z(z), t(1)
@@ -90,13 +168,13 @@ public:
 };
 
 template<typename T = float>
-__host__ __device__ inline bool operator==(const vec3<T>& lhs, const vec3<T>& rhs)
+__host__ __device__ inline bool operator==(const vec3<T>& lhs, const vec3<T>& rhs) 
 {
 	return ((lhs.x == rhs.x) && (lhs.y == rhs.y) && (lhs.z == rhs.z) && (lhs.t == rhs.t)) ? true : false;
 }
 
 template<typename T = float>
-__host__ __device__ T dot(const vec3<T>& lhs, const vec3<T>& rhs)
+__host__ __device__ T dot(const vec3<T>& lhs, const vec3<T>& rhs) 
 {
 	return (lhs.x*rhs.x + lhs.y*rhs.y + lhs.z*rhs.z);
 }
@@ -104,7 +182,7 @@ __host__ __device__ T dot(const vec3<T>& lhs, const vec3<T>& rhs)
 template<typename T = float>
 __host__ __device__ vec3<T> cross(const vec3<T>& lhs, const vec3<T>& rhs)
 {
-	return vec3<T>(lhs.y*rhs.z - lhs.z*rhs.y, lhs.x*rhs.z - lhs.z*rhs.x, lhs.x*rhs.y - lhs.y*rhs.x);
+	return vec3<T>(lhs.y*rhs.z - lhs.z*rhs.y, lhs.z*rhs.x - lhs.x*rhs.z, lhs.x*rhs.y - lhs.y*rhs.x);
 }
 
 // scalar pre multiplication
@@ -133,7 +211,7 @@ __host__ __device__ vec3<T> operator/(const vec3<T>& lhs, T rhs)
 template<typename T = float>
 __host__ __device__ T norm(const vec3<T>& rhs)
 {
-	return (T)sqrtf((T)(rhs.x*rhs.x + rhs.y*rhs.y + rhs.z*rhs.z));
+	return (T)sqrt((T)(rhs.x*rhs.x + rhs.y*rhs.y + rhs.z*rhs.z));
 }
 
 template<typename T = float>

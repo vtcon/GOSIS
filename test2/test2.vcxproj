@@ -64,8 +64,13 @@
       <PtxAsOptionV>true</PtxAsOptionV>
       <AdditionalCompilerOptions>
       </AdditionalCompilerOptions>
-      <Include>$(SolutionDir)ConsoleApplication;%(Include)</Include>
+      <Include>$(SolutionDir)ConsoleApplication\src</Include>
     </CudaCompile>
+    <CudaLink>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -87,20 +92,33 @@
       <Keep>true</Keep>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
-      <Include>$(SolutionDir)ConsoleApplication;%(Include)</Include>
+      <Include>$(SolutionDir)ConsoleApplication\src</Include>
       <Defines>_CUDACOMPILER</Defines>
     </CudaCompile>
+    <CudaLink>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>
+      </AdditionalDependencies>
+    </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="ManagerFunctions.cu" />
+    <CudaCompile Include="RenderingKernel.cu" />
+    <CudaCompile Include="StorageManager.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="class_hierarchy.cuh" />
     <ClInclude Include="CommonClasses.h" />
+    <ClInclude Include="ManagerFunctions.cuh" />
     <ClInclude Include="mycommon.cuh" />
     <ClInclude Include="StorageManager.cuh" />
     <ClInclude Include="test2API.h" />
     <ClInclude Include="vec3.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test2.vcxproj.admin-hp.nvuser" />
+    <None Include="vc140.pdb" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
