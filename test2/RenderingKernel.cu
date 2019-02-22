@@ -15,7 +15,7 @@
 	point2D<int>& pGuess);*/
 /*__device__ bool find4points(int nx, int ny, MYFLOATTYPE thetaR, MYFLOATTYPE R0, vec3<MYFLOATTYPE>& p1, 
 	vec3<MYFLOATTYPE>& p2, vec3<MYFLOATTYPE>& p3, vec3<MYFLOATTYPE>& p4);*/
-__device__ bool maptotriangle(
+__device__ int maptotriangle(
 	const vec3<MYFLOATTYPE>& p1, const vec3<MYFLOATTYPE>& p2, const vec3<MYFLOATTYPE>& p3,
 	const vec3<MYFLOATTYPE>& px, const vec3<MYFLOATTYPE>& dir, MYFLOATTYPE& alpha, MYFLOATTYPE& beta);
 __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
@@ -388,7 +388,7 @@ __device__ bool find4points
 	return true;
 }
 */
-__device__ bool maptotriangle(
+__device__ int maptotriangle(
 	const vec3<MYFLOATTYPE>& p1, const vec3<MYFLOATTYPE>& p2, const vec3<MYFLOATTYPE>& p3,
 	const vec3<MYFLOATTYPE>& px, const vec3<MYFLOATTYPE>& dir, MYFLOATTYPE& alpha, MYFLOATTYPE& beta)
 {
@@ -401,12 +401,12 @@ __device__ bool maptotriangle(
 
 	//if the triangle is colinear
 	if (norm(cross(p2 - p1, p3 - p1)) < MYEPSILONMEDIUM)
-		return false;
+		return -1;
 
 	//if pdir and triangle coplanar
 	//printf("dot(cross(p2 - p1, p3 - p1), pdir) = %f\n", dot(cross(p2 - p1, p3 - p1), pdir));
 	if (abs(dot(cross(p2 - p1, p3 - p1), pdir)) < MYEPSILONMEDIUM)
-		return false;
+		return -1;
 
 
 	//if px and triangle coplanar
@@ -452,7 +452,7 @@ __device__ bool maptotriangle(
 		{
 			alpha = 0;
 			beta = 0;
-			return false;
+			return -1;
 		}
 		nrZero = nrZero + 1;
 		A1 = px.z - p1.z;
@@ -518,7 +518,15 @@ __device__ bool maptotriangle(
 
 	alpha = (A1*B3 - B1 * A3) / (A2*B3 - B2 * A3);
 	beta = (A2*B1 - B2 * A1) / (A2*B3 - B2 * A3);
-	return true;
+	/*
+	vec3<MYFLOATTYPE> signCheckVec = px - p1 - alpha * (p2 - p1) - beta * (p3 - p1);
+
+	if (signCheckVec.z*pdir.z > 0)
+	{
+		return 1;
+	}
+	*/
+	return 0;
 }
 
 
@@ -882,15 +890,37 @@ __device__ MYFLOATTYPE insideTriangle(
 
 	//MYFLOATTYPE alpha1, beta1, alpha2, beta2, alpha3, beta3, alpha4, beta4;
 	point2D<MYFLOATTYPE> bp1, bp2, bp3, bp4;
-	bool output1 = maptotriangle(vtx1, vtx2, vtx3, p1, pdir, bp1.alpha, bp1.beta);
-	bool output2 = maptotriangle(vtx1, vtx2, vtx3, p2, pdir, bp2.alpha, bp2.beta);
-	bool output3 = maptotriangle(vtx1, vtx2, vtx3, p3, pdir, bp3.alpha, bp3.beta);
-	bool output4 = maptotriangle(vtx1, vtx2, vtx3, p4, pdir, bp4.alpha, bp4.beta);
+	int output1 = maptotriangle(vtx1, vtx2, vtx3, p1, pdir, bp1.alpha, bp1.beta);
+	int output2 = maptotriangle(vtx1, vtx2, vtx3, p2, pdir, bp2.alpha, bp2.beta);
+	int output3 = maptotriangle(vtx1, vtx2, vtx3, p3, pdir, bp3.alpha, bp3.beta);
+	int output4 = maptotriangle(vtx1, vtx2, vtx3, p4, pdir, bp4.alpha, bp4.beta);
 
 	//build a caching mechanism here
 
-	if (output1 == false || output2 == false || output3 == false || output4 == false)
+	if (output1 == -1 || output2 == -1 || output3 == -1 || output4 == -1)
 		return 0;
 
-	return SutherlandHogdman(bp1, bp2, bp3, bp4);
+	MYFLOATTYPE returnValue = SutherlandHogdman(bp1, bp2, bp3, bp4);
+
+	vec3<MYFLOATTYPE> testVec1 = cross(p2 - p1, p4 - p1);
+	vec3<MYFLOATTYPE> testVec2 = cross(p3 - p2, p1 - p2);
+	vec3<MYFLOATTYPE> testVec3 = cross(p4 - p3, p2 - p3);
+	vec3<MYFLOATTYPE> testVec4 = cross(p1 - p4, p3 - p4);
+
+	MYFLOATTYPE testDir1 = dot(testVec1, pdir);
+	MYFLOATTYPE testDir2 = dot(testVec2, pdir);
+	MYFLOATTYPE testDir3 = dot(testVec3, pdir);
+	MYFLOATTYPE testDir4 = dot(testVec4, pdir);
+
+	if (testDir1 > 0 && testDir2 > 0 && testDir3 > 0 && testDir4 > 0)
+	{
+		return 0;
+	}
+
+	/*
+	if (output1 == 1 && output2 == 1 && output3 == 1 && output4 == 1 && returnValue < 1.0)
+		return 0;
+	*/
+
+	return returnValue;
 }

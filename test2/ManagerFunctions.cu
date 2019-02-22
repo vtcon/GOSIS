@@ -1,19 +1,22 @@
 #include "ManagerFunctions.cuh"
 #include "StorageManager.cuh"
 #include "../ConsoleApplication/src/ImageFacilities.h"
+#include "Auxiliaries.cuh"
+
+#include "ProgramInterface.h"
 
 #include <vector>
 #include <algorithm>
 
 //global variables
 
+//external global variables
 //as the storage lies in this project, the regulator function should also be here
-StorageManager mainStorageManager;
+extern StorageManager mainStorageManager;
+extern float activeWavelength;
+extern int PI_ThreadsPerKernelLaunch;
 
-
-
-// external definitions:
-
+// external function definitions:
 extern __global__ void quadrictracer(QuadricTracerKernelLaunchParams kernelparams);
 extern __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLaunchParams);
 
@@ -60,8 +63,8 @@ public:
 
 	int currentSurfaceCount = 0;
 
-	dim3 blocksToLaunch = 0;
-	dim3 threadsToLaunch = 0;
+	int blocksToLaunch = 0;
+	int threadsToLaunch = 0;
 
 	typedef StorageHolder<RayBundleColumn*>::Status columnStatus;
 
@@ -119,7 +122,7 @@ public:
 		}
 
 		kernelLaunchParams.otherparams[0] = job_size;
-		blocksToLaunch = job_size;
+		//blocksToLaunch = job_size;
 		int maxBundleSize = 0;
 		for (int i = 0; i < job_size; i++)
 		{
@@ -129,7 +132,13 @@ public:
 				maxBundleSize = temp;
 			}
 		}
-		threadsToLaunch = maxBundleSize;
+		//threadsToLaunch = maxBundleSize;
+		kernelLaunchParams.otherparams[1] = maxBundleSize;
+		int kernelToLaunch = job_size * maxBundleSize;
+
+		threadsToLaunch = PI_ThreadsPerKernelLaunch;
+		blocksToLaunch = (kernelToLaunch + threadsToLaunch - 1) / (threadsToLaunch);
+
 		std::cout << "Tracing " << maxBundleSize << " rays from each of " << job_size << " points\n";
 	}
 
@@ -241,13 +250,14 @@ class TriangleRendererJob :public GPUJob
 {
 public:
 	RendererKernelLaunchParams m_kernelLaunchParams;
-	SimpleRetinaDescriptor* p_retinaDescriptor;
+	//SimpleRetinaDescriptor* p_retinaDescriptor;
+	PixelArrayDescriptor* p_retinaDescriptor;
 	RetinaImageChannel* p_rawChannel;
 
 	int wanted_job_size = 3;
 	int job_size = 0; 
-	int wavelength = 0;
-	int m_triangleCount = 0;
+	float wavelength = 0;
+	long m_triangleCount = 0;
 	
 	mutable int m_launchCount = 0; 
 
@@ -259,7 +269,7 @@ public:
 		pcolumns = new RayBundleColumn*[wanted_job_size];
 
 		//BIG QUESTION: where does the wavelength comes from?
-		wavelength = 555;
+		wavelength = activeWavelength;
 
 		//this is bad coding: job_size is used here as the counting variable
 		while ((job_size < wanted_job_size) && mainStorageManager.takeOne(pcolumns[job_size], columnStatus::completed1, wavelength))
@@ -304,14 +314,19 @@ public:
 
 		//TODO: add these to the storage manager
 		//data setup
-		p_retinaDescriptor = new SimpleRetinaDescriptor(0.167, 10);
-		p_rawChannel = new RetinaImageChannel(*p_retinaDescriptor);
+		//p_retinaDescriptor = new SimpleRetinaDescriptor(2, 20);
+		//p_rawChannel = new RetinaImageChannel(*p_retinaDescriptor);
+		OpticalConfig* thisOpticalConfig = nullptr;
+		mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength);
+		p_retinaDescriptor = thisOpticalConfig->p_retinaDescriptor;
+		p_rawChannel = thisOpticalConfig->p_rawChannel;
 
 		//the following line should not be here
 		p_rawChannel->createSibling();
 
 		//setup the kernel launch params
-		m_kernelLaunchParams.retinaDescriptorIn = *p_retinaDescriptor;
+		//TODO: FIX THIS POLYMORPHISM!!
+		m_kernelLaunchParams.retinaDescriptorIn = *(dynamic_cast<SimpleRetinaDescriptor*>(p_retinaDescriptor));
 		m_kernelLaunchParams.dp_triangles = dp_triangles;
 		m_kernelLaunchParams.dp_rawChannel = p_rawChannel->dp_sibling;
 		m_kernelLaunchParams.otherparams[0] = m_triangleCount;
@@ -340,7 +355,7 @@ public:
 			std::cerr << "Warning, rendering job has no triangles\n";
 			return;
 		}
-		int threadsToLaunch = 16;
+		int threadsToLaunch = PI_ThreadsPerKernelLaunch;
 		int blocksToLaunch = (m_triangleCount + static_cast<int>(threadsToLaunch)-1) / (threadsToLaunch);
 
 		//for debugging
@@ -367,8 +382,21 @@ public:
 
 		//data copy out
 		p_rawChannel->copyFromSibling();
-		quickDisplay<MYFLOATTYPE>(p_rawChannel->hp_raw, p_rawChannel->m_dimension.y, p_rawChannel->m_dimension.x);
+
+		//for testing
+		//p_rawChannel->setToValue(1.0, *p_retinaDescriptor);
+
+		//display data with scaling
+		void* mapX = nullptr;
+		void* mapY = nullptr;
+		SimpleRetinaDescriptor* tempDescriptor = dynamic_cast<SimpleRetinaDescriptor*>(p_retinaDescriptor);
+		MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
+		generateProjectionMap(mapX, mapY, p_rawChannel->m_dimension.y, p_rawChannel->m_dimension.x, IF_PROJECTION_ALONGZ, 4, scalingargs);
+		quickDisplayv2(p_rawChannel->hp_raw, p_rawChannel->m_dimension.y, p_rawChannel->m_dimension.x, mapX, mapY, 700);
+		//quickDisplayv2<MYFLOATTYPE>(p_rawChannel->hp_raw, p_rawChannel->m_dimension.y, p_rawChannel->m_dimension.x, IF_PROJECTION_NONE, 850);
 		
+		//quickDisplay(p_rawChannel->hp_raw, p_rawChannel->m_dimension.y, p_rawChannel->m_dimension.x, 700);
+
 		//these two lines shouldn't be here, too
 		p_rawChannel->deleteSibling();
 		p_rawChannel->deleteHostImage();
@@ -447,11 +475,12 @@ private:
 					indexTriangles.push_back({ results[0], results[3],results[2] });
 				}
 			}
+			/*
 			else if (results[1] != -1 && results[2] != -1 && results[3] != -1)
 			{
 				indexTriangles.push_back({ results[1], results[3],results[2] });
 			}
-
+			*/
 			if (results[5] == -1 && results[0] != -1 && results[3] != -1 && results[4] != -1)
 			{
 				indexTriangles.push_back({ results[0], results[4],results[3] });
@@ -479,6 +508,11 @@ private:
 				});
 		}
 
+		return 0;
+	}
+
+	int transferMeshToDevice() //as the name suggests....
+	{
 		//delete early
 		for (int i = 0; i < job_size; i++)
 		{
@@ -486,16 +520,11 @@ private:
 		}
 		delete[] pcolumns;
 
-		return 0;
-	}
-
-	int transferMeshToDevice() //as the name suggests....
-	{
 		m_triangleCount = v_triangles.size();
 
 		hp_triangles = new PerKernelRenderingInput[m_triangleCount];
 
-		for (int i = 0; i < m_triangleCount; i++)
+		for (long i = 0; i < m_triangleCount; i++)
 		{
 			hp_triangles[i] = v_triangles[i];
 		}
@@ -516,9 +545,9 @@ int OpticalConfigManager(int argc, char** argv)
 {
 	//input: set up the surfaces manually, or get data from console
 	LOG1("[main]setup the surfaces\n");
-	MYFLOATTYPE diam = 10;
-	int numofsurfaces = 2;
-	int wavelength1 = 555;
+	MYFLOATTYPE diam = 40;
+	int numofsurfaces = 3;
+	float wavelength1 = 555.0;
 
 	//check out an opticalconfig as output
 	OpticalConfig* newConfig = nullptr;
@@ -526,19 +555,44 @@ int OpticalConfigManager(int argc, char** argv)
 
 	//construct the surfaces
 	//(newConfig->surfaces)[0] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::refractive, quadricparam<MYFLOATTYPE>(1, 1, 1, 0, 0, 0, 0, 0, 0, -400), 1, 1.5168, vec3<MYFLOATTYPE>(0, 0, 38.571), diam);
-	bool output = constructSurface((newConfig->surfaces)[0], MF_REFRACTIVE, vec3<MYFLOATTYPE>(0, 0, 58.571), 20, diam, MF_CONVEX, 1.0, 1.5168);
+	bool output = constructSurface((newConfig->surfaces)[0], MF_REFRACTIVE, vec3<MYFLOATTYPE>(0, 0, 25.933), 40.0, diam, MF_CONVEX, 1.0, 2.5168);
+	output = constructSurface((newConfig->surfaces)[1], MF_REFRACTIVE, vec3<MYFLOATTYPE>(0, 0, 10.933), 40.0, diam, MF_CONCAVE, 2.5168, 1.0);
 
 	//(newConfig->surfaces)[1] = new quadricsurface<MYFLOATTYPE>(mysurface<MYFLOATTYPE>::SurfaceTypes::image, quadricparam<MYFLOATTYPE>(0, 0, 0, 0, 0, 0, 0, 0, 1, 0), 1, INFINITY, vec3<MYFLOATTYPE>(0, 0, 0), diam);
-	output = constructSurface((newConfig->surfaces)[1], MF_IMAGE, vec3<MYFLOATTYPE>(0, 0, 0), FP_INFINITE, diam, MF_FLAT, 1.0, FP_INFINITE);
-	
+	//output = constructSurface((newConfig->surfaces)[1], MF_IMAGE, vec3<MYFLOATTYPE>(0, 0, 0), FP_INFINITE, diam, MF_FLAT, 1.0, FP_INFINITE);
+	output = constructSurface((newConfig->surfaces)[2], MF_IMAGE, vec3<MYFLOATTYPE>(0, 0, 0), 20, diam, MF_CONCAVE, 1.0, FP_INFINITE);
+
+	// rules for constructing image surface:
+	// + retina vertex always at 0,0,0
+	// + the surface is always either spherical concave, or flat
 
 	//test adding data
 	char* teststr = "hello";
 	((newConfig->surfaces)[0])->add_data(teststr, 6);
 
-	//copy to sibling on GPU side
+	//copy to sibling surfaces on GPU side
 	LOG1("[main]create sibling surfaces\n");
 	newConfig->copytosiblings();
+
+	//find entrance pupil
+	locateSimpleEntrancePupil(newConfig);
+
+	//add a retina
+	PixelArrayDescriptor* p_retinaDescriptor = nullptr;
+	MYFLOATTYPE angularResolution = 1.6; //0.16 or 0.016 for release, 2.0 for debug
+	MYFLOATTYPE angularExtend = 90; //in degrees
+	MYFLOATTYPE R = 10; //random initial value
+	if (dynamic_cast<quadricsurface<MYFLOATTYPE>*>(newConfig->surfaces[numofsurfaces - 1])->isFlat())
+	{
+		R = newConfig->entrance.z; //take the distance from entrance pupil to retina vertex as R
+	}
+	else //if it is not flat
+	{
+		MYFLOATTYPE Rsqr = abs(dynamic_cast<quadricsurface<MYFLOATTYPE>*>(newConfig->surfaces[numofsurfaces - 1])->param.J);
+		R = sqrt(Rsqr);
+	}
+	p_retinaDescriptor = new SimpleRetinaDescriptor(angularResolution, R, angularExtend, angularExtend); //doesn't need to explicitly delete this
+	newConfig->createImageChannel(p_retinaDescriptor);
 
 	return 0;
 }
@@ -574,7 +628,7 @@ int KernelLauncher(int argc, char** argv)//this is the non-Async variant
 	CUDARUN(cudaEventSynchronize(stop));
 	float elapsedtime;
 	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
-	LOG2("kernel run time: " << elapsedtime << " ms\n");
+	std::cout<<"kernel run time: " << elapsedtime << " ms\n";
 	CUDARUN(cudaEventDestroy(start));
 	CUDARUN(cudaEventDestroy(stop));
 
@@ -617,7 +671,7 @@ int KernelLauncher2(int argc, char** argv)
 	CUDARUN(cudaEventSynchronize(stop));
 	float elapsedtime;
 	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
-	LOG2("kernel run time: " << elapsedtime << " ms\n");
+	std::cout << "kernel run time: " << elapsedtime << " ms\n";
 	CUDARUN(cudaEventDestroy(start));
 	CUDARUN(cudaEventDestroy(stop));
 
@@ -654,10 +708,9 @@ int KernelLauncher2(int argc, char** argv)
 
 int ColumnCreator(int argc, char** argv)
 {
-	//get a point/field direction as input, in this example we use field direction
-	vec3<MYFLOATTYPE> dir1(0, 0, -1);
-	int wavelength1 = 555;
-	//vec3<MYFLOATTYPE> dir12(0, 0, -0.9);
+	//where does the wavelength come from??
+	float wavelength1 = activeWavelength;
+	
 	//if there is no job to do in the storage
 	if (false) return -2;
 
@@ -671,24 +724,87 @@ int ColumnCreator(int argc, char** argv)
 	mainStorageManager.jobCheckOut(job, numofsurfaces, wavelength1);
 
 	//call initializer of the first bundle in column
-	//(*job)[0].init_1D_parallel(dir1, 5, 80);
-	(*job)[0].init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 80), -3.0/180*MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.9 / 180 * MYPI);
+	(*job)[0].init_2D_dualpolar(vec3<MYFLOATTYPE>(0, 0, 80), -3.0/180*MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
+	
 	//mark the column as initialized after initializing it
 	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);
 
 	return 0;
 }
 
+int ColumnCreator2(vec3<MYFLOATTYPE> point)
+{
+	//where does the wavelength come from??
+	float wavelength1 = activeWavelength;
+
+	//if there is no job to do in the storage
+	if (false) return -2;
+
+	//get the number of surfaces
+	OpticalConfig* thisOpticalConfig = nullptr;
+	mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength1);
+	int numofsurfaces = thisOpticalConfig->numofsurfaces;
+
+	//get a column pointer from the main storage
+	RayBundleColumn* job = nullptr;
+	mainStorageManager.jobCheckOut(job, numofsurfaces, wavelength1);
+
+	//call initializer of the first bundle in column
+	//(*job)[0].init_2D_dualpolar(point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
+	//init_2D_dualpolar(&((*job)[0]), point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
+	init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, 0.1 / 180 * MYPI); //0.1 for release, 2.0 for debug
+
+	//mark the column as initialized after initializing it
+	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);
+
+	return 0;
+}
+
+int ColumnCreator3()
+{
+	float wavelength1 = activeWavelength;
+
+	PI_LuminousPoint* p_point = nullptr;
+	bool output = mainStorageManager.takeOne(p_point, StorageHolder<PI_LuminousPoint>::Status::uninitialized, wavelength1);
+	if (!output) //no jobs to do
+		return -2;
+
+	//get the number of surfaces
+	OpticalConfig* thisOpticalConfig = nullptr;
+	mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength1);
+	int numofsurfaces = thisOpticalConfig->numofsurfaces;
+
+	//get a column pointer from the main storage
+	RayBundleColumn* job = nullptr;
+	mainStorageManager.jobCheckOut(job, numofsurfaces, wavelength1);
+
+	vec3<MYFLOATTYPE> point(p_point->x, p_point->y, p_point->z);
+
+	//call initializer of the first bundle in column
+	//(*job)[0].init_2D_dualpolar(point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
+	//init_2D_dualpolar(&((*job)[0]), point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
+	init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, 2.0 / 180 * MYPI); //0.1 for release, 2.0 for debug
+
+	mainStorageManager.jobCheckIn(p_point, StorageHolder<PI_LuminousPoint>::Status::initialized);
+
+	//mark the column as initialized after initializing it
+	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);
+
+	return 0;
+}
+
+extern void SingleTest();
 
 void testbenchGPU()
 {
 	//test pipeline
 	
 	OpticalConfigManager();
-
-	ColumnCreator();
-	//ColumnCreator();
-	//ColumnCreator();
+	//SingleTest();
+	
+	ColumnCreator2(vec3<MYFLOATTYPE>(0,0,500));
+	ColumnCreator2(vec3<MYFLOATTYPE>(-20,0,280));
+	ColumnCreator2(vec3<MYFLOATTYPE>(30,30,200));
 
 	KernelLauncher();
 	KernelLauncher2();
@@ -767,7 +883,7 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 	}
 	else
 	{
-		//TODO: fill in this
+		//TODO: fill in this initiator for aspherical surface
 	}
 	return true;
 }

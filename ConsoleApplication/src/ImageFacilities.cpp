@@ -118,3 +118,177 @@ void quickSave<double>(double* rawData, int rows, int columns, std::string filen
 	std::string fullpath = path + filename;
 	imwrite(fullpath, image);
 }
+
+void update_map_projection_none(Mat& map_x, Mat& map_y, int rows, int cols)
+{
+	for (int j = 0; j < rows; j++)
+	{
+		for (int i = 0; i < cols; i++)
+		{
+			map_x.at<float>(j, i) = i;
+			map_y.at<float>(j, i) = rows - j;
+		}
+	}
+}
+
+void update_map_projection_alongz(Mat& map_x, Mat& map_y, int rows, int columns, float thetaR, float R0, float maxTheta, float maxPhi) 
+{
+	for (int j = 0; j < rows; j++)
+	{
+		for (int i = 0; i < columns; i++)
+		{
+			float nxp = (2.0 * i - columns) / columns;
+			float nyp = (2.0 * j - rows) / rows;
+			if (nxp * nxp + nyp * nyp >= 1)
+			{
+				map_x.at<float>(j, i) = 0.0;
+				map_y.at<float>(j, i) = 0.0;
+				//printf("Map [%d, %d] to [%f, %f]\n", i, j, 0, 0);
+			}
+			else
+			{
+				float worldcoorX = nxp * R0*sin(maxPhi);
+				float worldcoorY = nyp * R0*sin(maxTheta);
+
+				float nyf = asin(worldcoorY / R0) / thetaR;
+				float Rp = R0 * cos(nyf*thetaR);
+				float nxf = asin(worldcoorX / Rp) / thetaR;
+
+				//printf("Map [%d, %d] to [%f, %f]\n", i, j, nxf + columns / 2, nyf + rows / 2);
+				map_x.at<float>(j, i) = nxf + columns / 2;
+				map_y.at<float>(j, i) = -nyf + rows / 2;
+			}
+		}
+	}
+}
+
+void update_map_projection_template(Mat& map_x, Mat& map_y, const Mat& src)
+{
+	int ind = 1;
+	for (int j = 0; j < src.rows; j++)
+	{
+		for (int i = 0; i < src.cols; i++)
+		{
+			switch (ind)
+			{
+			case 0:
+				if (i > src.cols*0.25 && i < src.cols*0.75 && j > src.rows*0.25 && j < src.rows*0.75)
+				{
+					map_x.at<float>(j, i) = 2 * (i - src.cols*0.25) + 0.5;
+					map_y.at<float>(j, i) = 2 * (j - src.rows*0.25) + 0.5;
+				}
+				else
+				{
+					map_x.at<float>(j, i) = 0;
+					map_y.at<float>(j, i) = 0;
+				}
+				break;
+			case 1:
+				map_x.at<float>(j, i) = i;
+				map_y.at<float>(j, i) = src.rows - j;
+				break;
+			case 2:
+				map_x.at<float>(j, i) = src.cols - i;
+				map_y.at<float>(j, i) = j;
+				break;
+			case 3:
+				map_x.at<float>(j, i) = src.cols - i;
+				map_y.at<float>(j, i) = src.rows - j;
+				break;
+			} // end of switch
+		}
+	}
+}
+
+
+template<>
+void quickDisplayv2<double>(double* rawData, int rows, int columns, void* map_x, void* map_y, int longEdge)
+{
+	//import image data
+	Mat smallimg(rows, columns, CV_64FC1, rawData);
+
+	//remapping
+	Mat smallimg_remapped(smallimg.size(), smallimg.type());
+	Mat* p_map_x = static_cast<Mat*>(map_x);
+	Mat* p_map_y= static_cast<Mat*>(map_y);
+
+	remap(smallimg, smallimg_remapped, *p_map_x, *p_map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+
+	//rescalling for display
+	Mat bigimg;
+	float scaleFactor = (float)longEdge / max(smallimg_remapped.rows, smallimg_remapped.cols);
+	resize(smallimg_remapped, bigimg, Size(), scaleFactor, scaleFactor, INTER_NEAREST);
+
+	//normalizing
+	Mat imgout;
+	normalize(bigimg, imgout, 255.0, 0.0, NORM_INF, CV_8UC1);
+
+	//show
+	showOnWindow("Display", imgout);
+}
+
+template<>
+void quickDisplayv2<float>(float* rawData, int rows, int columns, void* map_x, void* map_y, int longEdge)
+{
+	//import image data
+	Mat smallimg(rows, columns, CV_32FC1, rawData);
+
+	//remapping
+	Mat smallimg_remapped(smallimg.size(), smallimg.type());
+	Mat* p_map_x = static_cast<Mat*>(map_x);
+	Mat* p_map_y = static_cast<Mat*>(map_y);
+
+	remap(smallimg, smallimg_remapped, *p_map_x, *p_map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+
+	//rescalling for display
+	Mat bigimg;
+	float scaleFactor = (float)longEdge / max(smallimg_remapped.rows, smallimg_remapped.cols);
+	resize(smallimg_remapped, bigimg, Size(), scaleFactor, scaleFactor, INTER_NEAREST);
+
+	//normalizing
+	Mat imgout;
+	normalize(bigimg, imgout, 255.0, 0.0, NORM_INF, CV_8UC1);
+
+	//show
+	showOnWindow("Display", imgout);
+}
+
+template<typename T>
+void quickDisplayv2(T * rawData, int rows, int columns, void * map_x, void * map_y, int longEdge)
+{
+	std::cout << "Data type not supported, please use float or double\n";
+}
+
+template<typename T>
+void generateProjectionMap(void *& mapX, void *& mapY, int rows, int columns, unsigned int projection, int argc, T * argv)
+{
+	Mat* p_mapX = static_cast<Mat*>(mapX);
+	Mat* p_mapY = static_cast<Mat*>(mapY);
+	p_mapX = new Mat(rows, columns, CV_32FC1);
+	p_mapY = new Mat(rows, columns, CV_32FC1);
+
+	switch (projection)
+	{
+	case IF_PROJECTION_NONE:
+		update_map_projection_none(*p_mapX, *p_mapY, rows, columns);
+		break;
+	case IF_PROJECTION_ALONGZ:
+		update_map_projection_alongz(*p_mapX, *p_mapY, rows, columns, (float)(argv[0]), (float)(argv[1]), (float)(argv[2]), (float)(argv[3]));
+		break;
+	case IF_PROJECTION_MECATOR:
+		std::cout << "projection unimplemented\n";
+		break;
+	default:
+		std::cout << "projection not found\n";
+		break;
+	}
+	mapX = static_cast<void*>(p_mapX);
+	mapY = static_cast<void*>(p_mapY);
+	return;
+}
+
+template
+void generateProjectionMap<float>(void *& mapX, void *& mapY, int rows, int columns, unsigned int projection, int argc, float* argv);
+
+template
+void generateProjectionMap<double>(void *& mapX, void *& mapY, int rows, int columns, unsigned int projection, int argc, double* argv);

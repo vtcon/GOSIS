@@ -14,6 +14,7 @@
 #include <unordered_map>
 
 #include "ImageFacilities.h"
+#include "ProgramInterface.h"
 
 int function2(int argc, char** argv)
 {
@@ -118,6 +119,85 @@ extern int GPUmanager(int argc = 0, char** argv = nullptr);
 extern void testRenderer();
 extern void testbenchGPU();
 
+void roughUI()
+{
+	/*
+	int count = 0;
+	std::cout << "Please enter the number of surfaces\n";
+	std::cin >> count;
+	
+	PI_Surface* surfaces = new PI_Surface[count];
+	float angularResol;
+	float angularExtend;
+
+	for (int i = 0; i < count - 1; i++)
+	{
+		std::cout << "For surface " << i + 1 << ":\n";
+		std::cout << "Please enter vertex position\n";
+		std::cin >> surfaces[i].z;
+		std::cout << "Please enter diameter\n";
+		std::cin >> surfaces[i].diameter;
+		std::cout << "Please enter curvature radius\n";
+		std::cin >> surfaces[i].radius;
+		std::cout << "Please enter refractive index\n";
+		std::cin >> surfaces[i].refractiveIndex;
+	}
+	{
+		int i = count - 1;
+		std::cout << "For image surface:\n";
+		std::cout << "Please enter diameter\n";
+		std::cin >> surfaces[i].diameter;
+		std::cout << "Please enter curvature radius\n";
+		std::cin >> surfaces[i].radius;
+	}
+	{
+		std::cout << "For the retina: \n";
+		std::cout << "Please angular resolution\n";
+		std::cin >> angularResol;
+		std::cout << "Please angular extend\n";
+		std::cin >> angularExtend;
+	}
+	*/
+
+	//test data
+	
+	int count = 3;
+	PI_Surface* surfaces = new PI_Surface[count];
+	surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 2.0;
+	surfaces[1].z = 10.0; surfaces[1].diameter = 40.0; surfaces[1].radius = -40.0; surfaces[1].refractiveIndex = 1.0;
+	surfaces[2].diameter = 40.0; surfaces[2].radius = -60.0;
+	float angularResol = 2.0;
+	float angularExtend = 90.0;
+	
+
+	addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+
+	
+	std::cout << "Please enter the number of points\n";
+	int pcount = 0;
+	std::cin >> pcount;
+
+	for (int i = 0; i < pcount; i++)
+	{
+		PI_LuminousPoint point;
+		std::cout << "For point " << i + 1 << ":\n";
+		std::cout << "Please enter X\n";
+		std::cin >> point.x;
+		std::cout << "Please enter Y\n";
+		std::cin >> point.y;
+		std::cout << "Please enter Z\n";
+		std::cin >> point.z;
+		addPoint(point);
+	}
+	
+
+	checkData();
+	trace();
+	render();
+
+
+	delete[] surfaces;
+}
 
 int main()
 {
@@ -125,7 +205,8 @@ int main()
 	//GPUmanager();
 
 	//***********testing area***************
-	testbenchGPU();
+	//testbenchGPU();
+	roughUI();
 	//testRenderer();
 
 	/*

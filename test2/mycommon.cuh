@@ -28,9 +28,12 @@
 
 static const int bundlesize = 32;
 
-#define _MYDEBUGMODE
+//#define _MYDEBUGMODE
+
+#ifdef _MYDEBUGMODE
 //#define _DEBUGMODE1
 #define _DEBUGMODE2
+#endif
 
 //this macro prints out cuda API call errors
 #define CUDARUN(cudacall) {cudacall;\

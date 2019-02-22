@@ -65,23 +65,34 @@ __global__ void quadrictracer(
 	)
 {
 	//testing
-
+	//int debugID = 190;
 	//adapt this kernel to the new structure
+
+	//get the index
+	int ID = (blockIdx.x*blockDim.x) + threadIdx.x;
+	if (ID >= kernelparams.otherparams[0] * kernelparams.otherparams[1]) return;
+
+	int bundleID = ID / kernelparams.otherparams[1];
+	int rayID = ID-bundleID*kernelparams.otherparams[1];
 	//get the block index, clamp to total number of bundles
-	int blockidx = (blockIdx.x < kernelparams.otherparams[0]) ? blockIdx.x : kernelparams.otherparams[0]; //number of bundles
+	//int blockidx = (blockIdx.x < kernelparams.otherparams[0]) ? blockIdx.x : kernelparams.otherparams[0]; //number of bundles
 	
 	//grab the correct in and out ray bundles
-	raybundle<MYFLOATTYPE>* inbundle = (kernelparams.d_inbundles)[blockidx];
-	raybundle<MYFLOATTYPE>* outbundle = (kernelparams.d_outbundles)[blockidx];
+	//raybundle<MYFLOATTYPE>* inbundle = (kernelparams.d_inbundles)[blockidx];
+	//raybundle<MYFLOATTYPE>* outbundle = (kernelparams.d_outbundles)[blockidx];
+	raybundle<MYFLOATTYPE>* inbundle = (kernelparams.d_inbundles)[bundleID];
+	raybundle<MYFLOATTYPE>* outbundle = (kernelparams.d_outbundles)[bundleID];
 
 	//get the thread index, clamp to the number of rays in this bundle
-	int idx = (threadIdx.x < inbundle->size) ? threadIdx.x : inbundle->size; //number of rays in a bundle
+	//int idx = (threadIdx.x < inbundle->size) ? threadIdx.x : inbundle->size; //number of rays in a bundle
+	int idx = (rayID < inbundle->size) ? rayID : (inbundle->size - 1); //number of rays in a bundle
 
 	//grab the correct ray of this thread
+	//raysegment<MYFLOATTYPE> before = (inbundle->prays)[idx];
 	raysegment<MYFLOATTYPE> before = (inbundle->prays)[idx];
 
 	//quit if ray is deactivated
-	if (before.status == (raysegment<MYFLOATTYPE>::Status::deactivated))
+	if (before.status != (raysegment<MYFLOATTYPE>::Status::active))
 	{
 		(outbundle->prays)[idx] = (inbundle->prays)[idx];
 		return;
@@ -127,38 +138,38 @@ __global__ void quadrictracer(
 		d2 = before.dir.y,
 		d3 = before.dir.z;
 	MYFLOATTYPE t, t1, t2, otherT;
-	MYFLOATTYPE deno = -2 * (A*d1*d1 + B * d2*d2 + C * d3*d3 + D * d1*d2 + E * d1*d3 + F * d2*d3);
+	MYFLOATTYPE deno = -2.0 * (A*d1*d1 + B * d2*d2 + C * d3*d3 + D * d1*d2 + E * d1*d3 + F * d2*d3);
 	if (deno != 0)
 	{
-		MYFLOATTYPE delta = -4 * A*B*d1*d1*p2*p2 + 8 * A*B*d1*d2*p1*p2 - 4 * A*B*d2*d2*p1*p1
-			- 4 * A*C*d1*d1*p3*p3 + 8 * A*C*d1*d3*p1*p3 - 4 * A*C*d3*d3*p1*p1 - 4 * A*F*d1*d1*p2*p3
-			+ 4 * A*F*d1*d2*p1*p3 + 4 * A*F*d1*d3*p1*p2 - 4 * A*F*d2*d3*p1*p1 - 4 * B*C*d2*d2*p3*p3
-			+ 8 * B*C*d2*d3*p2*p3 - 4 * B*C*d3*d2*p2*p2 + 4 * B*E*d1*d2*p2*p3 - 4 * B*E*d1*d3*p2*p2
-			- 4 * B*E*d2*d2*p1*p3 + 4 * B*E*d2*d3*p1*p2 - 4 * C*D*d1*d2*p3*p3 + 4 * C*D*d1*d3*p2*p3
-			+ 4 * C*D*d2*d3*p1*p3 - 4 * C*D*d3*d3*p1*p2 + D * D*d1*d1*p2*p2 - 2 * D*D*d1*d2*p1*p2
-			+ D * D*d2*d2*p1*p1 + 2 * D*E*d1*d1*p2*p3 - 2 * D*E*d1*d2*p1*p3 - 2 * D*E*d1*d3*p1*p2
-			+ 2 * D*E*d2*d3*p1*p1 - 2 * D*F*d1*d2*p2*p3 + 2 * D*F*d1*d3*p2*p2 + 2 * D*F*d2*d2*p1*p3
-			- 2 * D*F*d2*d3*p1*p2 + E * E*d1*d1*p3*p3 - 2 * E*E*d1*d3*p1*p3 + E * E*d3*d3*p1*p1
-			+ 2 * E*F*d1*d2*p3*p3 - 2 * E*F*d1*d3*p2*p3 - 2 * E*F*d2*d3*p1*p3 + 2 * E*F*d3*d3*p1*p2
-			+ F * F*d2*d2*p3*p3 - 2 * F*F*d2*d3*p2*p3 + F * F*d3*d3*p2*p2 - 4 * A*H*d1*d1*p2
-			+ 4 * A*H*d1*d2*p1 - 4 * A*K*d1*d1*p3 + 4 * A*K*d1*d3*p1 + 4 * B*G*d1*d2*p2 - 4 * B*G*d2*d2*p1
-			- 4 * B*K*d2*d2*p3 + 4 * B*K*d2*d3*p2 + 4 * C*G*d1*d3*p3 - 4 * C*G*d3*d3*p1 + 4 * C*H*d2*d3*p3
-			- 4 * C*H*d3*d3*p2 + 2 * D*G*d1*d1*p2 - 2 * D*G*d1*d2*p1 - 2 * D*H*d1*d2*p2
-			+ 2 * D*H*d2*d2*p1 - 4 * D*K*d1*d2*p3 + 2 * D*K*d1*d3*p2 + 2 * D*K*d2*d3*p1 + 2 * E*G*d1*d1*p3
-			- 2 * E*G*d1*d3*p1 + 2 * E*H*d1*d2*p3 - 4 * E*H*d1*d3*p2 + 2 * E*H*d2*d3*p1 - 2 * E*K*d1*d3*p3
-			+ 2 * E*K*d3*d3*p1 + 2 * F*G*d1*d2*p3 + 2 * F*G*d1*d3*p2 - 4 * F*G*d2*d3*p1 + 2 * F*H*d2*d2*p3
-			- 2 * F*H*d2*d3*p2 - 2 * F*K*d2*d3*p3 + 2 * F*K*d3*d3*p2 - 4 * A*J*d1*d1 - 4 * B*J*d2*d2
-			- 4 * C*J*d3*d3 - 4 * D*J*d1*d2 - 4 * E*J*d1*d3 - 4 * F*J*d2*d3 + G * G*d1*d1 + 2 * G*H*d1*d2
-			+ 2 * G*K*d1*d3 + H * H*d2*d2 + 2 * H*K*d2*d3 + K * K*d3*d3;
-		MYFLOATTYPE beforedelta = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * (d1*p2 + d2 * p1) +
+		MYFLOATTYPE delta = -4.0 * A*B*d1*d1*p2*p2 + 8.0 * A*B*d1*d2*p1*p2 - 4.0 * A*B*d2*d2*p1*p1
+			- 4.0 * A*C*d1*d1*p3*p3 + 8.0 * A*C*d1*d3*p1*p3 - 4.0 * A*C*d3*d3*p1*p1 - 4.0 * A*F*d1*d1*p2*p3
+			+ 4.0 * A*F*d1*d2*p1*p3 + 4.0 * A*F*d1*d3*p1*p2 - 4.0 * A*F*d2*d3*p1*p1 - 4.0 * B*C*d2*d2*p3*p3
+			+ 8.0 * B*C*d2*d3*p2*p3 - 4.0 * B*C*d3*d2*p2*p2 + 4.0 * B*E*d1*d2*p2*p3 - 4.0 * B*E*d1*d3*p2*p2
+			- 4.0 * B*E*d2*d2*p1*p3 + 4.0 * B*E*d2*d3*p1*p2 - 4.0 * C*D*d1*d2*p3*p3 + 4.0 * C*D*d1*d3*p2*p3
+			+ 4.0 * C*D*d2*d3*p1*p3 - 4.0 * C*D*d3*d3*p1*p2 + 1.0 * D*D*d1*d1*p2*p2 - 2.0 * D*D*d1*d2*p1*p2
+			+ 1.0 * D*D*d2*d2*p1*p1 + 2.0 * D*E*d1*d1*p2*p3 - 2.0 * D*E*d1*d2*p1*p3 - 2.0 * D*E*d1*d3*p1*p2
+			+ 2.0 * D*E*d2*d3*p1*p1 - 2.0 * D*F*d1*d2*p2*p3 + 2.0 * D*F*d1*d3*p2*p2 + 2.0 * D*F*d2*d2*p1*p3
+			- 2.0 * D*F*d2*d3*p1*p2 + 1.0 * E*E*d1*d1*p3*p3 - 2.0 * E*E*d1*d3*p1*p3 + 1.0 * E*E*d3*d3*p1*p1
+			+ 2.0 * E*F*d1*d2*p3*p3 - 2.0 * E*F*d1*d3*p2*p3 - 2.0 * E*F*d2*d3*p1*p3 + 2.0 * E*F*d3*d3*p1*p2
+			+ 1.0 * F*F*d2*d2*p3*p3 - 2.0 * F*F*d2*d3*p2*p3 + 1.0 * F*F*d3*d3*p2*p2 - 4.0 * A*H*d1*d1*p2
+			+ 4.0 * A*H*d1*d2*p1 - 4.0 * A*K*d1*d1*p3 + 4.0 * A*K*d1*d3*p1 + 4.0 * B*G*d1*d2*p2 - 4.0 * B*G*d2*d2*p1
+			- 4.0 * B*K*d2*d2*p3 + 4.0 * B*K*d2*d3*p2 + 4.0 * C*G*d1*d3*p3 - 4.0 * C*G*d3*d3*p1 + 4.0 * C*H*d2*d3*p3
+			- 4.0 * C*H*d3*d3*p2 + 2.0 * D*G*d1*d1*p2 - 2.0 * D*G*d1*d2*p1 - 2.0 * D*H*d1*d2*p2
+			+ 2.0 * D*H*d2*d2*p1 - 4.0 * D*K*d1*d2*p3 + 2.0 * D*K*d1*d3*p2 + 2.0 * D*K*d2*d3*p1 + 2.0 * E*G*d1*d1*p3
+			- 2.0 * E*G*d1*d3*p1 + 2.0 * E*H*d1*d2*p3 - 4.0 * E*H*d1*d3*p2 + 2.0 * E*H*d2*d3*p1 - 2.0 * E*K*d1*d3*p3
+			+ 2.0 * E*K*d3*d3*p1 + 2.0 * F*G*d1*d2*p3 + 2.0 * F*G*d1*d3*p2 - 4.0 * F*G*d2*d3*p1 + 2.0 * F*H*d2*d2*p3
+			- 2.0 * F*H*d2*d3*p2 - 2.0 * F*K*d2*d3*p3 + 2.0 * F*K*d3*d3*p2 - 4.0 * A*J*d1*d1 - 4.0 * B*J*d2*d2
+			- 4.0 * C*J*d3*d3 - 4.0 * D*J*d1*d2 - 4.0 * E*J*d1*d3 - 4.0 * F*J*d2*d3 + 1.0 * G*G*d1*d1 + 2.0 * G*H*d1*d2
+			+ 2.0 * G*K*d1*d3 + 1.0 * H*H*d2*d2 + 2.0 * H*K*d2*d3 + 1.0* K*K*d3*d3;
+		MYFLOATTYPE beforedelta = 2.0 * A*d1*p1 + 2.0 * B*d2*p2 + 2.0 * C*d3*p3 + D * (d1*p2 + d2 * p1) +
 			E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
-		t1 = (delta >= 0) ? (beforedelta + sqrt(delta)) / deno : INFINITY;
-		t2 = (delta >= 0) ? (beforedelta - sqrt(delta)) / deno : INFINITY;
+		t1 = (delta >= 0.0) ? (beforedelta + sqrt(delta)) / deno : INFINITY;
+		t2 = (delta >= 0.0) ? (beforedelta - sqrt(delta)) / deno : INFINITY;
 	}
 	else
 	{
 		MYFLOATTYPE num = -A * p1*p1 - B * p2*p2 - C * p3*p3 - D * p1*p2 - E * p1*p3 - F * p2*p3 - G * p1 - H * p2 - K * p3 - J;
-		MYFLOATTYPE den = 2 * A*d1*p1 + 2 * B*d2*p2 + 2 * C*d3*p3 + D * d1*p2 + D * d2*p1 + E * d1*p3 + E * d3*p1
+		MYFLOATTYPE den = 2.0 * A*d1*p1 + 2.0 * B*d2*p2 + 2.0 * C*d3*p3 + D * d1*p2 + D * d2*p1 + E * d1*p3 + E * d3*p1
 			+ F * d2*p3 + F * d3*p2 + G * d1 + H * d2 + K * d3;
 		t1 = num / den;
 		t2 = -INFINITY;
@@ -166,15 +177,25 @@ __global__ void quadrictracer(
 
 	//TODO: fix this, not always the nearest!
 	//pick the nearest positive intersection
-	if (t1 >= 0 && t2 >= 0)
+	if (t1 >= 0.0 && t2 >= 0.0)
 	{
-		t = (t1 < t2) ? t1 : t2;
+		//t = (t1 < t2) ? t1 : t2;
+		if (t1 <= t2)
+		{
+			t = t1;
+			otherT = t2;
+		}
+		else
+		{
+			t = t2;
+			otherT = t1;
+		}
 	}
-	else if (t1 < 0 && t2 >= 0)
+	else if (t1 < 0.0 && t2 >= 0.0)
 	{
 		t = t2; otherT = INFINITY;
 	}
-	else if (t2 < 0 && t1 >= 0)
+	else if (t2 < 0.0 && t1 >= 0.0)
 	{
 		t = t1; otherT = INFINITY;
 	}
@@ -188,31 +209,63 @@ __global__ void quadrictracer(
 	{
 		//first determine if the hit was on the right (convex/concave) side by examining the anti-parallelism of
 		//...ray direction and surface normal
-		auto at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
+		bool acceptDirection = false;
+		raysegment<MYFLOATTYPE> at;
+		vec3<MYFLOATTYPE> surfnormal;
+		MYFLOATTYPE ddotn;
+
+		for (int run = 0; run < 2; run++)
+		{
+			at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
+
+			MYFLOATTYPE &x = at.pos.x,
+				&y = at.pos.y,
+				&z = at.pos.z;
+			surfnormal = normalize(vec3<MYFLOATTYPE>(2.0 * A*x + D * y + E * z + G, 2.0 * B*y + D * x + F * z + H, 2.0 * C*z + E * x + F * y + K));
+
+			ddotn = dot(at.dir, surfnormal);
+
+			if ((pquad->antiParallel == true && ddotn > 0.0) ||
+				(pquad->antiParallel == false && ddotn < 0.0))
+			{
+				t = otherT;
+				continue;
+			}
+			acceptDirection = true;
+			break;
+		}
+		if (!acceptDirection)
+			goto deactivate_ray;
+
+		ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
 
 
 		//is the intersection within hit box ? if not, then deactivate the ray
-		if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4)) goto deactivate_ray;
+		if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4.0)) goto deactivate_ray;
 
 		// if it is a refractive surface, do refractive ray transfer
 		if (pquad->type == mysurface<MYFLOATTYPE>::SurfaceTypes::refractive)
 		{
 			//refractive surface transfer
 			auto after = raysegment<MYFLOATTYPE>(at.pos, at.dir);
-			MYFLOATTYPE &x = at.pos.x,
-				&y = at.pos.y,
-				&z = at.pos.z;
-			auto surfnormal = normalize(vec3<MYFLOATTYPE>(2 * A*x + D * y + E * z + G, 2 * B*y + D * x + F * z + H, 2 * C*z + E * x + F * y + K));
-
-			auto ddotn = dot(at.dir, surfnormal);
-			ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
-
-			MYFLOATTYPE factor1 = 1 - pquad->n1*pquad->n1 / (pquad->n2*pquad->n2)
-				*(1 - ddotn * ddotn);
-			if (factor1 < 0)
+			
+			MYFLOATTYPE factor1 = 0.0;
+			/*
+			auto d1 = pquad->n1*pquad->n1;
+			auto d2 = pquad->n2*pquad->n2;
+			auto d3 = (1 - ddotn * ddotn);
+			auto d4 = (pquad->n1*pquad->n1) / (pquad->n2*pquad->n2);
+			auto d5 = (pquad->n1*pquad->n1) / (pquad->n2*pquad->n2)*(1 - ddotn * ddotn);
+			*/
+			factor1 = 1.0 - (pquad->n1*pquad->n1) / (pquad->n2*pquad->n2)*(1.0 - ddotn * ddotn);
+			/*
+			if (rayID == debugID)
+				printf("d1 = %f d2 = %f d3 = %f d4 = %f d5 = %f factor1 = %f\n", d1, d2, d3, d4, d5, factor1);
+			*/
+			if (factor1 < 0.0)
 			{
 #ifdef _DEBUGMODE2
-				printf("something is wrong with transfer refractive vectors");
+				printf("TIR at ray %d, bundle %d, surface %d\n", rayID, bundleID, kernelparams.otherparams[2]);
 #endif
 				goto deactivate_ray;
 			}

@@ -204,7 +204,7 @@ template<typename T = float>
 __host__ __device__ vec3<T> operator/(const vec3<T>& lhs, T rhs)
 {
 	if (rhs == 0) printf("Division by zero!");
-	return (rhs == 0) ? vec3<T>(MYINFINITY, MYINFINITY, MYINFINITY)
+	return (rhs == 0) ? vec3<T>(FP_NAN, FP_NAN, FP_NAN)
 		: vec3<T>(lhs.x / rhs, lhs.y / rhs, lhs.z / rhs);
 }
 
@@ -217,10 +217,10 @@ __host__ __device__ T norm(const vec3<T>& rhs)
 template<typename T = float>
 __host__ __device__ vec3<T> normalize(const vec3<T>& rhs)
 {
-	if (rhs == NULLVECTOR)
+	if (rhs == vec3<T>(0,0,0))
 	{
 		printf("Cannot normalize a null vector");
-		return NULLVECTOR;
+		return vec3<T>(0, 0, 0);
 	}
 	else
 		return rhs / norm(rhs);

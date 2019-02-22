@@ -102,16 +102,20 @@
     </CudaLink>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="Auxiliaries.cu" />
     <CudaCompile Include="kernel.cu" />
     <CudaCompile Include="ManagerFunctions.cu" />
+    <CudaCompile Include="ProgramInterface.cu" />
     <CudaCompile Include="RenderingKernel.cu" />
     <CudaCompile Include="StorageManager.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Auxiliaries.cuh" />
     <ClInclude Include="class_hierarchy.cuh" />
     <ClInclude Include="CommonClasses.h" />
     <ClInclude Include="ManagerFunctions.cuh" />
     <ClInclude Include="mycommon.cuh" />
+    <ClInclude Include="ProgramInterface.h" />
     <ClInclude Include="StorageManager.cuh" />
     <ClInclude Include="test2API.h" />
     <ClInclude Include="vec3.cuh" />

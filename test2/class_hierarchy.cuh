@@ -60,7 +60,7 @@ class raybundle
 {
 public:
 	int size; //modifiable by member function
-	T wavelength = 555; //wavelength in nm
+	float wavelength = 555; //wavelength in nm
 	//to enable CUDA streams, both of those below should be converted to page-locked host memory
 	// i.e. using cudaHostAlloc and cudaFreeHost
 	raysegment<T>*prays = nullptr; 
@@ -71,7 +71,7 @@ public:
 
 	//constructor and destructor, creation is limited to host only, to transfer ray bundle to device...
 	//...must create the device sibling of the bundle
-	__host__ raybundle(int size = 32, T wavelength = 555)
+	__host__ raybundle(int size = 32, float wavelength = 555)
 		:size(size), wavelength(wavelength)
 	{
 		/*
@@ -82,7 +82,7 @@ public:
 	}
 	__host__  ~raybundle()
 	{
-		LOG2("raybundle destructor called")
+		LOG1("raybundle destructor called")
 		cleanObject();
 		freesibling();
 		/*
@@ -204,6 +204,40 @@ public:
 		return *this;
 	}
 
+	__host__ raybundle<T>& init_1D_fan(T z_position, T startTheta, T endTheta,  T phi = 0.0, int insize = 32)
+	{
+		cleanObject();
+		size = insize;
+		prays = new raysegment<T>[size];
+		samplinggrid = new point2D<int>[size];
+
+		if (startTheta == endTheta)
+			endTheta = startTheta + 1;
+
+		startTheta = (startTheta >= 0 && startTheta < 90) ? startTheta : 0.0;
+		startTheta = startTheta / 180.0 * MYPI;
+		endTheta = (endTheta > startTheta && endTheta < 90) ? endTheta : 89.0;
+		endTheta = endTheta / 180.0 * MYPI;
+
+		T step = (endTheta - startTheta) / size;
+		T currentTheta = startTheta;
+		for (int i = 0; i < size; i++)
+		{
+			currentTheta = startTheta + step * i;
+			vec3<MYFLOATTYPE> dir;
+			dir.z = -cos(currentTheta);
+			dir.x = sin(currentTheta)*sin(phi);
+			dir.y = sin(currentTheta)*cos(phi);
+			prays[i] = raysegment<T>(vec3<T>(0, 0, z_position), dir);
+			samplinggrid[i] = point2D<int>(i, 0);
+			printf("i = %d, (u,v) = (%d,%d), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
+				, samplinggrid[i].u, samplinggrid[i].v
+				, prays[i].pos.x, prays[i].pos.y, prays[i].pos.z
+				, prays[i].dir.x, prays[i].dir.y, prays[i].dir.z);
+		}
+		return *this;
+	}
+
 	//more sophisticated 2D equi-spherical-area initializer, note: x is horizontal, y is vertical, z is towards observer
 	__host__ raybundle<T>& init_2D_dualpolar(vec3<T> originpos, T min_horz, T max_horz, T min_vert, T max_vert, T step)
 	{
@@ -301,13 +335,7 @@ public:
 		return *this;
 	}
 
-
-private:
-	
-	raysegment<T>* d_prays = nullptr;
-	point2D<int>* d_samplinggrid = nullptr;
-
-	inline void cleanObject(bool resetSize = true)
+	void cleanObject(bool resetSize = true)
 	{
 		if (d_sibling != nullptr) freesibling();
 		if (prays != nullptr)
@@ -322,6 +350,12 @@ private:
 		}
 		if (resetSize) size = 0;
 	}
+
+private:
+	
+	raysegment<T>* d_prays = nullptr;
+	point2D<int>* d_samplinggrid = nullptr;
+
 };
 
 template<typename T = float>
@@ -569,6 +603,11 @@ public:
 		return sizeof(*this);
 	}
 
+	__host__ bool isFlat()
+	{
+		return (param.A == 0 && param.B == 0 && param.C == 0 && param.D == 0 && param.E == 0 && param.F == 0);
+	}
+
 	//WARNING: polymorphism unusable if the object is not create inside the kernel
 	/*
 	__host__ __device__ inline raysegment<T> coordinate_transform(const raysegment<T>& original) const
@@ -586,93 +625,6 @@ public:
 		return ((pos.x*pos.x + pos.y*pos.y) <= (diameter*diameter / 4)) ? true : false;
 	}
 	*/
-};
-
-class OpticalConfig
-{
-public:
-	int numofsurfaces = 2;
-	int wavelength = 555; // wavelength in nm, all surfaces data within this config uses this same wavelength
-	mysurface<MYFLOATTYPE>** surfaces = nullptr;
-
-	OpticalConfig(int numberOfSurfaces, int _wavelength = 555) 
-		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
-	{
-		surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
-	}
-
-	~OpticalConfig()
-	{
-		freesiblings();
-		for (int i = 0; i < numofsurfaces; i++)
-		{
-			delete surfaces[i];
-		}
-		delete[] surfaces;
-	}
-
-	mysurface<MYFLOATTYPE>* operator[](int i)
-	{
-		return surfaces[i];
-	}
-
-	void copytosiblings()
-	{
-		for (int i = 0; i < numofsurfaces; i++)
-			surfaces[i]->copytosibling();
-	}
-
-	void freesiblings()
-	{
-		for (int i = 0; i < numofsurfaces; i++)
-			surfaces[i]->freesibling();
-	}
-
-private:
-
-	//disable both of them, OpticalConfig are meant to only be created and destroyed, not passing around
-	OpticalConfig(const OpticalConfig& origin);
-	OpticalConfig operator=(const OpticalConfig& origin);
-
-};
-
-
-class RayBundleColumn 
-{
-public:
-	int numofsurfaces = 2;
-	int wavelength = 555;
-
-	raybundle<MYFLOATTYPE>** bundles = nullptr;
-
-	RayBundleColumn(int numberOfSurfaces, int _wavelength)
-		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
-	{
-		bundles = new raybundle<MYFLOATTYPE>*[numofsurfaces + 1];
-		for (int i = 0; i < numofsurfaces + 1; i++)
-		{
-			bundles[i] = new raybundle<MYFLOATTYPE>(32, wavelength); //initialize with 32 rays, for example
-		}
-	}
-
-	~RayBundleColumn()
-	{
-		LOG2("column destructor called")
-		for (int i = 0; i < numofsurfaces + 1; i++)
-		{
-			delete bundles[i];
-		}
-		delete[] bundles;
-	}
-
-	raybundle<MYFLOATTYPE>& operator[](int i)
-	{
-		return *(bundles[i]);
-	}
-private:
-	//disable both until an appropriate use for them can be found
-	RayBundleColumn(const RayBundleColumn& origin);
-	RayBundleColumn operator=(const RayBundleColumn& origin);
 };
 
 class PixelArrayDescriptor
@@ -709,9 +661,9 @@ public:
 	MYFLOATTYPE m_maxTheta;
 	MYFLOATTYPE m_maxPhi;
 	MYFLOATTYPE m_r;
-	
+
 	//test function
-	__host__ __device__ inline bool testBool() 
+	__host__ __device__ inline bool testBool()
 	{
 		return true;
 	}
@@ -735,7 +687,7 @@ public:
 		MYFLOATTYPE Rp = m_R0 * cos(nyf*m_thetaR);
 		MYFLOATTYPE nxf = asin(worldCoor.x / Rp) / m_thetaR;
 		pixelCoor = { static_cast<int>(floor(nxf)) ,static_cast<int>(floor(nyf)) };
-		
+
 		bool returnVal = checkArrayBound(pixelCoor);
 		return returnVal;
 	}
@@ -848,6 +800,7 @@ private:
 public:
 	point2D<int> m_dimension;
 	point2D<int> m_zeroOffset;
+	PixelArrayDescriptor* mp_descriptor;
 	MYFLOATTYPE* hp_raw = nullptr;
 	MYFLOATTYPE* dp_raw = nullptr;
 	RetinaImageChannel* dp_sibling = nullptr;
@@ -859,6 +812,22 @@ public:
 		createHostImage();
 	}
 
+	__host__ void setToValue(MYFLOATTYPE value, const PixelArrayDescriptor& retinaDescriptor)
+	{
+		for (int i = 0; i < m_dimension.x; i++)
+		{
+			for (int j = 0; j < m_dimension.y; j++)
+			{
+				point2D<int> pixelCoor(i - m_zeroOffset.x, j - m_zeroOffset.y);
+				if (retinaDescriptor.checkArrayBound(pixelCoor))
+				{
+					hp_raw[j*m_dimension.x + i] = value;
+				}
+
+			}
+		}
+	}
+
 	__host__ __device__  RetinaImageChannel(const RetinaImageChannel& origin)
 		: m_dimension(origin.m_dimension), m_zeroOffset(origin.m_zeroOffset),
 		hp_raw(origin.hp_raw), dp_raw(origin.dp_raw)
@@ -866,7 +835,7 @@ public:
 
 	__host__ __device__ ~RetinaImageChannel()
 	{
-#ifndef __CUDA_ARCH__
+#ifndef __CUDA_ARCH__ //these codes only execute on the host side, not on device's side
 		deleteSibling();
 		//clear all memory
 		deleteHostImage();
@@ -971,6 +940,131 @@ private:
 		return __longlong_as_double(old);
 	}
 };
+
+class OpticalConfig
+{
+public:
+	int numofsurfaces = 2;
+	float wavelength = 555.0; // wavelength in nm, all surfaces data within this config uses this same wavelength
+	mysurface<MYFLOATTYPE>** surfaces = nullptr;
+
+	RetinaImageChannel* p_rawChannel = nullptr;
+	PixelArrayDescriptor* p_retinaDescriptor = nullptr;
+
+	void createImageChannel(PixelArrayDescriptor* p_RetinaDescriptorIn)
+	{
+		deleteImageChannel();
+		p_retinaDescriptor = p_RetinaDescriptorIn;
+		p_rawChannel = new RetinaImageChannel(*p_retinaDescriptor);
+	}
+
+	void deleteImageChannel()
+	{
+		if (p_rawChannel != nullptr)
+			delete p_rawChannel;
+		p_rawChannel = nullptr;
+
+		if (p_retinaDescriptor != nullptr)
+			delete p_retinaDescriptor;
+		p_retinaDescriptor = nullptr;
+	}
+
+	struct EntrancePupilLocation
+	{
+		MYFLOATTYPE y;
+		MYFLOATTYPE z;
+		MYFLOATTYPE phi;
+	};
+
+	EntrancePupilLocation entrance;
+
+	OpticalConfig(int numberOfSurfaces, float _wavelength = 555.0) 
+		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
+	{
+		surfaces = new mysurface<MYFLOATTYPE>*[numofsurfaces];
+	}
+
+	~OpticalConfig()
+	{
+		deleteImageChannel();
+		freesiblings();
+		for (int i = 0; i < numofsurfaces; i++)
+		{
+			delete surfaces[i];
+		}
+		delete[] surfaces;
+	}
+
+	mysurface<MYFLOATTYPE>* operator[](int i)
+	{
+		return surfaces[i];
+	}
+
+	void copytosiblings()
+	{
+		for (int i = 0; i < numofsurfaces; i++)
+			surfaces[i]->copytosibling();
+	}
+
+	void freesiblings()
+	{
+		for (int i = 0; i < numofsurfaces; i++)
+			surfaces[i]->freesibling();
+	}
+
+	void setEntrancePupil(EntrancePupilLocation newLocation)
+	{
+		entrance = newLocation;
+	}
+
+private:
+
+	//disable both of them, OpticalConfig are meant to only be created and destroyed, not passing around
+	OpticalConfig(const OpticalConfig& origin);
+	OpticalConfig operator=(const OpticalConfig& origin);
+
+};
+
+
+class RayBundleColumn 
+{
+public:
+	int numofsurfaces = 2;
+	float wavelength = 555.0;
+
+	raybundle<MYFLOATTYPE>** bundles = nullptr;
+
+	RayBundleColumn(int numberOfSurfaces, int _wavelength)
+		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
+	{
+		bundles = new raybundle<MYFLOATTYPE>*[numofsurfaces + 1];
+		for (int i = 0; i < numofsurfaces + 1; i++)
+		{
+			bundles[i] = new raybundle<MYFLOATTYPE>(32, wavelength); //initialize with 32 rays, for example
+		}
+	}
+
+	~RayBundleColumn()
+	{
+		LOG2("column destructor called")
+		for (int i = 0; i < numofsurfaces + 1; i++)
+		{
+			delete bundles[i];
+		}
+		delete[] bundles;
+	}
+
+	raybundle<MYFLOATTYPE>& operator[](int i)
+	{
+		return *(bundles[i]);
+	}
+private:
+	//disable both until an appropriate use for them can be found
+	RayBundleColumn(const RayBundleColumn& origin);
+	RayBundleColumn operator=(const RayBundleColumn& origin);
+};
+
+
 
 
 

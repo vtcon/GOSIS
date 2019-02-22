@@ -64,3 +64,7 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface,
 	MYFLOATTYPE n2 = 1,
 	MYFLOATTYPE conicConstantK = 0,
 	point2D<MYFLOATTYPE> primaryAxisTiltThetaAndPhiInDegree = { 0,0 });
+
+int ColumnCreator3();
+int KernelLauncher(int argc, char** argv);
+int KernelLauncher2(int argc, char** argv);
