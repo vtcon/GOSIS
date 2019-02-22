@@ -59,7 +59,7 @@
       <Keep>true</Keep>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
-      <Defines>_CUDACOMPILER</Defines>
+      <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
       <InterleaveSourceInPTX>true</InterleaveSourceInPTX>
       <PtxAsOptionV>true</PtxAsOptionV>
       <AdditionalCompilerOptions>
@@ -93,7 +93,7 @@
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
       <CodeGeneration>compute_30,sm_30</CodeGeneration>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
-      <Defines>_CUDACOMPILER</Defines>
+      <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
     </CudaCompile>
     <CudaLink>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

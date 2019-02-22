@@ -5,6 +5,8 @@
 
 #include <list>
 
+using namespace tracer;
+
 //internal global variables
 std::list<StorageManager> repoList;
 StorageManager mainStorageManager;
@@ -12,7 +14,7 @@ float activeWavelength = 555.0;
 
 //external global variables
 int PI_ThreadsPerKernelLaunch = 16;
-
+int PI_linearRayDensity = 20;
 
 //function definitions
 bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
@@ -23,13 +25,49 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 		return false;
 }
 
-PI_Message addPoint(PI_LuminousPoint & toAdd)
+PI_Message tracer::test()
 {
-	mainStorageManager.add(toAdd);
+	int count = 3;
+	PI_Surface* surfaces = new PI_Surface[count];
+	surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 2.0;
+	surfaces[1].z = 10.0; surfaces[1].diameter = 40.0; surfaces[1].radius = -40.0; surfaces[1].refractiveIndex = 1.0;
+	surfaces[2].diameter = 40.0; surfaces[2].radius = -60.0;
+	float angularResol = 2.0;
+	float angularExtend = 90.0;
+
+
+	addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+
+	int pcount = 1;
+	
+	PI_LuminousPoint point;
+	point.x = 0.0;
+	point.y = 0.0;
+	point.z = 100.0;
+	addPoint(point);
+	
+	checkData();
+	trace();
+	render();
+
+	delete[] surfaces;
+
+	return {PI_OK, "Test OK"};
+}
+
+PI_Message tracer::addPoint(PI_LuminousPoint & toAdd)
+{
+	LuminousPoint point;
+	point.x = toAdd.x;
+	point.y = toAdd.y;
+	point.z = toAdd.z;
+	point.intensity = toAdd.intensity;
+	point.wavelength = toAdd.wavelength;
+	mainStorageManager.add(point);
 	return PI_Message();
 }
 
-PI_Message addOpticalConfigAt(float wavelength, int count, PI_Surface *& toAdd, float angularResolution, float angularExtend)
+PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *& toAdd, float angularResolution, float angularExtend)
 {
 	int numofsurfaces = count;
 	float wavelength1 = wavelength;
@@ -79,7 +117,7 @@ PI_Message addOpticalConfigAt(float wavelength, int count, PI_Surface *& toAdd, 
 	return { PI_OK, "Optical Config added" };
 }
 
-PI_Message checkData()
+PI_Message tracer::checkData()
 {
 	float* currentwavelength = nullptr;
 	bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::uninitialized);
@@ -95,7 +133,7 @@ PI_Message checkData()
 	return PI_Message();
 }
 
-PI_Message trace()
+PI_Message tracer::trace()
 {
 	float* currentwavelength = nullptr;
 	bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::initialized);
@@ -111,7 +149,7 @@ PI_Message trace()
 	return PI_Message();
 }
 
-PI_Message render()
+PI_Message tracer::render()
 {
 	float* currentwavelength = nullptr;
 	bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::completed1);

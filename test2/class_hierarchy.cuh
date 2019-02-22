@@ -25,7 +25,7 @@ class raysegment
 public:
 	vec3<T> pos, dir;
 	point2D<int> spos;
-	T intensity = 0; //radiant intensity in W/sr
+	T intensity = 0.0; //radiant intensity in W/sr
 
 	//obsolete: 1 is active, 0 is deactivated, 2 is finised, more to come
 

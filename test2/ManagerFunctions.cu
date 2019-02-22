@@ -764,8 +764,8 @@ int ColumnCreator3()
 {
 	float wavelength1 = activeWavelength;
 
-	PI_LuminousPoint* p_point = nullptr;
-	bool output = mainStorageManager.takeOne(p_point, StorageHolder<PI_LuminousPoint>::Status::uninitialized, wavelength1);
+	LuminousPoint* p_point = nullptr;
+	bool output = mainStorageManager.takeOne(p_point, StorageHolder<LuminousPoint>::Status::uninitialized, wavelength1);
 	if (!output) //no jobs to do
 		return -2;
 
@@ -783,9 +783,10 @@ int ColumnCreator3()
 	//call initializer of the first bundle in column
 	//(*job)[0].init_2D_dualpolar(point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
 	//init_2D_dualpolar(&((*job)[0]), point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
-	init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, 2.0 / 180 * MYPI); //0.1 for release, 2.0 for debug
+	//init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, 2.0 / 180 * MYPI); //0.1 for release, 2.0 for debug
+	init_2D_dualpolar_v3(&((*job)[0]), thisOpticalConfig, point);
 
-	mainStorageManager.jobCheckIn(p_point, StorageHolder<PI_LuminousPoint>::Status::initialized);
+	mainStorageManager.jobCheckIn(p_point, StorageHolder<LuminousPoint>::Status::initialized);
 
 	//mark the column as initialized after initializing it
 	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);

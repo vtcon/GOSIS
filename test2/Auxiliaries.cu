@@ -12,6 +12,7 @@ bool narrowingSweep(OpticalConfig* thisOpticalConfig, MYFLOATTYPE z_position, MY
 
 //external global variable
 extern int PI_ThreadsPerKernelLaunch;
+extern int PI_linearRayDensity;
 
 //global variable
 static MYFLOATTYPE lastStepSize = 89; //this is bad, but I have no other solution
@@ -518,16 +519,146 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 	return;
 }
 
+template<typename T>
+void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig, vec3<T> origin)
+{
+	T epr = static_cast<T>(thisOpticalConfig->entrance.y);
+	T epz = static_cast<T>(thisOpticalConfig->entrance.z);
 
+	//find the vertical extends
+	T deltaz = abs(origin.z - epz);
+	T rho = sqrt(origin.x*origin.x + origin.y*origin.y);
+	if (origin.y > 0) rho = -rho;
+	vec3<T> center = vec3<T>(deltaz, rho, 0);
+	vec3<T> up = center + vec3<T>(0, epr, 0);
+	vec3<T> down = center + vec3<T>(0, -epr, 0);
+	T thetaup = asin(norm(cross(center, up)) / (norm(center)*norm(up)));
+	T thetadown = asin(norm(cross(center, down)) / (norm(center)*norm(down)));
 
+	//find the horizontal extends
+	T d = sqrt(rho*rho + deltaz * deltaz);
+	T phiMax = atan(epr / d);
+	T phiMin = atan(-epr / d);
 
+	//clamping the step size to the min of any of the four extends
+	T step = 0.1;
+	if ((phiMax + abs(phiMin)) <= (thetaup + abs(thetadown)))
+	{
+		step = (phiMax + abs(phiMin)) / PI_linearRayDensity;
+	}
+	else
+	{
+		step = (thetaup + abs(thetadown)) / PI_linearRayDensity;
+	}
 
+	//TODO: fix this
+	T min_horz = phiMin;
+	T min_vert = -thetadown;
+	T max_horz = phiMax;
+	T max_vert = thetaup;
 
+	//find the transformation matrix
+	vec3<T> kp(origin.x, origin.y, origin.z - epz);
+	vec3<T> jp(0, 1, 0);
+	vec3<T> ip(1, 0, 0);
+	if (origin.x == 0 && origin.y == 0)
+	{
+		kp = vec3<T>(0, 0, 1);
+	}
+	else
+	{
+		jp = vec3<T>(abs(origin.x), abs(origin.y), 0);
+		jp.z = (-jp.x*kp.x - jp.y*kp.y) / (kp.z);
+		ip = cross(jp, kp);
+		ip = normalize(ip);
+		jp = normalize(jp);
+		kp = normalize(kp);
+	}
+	vec3<T> transformmat[3] = { vec3<T>(ip.x,jp.x,kp.x),vec3<T>(ip.y,jp.y,kp.y) ,vec3<T>(ip.z,jp.z,kp.z) };
 
+	//calculate a guess for array size
+	int temp_size = static_cast<int>((max_horz / step - min_horz / step + 1)*
+		(max_vert / step - min_vert / step + 1));
 
+	//for safety, reclean the object before initialization
+	bundle->cleanObject();
 
+	//assign temporary memory
+	raysegment<T>* temp_prays = new raysegment<T>[temp_size];
+	point2D<int>* temp_samplinggrid = new point2D<int>[temp_size];
 
+	//declaration
+	T angle_horz;
+	T angle_vert;
+	T semi_axis_horz;
+	T semi_axis_vert;
+	T x, y, z;
 
+#define QUADRAND_ALL
+#ifdef QUADRAND_ALL
+	for (int i = static_cast<int>(min_horz / step); i < (max_horz / step) + 1; i++)
+	{
+		for (int j = static_cast<int>(min_vert / step); j < (max_vert / step) + 1; j++)
+		{
+#endif
+			//if the sampling point is within ellipse-bound and smaller than pi/2
+			angle_horz = i * step;
+			angle_vert = j * step;
+			semi_axis_horz = (angle_horz < 0) ? min_horz : max_horz;
+			semi_axis_vert = (angle_vert < 0) ? min_vert : max_vert;
+			if (((angle_horz / semi_axis_horz)*(angle_horz / semi_axis_horz) +
+				(angle_vert / semi_axis_vert)*(angle_vert / semi_axis_vert)
+				<= 1)
+				&& (angle_horz < MYPI / 2 && angle_vert < MYPI / 2)
+				&& (sin(angle_horz)*sin(angle_horz) + sin(angle_vert)*sin(angle_vert) <= 1)
+				)
+			{
+				//register
+				temp_samplinggrid[bundle->size] = point2D<int>(i, j);
+				/*
+				z = -1 / sqrt(1 + tan(angle_horz)*tan(angle_horz) + tan(angle_vert)*tan(angle_vert));
+				x = -z * tan(angle_horz);
+				y = -z * tan(angle_vert);
+				*/
+				x = sin(angle_horz);
+				y = sin(angle_vert);
+				z = -sqrt(1 - x * x - y * y);
+				vec3<T> pretransformed(x, y, z);
+				vec3<T> transformed(dot(pretransformed, transformmat[0]), dot(pretransformed, transformmat[1]), dot(pretransformed, transformmat[2]));
+				temp_prays[bundle->size] = raysegment<T>(origin, transformed);
+				temp_prays[bundle->size].intensity = 1.0;
+				bundle->size += 1;
+			}
+		}
+	}
+
+	//copy temporary arrays to final arrays
+	bundle->prays = new raysegment<T>[bundle->size];
+	bundle->samplinggrid = new point2D<int>[bundle->size];
+	memcpy(bundle->prays, temp_prays, bundle->size * sizeof(raysegment<T>));
+	memcpy(bundle->samplinggrid, temp_samplinggrid, bundle->size * sizeof(point2D<int>));
+	delete[] temp_prays;
+	delete[] temp_samplinggrid;
+
+	//debugging: printout trace
+#ifdef _MYDEBUGMODE
+#ifdef _DEBUGMODE2
+	if (bundle->samplinggrid != nullptr && bundle->prays != nullptr)
+	{
+		for (int i = 0; i < bundle->size; i++)
+		{
+			printf("i = %d\t (u,v) = (%d,%d)\t at (%f,%f,%f)\t pointing (%f,%f,%f)\n", i,
+				bundle->samplinggrid[i].u, bundle->samplinggrid[i].v,
+				bundle->prays[i].pos.x, bundle->prays[i].pos.y, bundle->prays[i].pos.z,
+				bundle->prays[i].dir.x, bundle->prays[i].dir.y, bundle->prays[i].dir.z);
+		}
+	}
+	else printf("error: null ptr detected");
+#endif
+#endif
+
+	return;
+}
 
 
 //template's explicit instantiation
@@ -548,3 +679,9 @@ void init_2D_dualpolar_v2<float>(raybundle<float>* bundle, OpticalConfig* thisOp
 
 template
 void init_2D_dualpolar_v2<double>(raybundle<double>* bundle, OpticalConfig* thisOpticalConfig, vec3<double> origin, double step);
+
+template
+void init_2D_dualpolar_v3<float>(raybundle<float>* bundle, OpticalConfig* thisOpticalConfig, vec3<float> origin);
+
+template
+void init_2D_dualpolar_v3<double>(raybundle<double>* bundle, OpticalConfig* thisOpticalConfig, vec3<double> origin);

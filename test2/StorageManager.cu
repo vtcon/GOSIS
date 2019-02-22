@@ -171,16 +171,16 @@ void StorageManager::pleaseDelete(RayBundleColumn*& todelete)
 	return;
 }
 
-bool StorageManager::add(PI_LuminousPoint toAdd)
+bool StorageManager::add(LuminousPoint toAdd)
 {
 	//check if point already exists, if yes, quit, else add it
-	auto pred = [toAdd](const StorageHolder<PI_LuminousPoint>& thisholder)
+	auto pred = [toAdd](const StorageHolder<LuminousPoint>& thisholder)
 	{
 		bool cond = thisholder.content == toAdd;
 		return cond;
 	};
 
-	std::list<StorageHolder<PI_LuminousPoint>>::iterator token;//...ugh
+	std::list<StorageHolder<LuminousPoint>>::iterator token;//...ugh
 	{
 		std::lock_guard<std::mutex> lock(pointLedgerLock);
 		token = std::find_if(pointLedger.begin(), pointLedger.end(), pred);
@@ -190,7 +190,7 @@ bool StorageManager::add(PI_LuminousPoint toAdd)
 
 	{
 		std::lock_guard<std::mutex> lock(pointLedgerLock);
-		pointLedger.emplace_back(StorageHolder<PI_LuminousPoint>(toAdd, StorageHolder<PI_LuminousPoint>::Status::uninitialized));
+		pointLedger.emplace_back(StorageHolder<LuminousPoint>(toAdd, StorageHolder<LuminousPoint>::Status::uninitialized));
 	}
 	
 	//check if wavelength of the point already exists, if not, add it
@@ -215,19 +215,19 @@ bool StorageManager::add(PI_LuminousPoint toAdd)
 	return true;
 }
 
-bool StorageManager::takeOne(PI_LuminousPoint *& requiredinfo, StorageHolder<PI_LuminousPoint>::Status requiredstatus, float requiredwavelength)
+bool StorageManager::takeOne(LuminousPoint *& requiredinfo, StorageHolder<LuminousPoint>::Status requiredstatus, float requiredwavelength)
 {
 	if (pointLedger.empty()) return false; //if there's nothing to be taken
 
 	//define a lambda that returns true if the status is initialized
-	auto pred = [requiredstatus, requiredwavelength](const StorageHolder<PI_LuminousPoint>& thisholder)
+	auto pred = [requiredstatus, requiredwavelength](const StorageHolder<LuminousPoint>& thisholder)
 	{
 		bool cond1 = thisholder.status == requiredstatus;
 		bool cond2 = thisholder.content.wavelength == requiredwavelength;
 		return cond1 && cond2;
 	};
 
-	std::list<StorageHolder<PI_LuminousPoint>>::iterator token;//...ugh
+	std::list<StorageHolder<LuminousPoint>>::iterator token;//...ugh
 	{
 		std::lock_guard<std::mutex> lock(pointLedgerLock);
 		token = std::find_if(pointLedger.begin(), pointLedger.end(), pred);
@@ -236,23 +236,23 @@ bool StorageManager::takeOne(PI_LuminousPoint *& requiredinfo, StorageHolder<PI_
 	if (token == pointLedger.end()) return false; //if none is found
 
 	//return the found object, set its status to inUse
-	token->status = StorageHolder<PI_LuminousPoint>::nextStatus(requiredstatus);
+	token->status = StorageHolder<LuminousPoint>::nextStatus(requiredstatus);
 	requiredinfo = &(token->content);
 
 	return true;
 }
 
-bool StorageManager::jobCheckIn(PI_LuminousPoint *& job, StorageHolder<PI_LuminousPoint>::Status nextstatus)
+bool StorageManager::jobCheckIn(LuminousPoint *& job, StorageHolder<LuminousPoint>::Status nextstatus)
 {
 	//define a lambda
-	auto pred = [&job, nextstatus](const StorageHolder<PI_LuminousPoint>& thisholder)
+	auto pred = [&job, nextstatus](const StorageHolder<LuminousPoint>& thisholder)
 	{
 		bool cond1 = thisholder.content == *job;
-		//bool cond2 = thisholder.status == StorageHolder<PI_LuminousPoint>::prevStatus(nextstatus);
+		//bool cond2 = thisholder.status == StorageHolder<LuminousPoint>::prevStatus(nextstatus);
 		return cond1;
 	};
 
-	std::list<StorageHolder<PI_LuminousPoint>>::iterator token;
+	std::list<StorageHolder<LuminousPoint>>::iterator token;
 	{
 		std::lock_guard<std::mutex> lock(pointLedgerLock);
 		token = std::find_if(pointLedger.begin(), pointLedger.end(), pred);
@@ -299,7 +299,7 @@ bool StorageManager::jobCheckIn(float *& job, StorageHolder<float>::Status nexts
 	auto pred = [&job, nextstatus](const StorageHolder<float>& thisholder)
 	{
 		bool cond1 = thisholder.content == *job;
-		//bool cond2 = thisholder.status == StorageHolder<PI_LuminousPoint>::prevStatus(nextstatus);
+		//bool cond2 = thisholder.status == StorageHolder<LuminousPoint>::prevStatus(nextstatus);
 		return cond1;
 	};
 

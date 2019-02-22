@@ -119,8 +119,10 @@ extern int GPUmanager(int argc = 0, char** argv = nullptr);
 extern void testRenderer();
 extern void testbenchGPU();
 
+using namespace tracer;
 void roughUI()
 {
+	
 	/*
 	int count = 0;
 	std::cout << "Please enter the number of surfaces\n";
@@ -160,13 +162,12 @@ void roughUI()
 	*/
 
 	//test data
-	
 	int count = 3;
 	PI_Surface* surfaces = new PI_Surface[count];
 	surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 2.0;
 	surfaces[1].z = 10.0; surfaces[1].diameter = 40.0; surfaces[1].radius = -40.0; surfaces[1].refractiveIndex = 1.0;
 	surfaces[2].diameter = 40.0; surfaces[2].radius = -60.0;
-	float angularResol = 2.0;
+	float angularResol = 0.16;
 	float angularExtend = 90.0;
 	
 

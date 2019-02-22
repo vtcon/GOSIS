@@ -31,6 +31,24 @@ public:
 	}
 };
 
+class LuminousPoint
+{
+public:
+	float x = 0.0;
+	float y = 0.0;
+	float z = 0.0;
+	float wavelength = 555.0;
+	float intensity = 1.0;
+
+	bool operator==(const LuminousPoint& rhs) const
+	{
+		if (x == rhs.x &&y == rhs.y &&z == rhs.z &&wavelength == rhs.wavelength &&intensity == rhs.intensity)
+			return true;
+		else
+			return false;
+	}
+};
+
 //this class should be wayyyyyy below
 class StorageManager
 {
@@ -57,16 +75,16 @@ public:
 	void pleaseDelete(RayBundleColumn*& todelete);
 
 	//add a point to the ledger, if it has a new wavelength, add the wavelength to ledger
-	bool add(PI_LuminousPoint toAdd);
+	bool add(LuminousPoint toAdd);
 
 	//take a point at a given status and given wavelength
-	bool takeOne(PI_LuminousPoint*& requiredinfo, StorageHolder<PI_LuminousPoint>::Status requiredstatus, float requiredwavelength);
+	bool takeOne(LuminousPoint*& requiredinfo, StorageHolder<LuminousPoint>::Status requiredstatus, float requiredwavelength);
 
 	//mark the status of a point
-	bool jobCheckIn(PI_LuminousPoint*& job, StorageHolder<PI_LuminousPoint>::Status nextstatus);
+	bool jobCheckIn(LuminousPoint*& job, StorageHolder<LuminousPoint>::Status nextstatus);
 
 	//delete a point
-	void pleaseDelete(PI_LuminousPoint todelete);
+	void pleaseDelete(LuminousPoint todelete);
 
 	//delete all points of a specific wavelength
 	void pleaseDeleteAllPoints(float wavelength);
@@ -92,7 +110,7 @@ private:
 
 	//TODO: points ledger
 	std::mutex pointLedgerLock;
-	std::list<StorageHolder<PI_LuminousPoint>> pointLedger;
+	std::list<StorageHolder<LuminousPoint>> pointLedger;
 
 	//TODO: image ledger
 	std::mutex imageLedgerLock;
