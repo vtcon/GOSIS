@@ -117,7 +117,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	int ID = (blockIdx.x*blockDim.x) + threadIdx.x;
 	if (ID >= kernelLaunchParams.otherparams[0]) return;
 #ifdef _MYDEBUGMODE
-	int debugID = 6;
+	int debugID = 1;
 #endif
 	//ID = debugID;
 	//triangle vertices, in real program should translate world coor to retina local coor
@@ -132,6 +132,12 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	vec3<MYFLOATTYPE> pdir3 = kernelLaunchParams.dp_triangles[ID].dir3;
 	vec3<MYFLOATTYPE> pdir = (pdir1 + pdir2 + pdir3) / 3.0;
 
+	//intensity of the triangle is the average intensity of three rays
+	MYFLOATTYPE intensity1 = kernelLaunchParams.dp_triangles[ID].intensity1;
+	MYFLOATTYPE intensity2 = kernelLaunchParams.dp_triangles[ID].intensity2;
+	MYFLOATTYPE intensity3 = kernelLaunchParams.dp_triangles[ID].intensity3;
+	MYFLOATTYPE triangleIntensity = (intensity1 + intensity2 + intensity3) / 3.0;
+
 	RetinaImageChannel* dp_rawChannel = kernelLaunchParams.dp_rawChannel;
 	//MYFLOATTYPE thetaR = retinaDescriptor.m_thetaR;
 	SimpleRetinaDescriptor retinaDescriptor = kernelLaunchParams.retinaDescriptorIn;
@@ -140,10 +146,15 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	//RetinaImageChannel rawChannel(*dp_rawChannel);
 
 	MYFLOATTYPE R0 = retinaDescriptor.m_R0;
+#ifdef _MYDEBUGMODE
+	if (ID == debugID) printf("m_R0 = %f, R0 = %f\n", retinaDescriptor.m_R0, R0);
+#endif
 	//TODO: if R0 is infinity (flat retina), take R0 equals distance between system's stop and the retina
 
 	//for testing only, in real just take the translated version of z
+	//if (ID == debugID) printf("vtx1.z before = %f\n", vtx1.z);
 	vtx1.z = sqrt(R0*R0 - vtx1.x*vtx1.x - vtx1.y*vtx1.y);
+	//if (ID == debugID) printf("vtx1.z after = %f\n", vtx1.z);
 	vtx2.z = sqrt(R0*R0 - vtx2.x*vtx2.x - vtx2.y*vtx2.y);
 	vtx3.z = sqrt(R0*R0 - vtx3.x*vtx3.x - vtx3.y*vtx3.y);
 	//***********************core program part************************************
@@ -207,7 +218,11 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 #endif
 	//if found no point, quit
 	if (outputSearch == 0)
+	{
+		printf("ID %d output search unsuccessful!\n", ID);
 		return;
+	}
+		
 #ifdef _MYDEBUGMODE
 	if (ID == debugID) printf("ID %d pCur = %d,%d\n", ID, pCur.x, pCur.y);
 #endif
@@ -233,7 +248,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 		{
 			//if point is found, do something(save it)
 			IOA = abs(IOA);
-			dp_rawChannel->addToPixel({ nx, ny }, IOA);
+			dp_rawChannel->addToPixel({ nx, ny }, triangleIntensity*IOA);
 #ifdef _MYDEBUGMODE
 			if (ID == debugID) printf("ID %d added to pixel %d,%d\n", ID, nx, ny);
 #endif
@@ -267,7 +282,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 		{
 			//if point is found, do something(save it)
 			IOA = abs(IOA);
-			dp_rawChannel->addToPixel({ nx, ny }, IOA);
+			dp_rawChannel->addToPixel({ nx, ny }, triangleIntensity*IOA);
 #ifdef _MYDEBUGMODE
 			if (ID == debugID) printf("ID %d added to pixel %d,%d \n", ID, nx, ny);
 #endif

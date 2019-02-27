@@ -25,6 +25,9 @@ struct PerKernelRenderingInput
 	vec3<MYFLOATTYPE> dir1;
 	vec3<MYFLOATTYPE> dir2;
 	vec3<MYFLOATTYPE> dir3;
+	MYFLOATTYPE intensity1;
+	MYFLOATTYPE intensity2;
+	MYFLOATTYPE intensity3;
 	//more could be intensity, OPL etc.
 };
 

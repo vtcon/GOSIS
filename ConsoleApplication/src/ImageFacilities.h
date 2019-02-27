@@ -7,6 +7,10 @@
 #define IF_PROJECTION_ALONGZ 1
 #define IF_PROJECTION_MECATOR 2
 
+#define IF_SRGB 0
+#define IF_ADOBERGB 1
+
+
 void testopencv();
 
 template<typename T>

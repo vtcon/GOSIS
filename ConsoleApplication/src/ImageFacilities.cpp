@@ -12,6 +12,7 @@ using namespace cv; //only inside this file
 
 //forward declaration of internally-used functions
 void showOnWindow(std::string windowName, Mat image);
+void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption = IF_SRGB);
 
 //specialize the templates before using them
 template<> void quickDisplay<float>(float* rawData, int rows, int columns, int longEdge);
@@ -33,6 +34,157 @@ void quickDisplay()
 	showOnWindow("test", imgout);
 }
 
+void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
+{
+	/*
+	//normalize XYZ mat so that max Y = 1.0
+	Mat channelY(XYZmat.size(), CV_64FC1);
+	int fromtopair[] = { 1,0 };
+	mixChannels(&XYZmat, 1, &channelY, 1, fromtopair, 1);
+	double normY = norm(channelY, NORM_INF);
+	XYZmat.convertTo(XYZmat, -1, 1.0 / normY, 0);
+	*/
+
+	//std::cout << "input img = \n" << XYZmat << "\n";
+
+	double aWhite[3];
+	double aBlack[3];
+	double transformMat[9];
+	double gammaLowerBound = 0.0;
+	double gammaLowerBoundAlpha = 0.0;
+	double gamma = 0.0;
+	double gammaAlpha = 0.0;
+	double gammaBeta = 0.0;
+
+	if (RGBoption == IF_ADOBERGB)//AdobeRGB specification
+	{
+		aWhite[0] = 152.07; aWhite[1] = 160.00; aWhite[2] = 174.25;
+		aBlack[0] = 0.5282; aBlack[1] = 0.5557; aBlack[2] = 0.6052;
+		 
+		transformMat[0] = 2.04159;	transformMat[1] = -0.56501; transformMat[2] = -0.34473;
+		transformMat[3] = -0.96924; transformMat[4] = 1.87597;	transformMat[5] = 0.04156;
+		transformMat[6] = 0.01344;	transformMat[7] = -0.11836; transformMat[8] = 1.01517;
+
+		gammaLowerBound = 0.0;
+		gammaLowerBoundAlpha = 0.0;
+		gamma = 1.0 / 2.19921875;
+		gammaAlpha = 1.0;
+		gammaBeta = 0.0;
+	}
+	else //sRGB specification
+	{
+		aWhite[0] = 76.04; aWhite[1] = 80; aWhite[2] = 87.12;
+		aBlack[0] = 0.1901; aBlack[1] = 0.2; aBlack[2] = 0.2178;
+
+		transformMat[0] = 3.2406255;	transformMat[1] = -1.537208;	transformMat[2] = -0.4986286;
+		transformMat[3] = -0.9689307;	transformMat[4] = 1.8757561;	transformMat[5] = 0.0415175;
+		transformMat[6] = 0.0557101;	transformMat[7] = -0.2040211;	transformMat[8] = 1.0569959;
+
+		gammaLowerBound = 0.0031308;
+		gammaLowerBoundAlpha = 12.92;
+		gamma = 1.0 / 2.4;
+		gammaAlpha = 1.055;
+		gammaBeta = -0.055;
+	}
+
+	//split the channels
+	Mat channels[3];
+	channels[0] = Mat::zeros(XYZmat.size(), CV_64FC1);
+	channels[1] = Mat::zeros(XYZmat.size(), CV_64FC1);
+	channels[2] = Mat::zeros(XYZmat.size(), CV_64FC1);
+	split(XYZmat, channels);
+
+	//find the brightest value in each of XYZ channels
+	double normX = norm(channels[0], NORM_INF);
+	double normY = norm(channels[1], NORM_INF);
+	double normZ = norm(channels[2], NORM_INF);
+
+	//std::cout << "normX =" << normX << " normY =" << normY << " normZ =" << normZ << "\n";
+
+	//scale them to absolute value
+	//by scaling each channel the max value set by reference absolute white
+	double selectScale = aWhite[0] / normX;
+	if ((normY*selectScale > aWhite[1]) || (normZ*selectScale > aWhite[2]))
+	{
+		selectScale = aWhite[1] / normY;
+		if ((normX*selectScale > aWhite[0]) || (normZ*selectScale > aWhite[2]))
+		{
+			selectScale = aWhite[2] / normZ;
+		}
+	}
+	for (int i = 0; i < 3; i++)
+	{
+		channels[i].convertTo(channels[i], -1, selectScale, 0.0);
+	}
+
+	//std::cout << "selectScale = " << selectScale << "\n";
+	//std::cout << "scaled channels = \n" << channels[0] << "\n" << channels[1] << "\n" << channels[2] << "\n";
+
+	//scale channels to normalized xyz value
+	channels[0].convertTo(channels[0], -1, aWhite[0] / (aWhite[1] * (aWhite[0] - aBlack[0])), (-aBlack[0] * aWhite[0]) / (aWhite[1] * (aWhite[0] - aBlack[0])));
+	channels[1].convertTo(channels[1], -1, 1 / (aWhite[1] - aBlack[1]), (-aBlack[1]) / (aWhite[1] - aBlack[1]));
+	channels[2].convertTo(channels[2], -1, aWhite[2] / (aWhite[1] * (aWhite[2] - aBlack[2])), (-aBlack[2] * aWhite[2]) / (aWhite[1] * (aWhite[2] - aBlack[2])));
+
+	//std::cout << "normalized channels = \n" << channels[0] << "\n" << channels[1] << "\n" << channels[2] << "\n";
+
+	//create RGB channels
+	Mat rgbs[3];
+	rgbs[0] = Mat::zeros(XYZmat.size(), CV_64FC1); //red
+	rgbs[1] = Mat::zeros(XYZmat.size(), CV_64FC1); //blue
+	rgbs[2] = Mat::zeros(XYZmat.size(), CV_64FC1); //green
+
+	scaleAdd(channels[0], transformMat[0], rgbs[0], rgbs[0]); //X to R
+	scaleAdd(channels[1], transformMat[1], rgbs[0], rgbs[0]); //Y to R
+	scaleAdd(channels[2], transformMat[2], rgbs[0], rgbs[0]); //Z to R
+	scaleAdd(channels[0], transformMat[3], rgbs[1], rgbs[1]); //X to G
+	scaleAdd(channels[1], transformMat[4], rgbs[1], rgbs[1]); //Y to G
+	scaleAdd(channels[2], transformMat[5], rgbs[1], rgbs[1]); //Z to G
+	scaleAdd(channels[0], transformMat[6], rgbs[2], rgbs[2]); //X to B
+	scaleAdd(channels[1], transformMat[7], rgbs[2], rgbs[2]); //Y to B
+	scaleAdd(channels[2], transformMat[8], rgbs[2], rgbs[2]); //Z to B
+
+	//std::cout << "rgb channels = \n" << rgbs[0] << "\n" << rgbs[1] << "\n" << rgbs[2] << "\n";
+
+	//clipping and do gamma transform
+	for (int k = 0; k < 3; k++)
+	{
+		for (int i = 0; i < rgbs[k].cols; i++)
+		{
+			for (int j = 0; j < rgbs[k].rows; j++)
+			{
+				double temp = rgbs[k].at<double>(j, i);
+
+				//gamma correction
+				if (temp < gammaLowerBound) //for value lower than bound
+				{
+					temp = gammaLowerBoundAlpha * temp;
+				}
+				else
+				{
+					temp = gammaAlpha*pow(temp, gamma)+gammaBeta;
+				}
+				
+				//clipping
+				temp = (temp < 0) ? 0.0 : temp;
+				temp = (temp > 1.0) ? 1.0 : temp;
+
+				rgbs[k].at<double>(j, i) = temp;
+			}
+		}
+	}
+	//std::cout << "rgb channels = \n" << rgbs[0] << "\n" << rgbs[1] << "\n" << rgbs[2] << "\n";
+
+	//assemble to BGR image
+	Mat bgrs[3] = { rgbs[2], rgbs[1], rgbs[0] };
+	BGRmat = Mat::zeros(XYZmat.size(), CV_64FC3);
+	merge(bgrs, 3, BGRmat);
+
+
+	//scale the output image to 255.0 and convert to 8UC3
+	BGRmat.convertTo(BGRmat, -1, 255.0, 0.0);
+	normalize(BGRmat, BGRmat, 255.0, 0.0, NORM_INF, CV_8UC3);
+	//std::cout << "scaled bgr = \n" << BGRmat << "\n";
+}
 
 void testopencv()
 {
@@ -40,13 +192,45 @@ void testopencv()
 
 	double rawdata[] = { 0.3, 0.1, 0.3, 0.9, 1.2, 0.8, 0.4, 0.5 };
 	float rawdata2[] = { 0.5, 0.6, 0.2, 0.0, 0.1, 0.5, 0.4, 1.3 };
+	double rawdata3[] = { // 3x3 of 3 components
+		0.3, 0.1, 0.3, 0.9, 1.2, 0.8, 0.4, 0.5, 0.4, 
+		0.3, 0.6, 0.3, 0.9, 0.1, 0.8, 0.4, 0.5, 0.6, 
+		0.3, 0.1, 0.3, 0.4, 0.5, 0.4, 0.6, 0.3, 0.9
+		//0.5, 0.6, 0.2, 0.0, 0.1, 0.5, 0.4, 1.3, 0.6, 0.3, 0.1, 0.3, 0.9, 1.2, 0.8, 0.4, 0.5, 0.4, 0.5, 0.6, 0.2, 0.4, 1.3, 0.6, 0.1, 0.3, 0.9,
+		//0.3, 0.6, 0.3, 0.9, 0.1, 0.8, 0.4, 0.5, 0.6, 0.3, 0.1, 0.3, 0.9, 1.2, 0.8, 0.4, 0.5, 0.4, 0.3, 0.6, 0.3, 0.4, 0.5, 0.6, 0.1, 0.3, 0.9
+	};
+
+	/*
+	Mat testimg(3, 3, CV_64FC3, rawdata3);
+	Mat outimg;
+	XYZtoBGR(testimg, outimg, IF_ADOBERGB);
+	resize(outimg, outimg, Size(), 500 / max(outimg.rows, outimg.cols), 500 / max(outimg.rows, outimg.cols), INTER_NEAREST);
+	showOnWindow("test", outimg);
+	XYZtoBGR(testimg, outimg, IF_SRGB);
+	resize(outimg, outimg, Size(), 500 / max(outimg.rows, outimg.cols), 500 / max(outimg.rows, outimg.cols), INTER_NEAREST);
+	showOnWindow("test", outimg);
+	*/
+
+	/*
+	Mat channelY(testimg.size(), CV_64FC1);
+	std::cout << channelY << "\n";
+	int fromtopair[] = { 1,0 };
+	mixChannels(&testimg, 1, &channelY, 1, fromtopair, 1);
+	std::cout << channelY << "\n";
+	double normY = norm(channelY, NORM_INF);
+	std::cout << normY << "\n";
+	testimg.convertTo(testimg, -1, 1.0 / normY, 0);
+	std::cout << testimg << "\n";
+	*/
 	//quickDisplay(rawdata, 4, 2);
+
 	
 	OutputImage image1;
 	image1.pushNewChannel(rawdata, 555.0, 4, 2, 0, 0);
 	image1.pushNewChannel(rawdata2, 556.0, 4, 2, 1, 2);
 	image1.createOutputImage(OIC_XYZ);
-	
+	image1.displayRGB();
+
 	//quickSave(rawdata, 4, 2, "rawdata.bmp", "resources/image/");
 }
 

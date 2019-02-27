@@ -358,6 +358,11 @@ private:
 
 };
 
+//defining the different apodization types, there is a look up function in kernel.cu
+//implementations of the apo functions are in kernel.cu
+#define APD_UNIFORM 0
+#define APD_BARTLETT 1
+
 template<typename T = float>
 class mysurface
 {
@@ -371,6 +376,8 @@ public:
 	static enum SurfaceTypes {image, refractive, stop};
 	SurfaceTypes type;
 
+	//three members which are necessary for apodization here
+	unsigned short int apodizationType = APD_UNIFORM;
 	char* p_data = nullptr; // each char is 1 byte...
 	int data_size = 0;//... so that the data size and offset is in bytes
 
@@ -1034,7 +1041,7 @@ public:
 
 	raybundle<MYFLOATTYPE>** bundles = nullptr;
 
-	RayBundleColumn(int numberOfSurfaces, int _wavelength)
+	RayBundleColumn(int numberOfSurfaces, float _wavelength)
 		:numofsurfaces(numberOfSurfaces), wavelength(_wavelength)
 	{
 		bundles = new raybundle<MYFLOATTYPE>*[numofsurfaces + 1];
@@ -1065,7 +1072,23 @@ private:
 };
 
 
+class LuminousPoint
+{
+public:
+	float x = 0.0;
+	float y = 0.0;
+	float z = 0.0;
+	float wavelength = 555.0;
+	float intensity = 1.0;
 
+	bool operator==(const LuminousPoint& rhs) const
+	{
+		if (x == rhs.x &&y == rhs.y &&z == rhs.z &&wavelength == rhs.wavelength &&intensity == rhs.intensity)
+			return true;
+		else
+			return false;
+	}
+};
 
 
 

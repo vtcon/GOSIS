@@ -10,8 +10,6 @@
 //defines a few message codes here
 #define PI_OK 200
 #define PI_UNKNOWN_ERROR 404
-#define PI_INFO_RESPONSE 201
-#define PI_INPUT_ERROR 300
 
 namespace tracer
 {
@@ -66,12 +64,4 @@ namespace tracer
 	PI_Message EXPORT checkData();
 	PI_Message EXPORT trace();
 	PI_Message EXPORT render();
-
-	PI_Message EXPORT setLinearRayDensity(unsigned int newDensity);
-	PI_Message EXPORT getLinearRayDensity();
-
-	PI_Message EXPORT createOutputImage(int count, float * wavelengthList, int& uniqueID);
-	PI_Message EXPORT deleteOutputImage(int uniqueID);
-
-	PI_Message EXPORT clearStorage();
 }

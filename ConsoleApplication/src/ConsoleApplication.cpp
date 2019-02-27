@@ -130,7 +130,7 @@ void roughUI()
 	
 	PI_Surface* surfaces = new PI_Surface[count];
 	float angularResol;
-	float angularExtend;
+	//float angularExtend;
 
 	for (int i = 0; i < count - 1; i++)
 	{
@@ -156,24 +156,58 @@ void roughUI()
 		std::cout << "For the retina: \n";
 		std::cout << "Please angular resolution\n";
 		std::cin >> angularResol;
-		std::cout << "Please angular extend\n";
-		std::cin >> angularExtend;
+		//std::cout << "Please angular extend\n";
+		//std::cin >> angularExtend;
 	}
 	*/
 
 	//test data
-	int count = 3;
-	PI_Surface* surfaces = new PI_Surface[count];
-	surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 2.0;
-	surfaces[1].z = 10.0; surfaces[1].diameter = 40.0; surfaces[1].radius = -40.0; surfaces[1].refractiveIndex = 1.0;
-	surfaces[2].diameter = 40.0; surfaces[2].radius = -60.0;
-	float angularResol = 0.16;
-	float angularExtend = 90.0;
-	
+	{
+		int count = 4;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
 
-	addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+		float angularExtend = 90.0;
 
-	
+
+		addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
+	{
+		int count = 4;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
+
+		float angularExtend = 90.0;
+
+
+		addOpticalConfigAt(400.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
+	{
+		int count = 4;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
+
+		float angularExtend = 90.0;
+
+
+		addOpticalConfigAt(650.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
+	/*
 	std::cout << "Please enter the number of points\n";
 	int pcount = 0;
 	std::cin >> pcount;
@@ -190,14 +224,50 @@ void roughUI()
 		std::cin >> point.z;
 		addPoint(point);
 	}
-	
+	*/
+	{
+		PI_LuminousPoint point;
+		point.x = 20;	point.y = 20;	point.z = 160;	point.wavelength = 555.0;
+		addPoint(point);
+		point.x = -20;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 30;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = -20;	point.y = -20;	point.z = 160;	point.wavelength = 555.0;
+		addPoint(point);
+		point.x = 0;	point.y = 0;	point.z = 160;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 20;	point.y = 0;	point.z = 200;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 0;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = -30;	point.y = 0;	point.z = 160;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 40;	point.y = 0;	point.z = 200;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+	}
+
+	/*
+	int rayDensity = 20;
+	std::cout << "Enter desired linear ray generation density: \n";
+	std::cin >> rayDensity;
+	*/
+	std::cout << "Starting...\n";
 
 	checkData();
 	trace();
 	render();
 
+	{
+		float wavelengths[3] = { 400.0,555.0, 650.0 };
+		int imageID = 0;
+		createOutputImage(3, wavelengths, imageID);
+	}
 
-	delete[] surfaces;
+	clearStorage();
+	//delete[] surfaces;
 }
 
 int main()

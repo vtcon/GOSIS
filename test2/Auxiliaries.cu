@@ -245,6 +245,7 @@ void init_1D_fan(raybundle<T>* bundle, T z_position, T startTheta, T endTheta, T
 		dir.x = sin(currentTheta)*sin(phi);
 		dir.y = sin(currentTheta)*cos(phi);
 		bundle->prays[i] = raysegment<T>(vec3<T>(0, 0, z_position), dir);
+		bundle->prays[i].intensity = 1.0;
 		bundle->samplinggrid[i] = point2D<int>(i, 0);
 		/*
 		printf("i = %d, (u,v) = (%d,%d), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
@@ -520,8 +521,10 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 }
 
 template<typename T>
-void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig, vec3<T> origin)
+void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig, LuminousPoint point)
 {
+	vec3<T> origin(point.x, point.y, point.z);
+
 	T epr = static_cast<T>(thisOpticalConfig->entrance.y);
 	T epz = static_cast<T>(thisOpticalConfig->entrance.z);
 
@@ -626,7 +629,7 @@ void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 				vec3<T> pretransformed(x, y, z);
 				vec3<T> transformed(dot(pretransformed, transformmat[0]), dot(pretransformed, transformmat[1]), dot(pretransformed, transformmat[2]));
 				temp_prays[bundle->size] = raysegment<T>(origin, transformed);
-				temp_prays[bundle->size].intensity = 1.0;
+				temp_prays[bundle->size].intensity = 1.0*step*step*point.intensity;
 				bundle->size += 1;
 			}
 		}
@@ -681,7 +684,7 @@ template
 void init_2D_dualpolar_v2<double>(raybundle<double>* bundle, OpticalConfig* thisOpticalConfig, vec3<double> origin, double step);
 
 template
-void init_2D_dualpolar_v3<float>(raybundle<float>* bundle, OpticalConfig* thisOpticalConfig, vec3<float> origin);
+void init_2D_dualpolar_v3<float>(raybundle<float>* bundle, OpticalConfig* thisOpticalConfig, LuminousPoint point);
 
 template
-void init_2D_dualpolar_v3<double>(raybundle<double>* bundle, OpticalConfig* thisOpticalConfig, vec3<double> origin);
+void init_2D_dualpolar_v3<double>(raybundle<double>* bundle, OpticalConfig* thisOpticalConfig, LuminousPoint point);

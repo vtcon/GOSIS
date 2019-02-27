@@ -4,9 +4,14 @@
 bool StorageManager::jobCheckOut(OpticalConfig *& job, int numofsurfaces, float _wavelength)
 {
 	//first check if the optical config at that wavelength already exists, if yes, delete it
+	/*
 	OpticalConfig* oldconfig = nullptr;
 	if (infoCheckOut(oldconfig, _wavelength))
 		pleaseDelete(oldconfig);
+	*/
+	pleaseDeleteOpticalConfig(_wavelength);
+	pleaseDeleteAllColumns(_wavelength);
+	resetAllPointStatus(_wavelength);
 
 	//create a new config
 	OpticalConfig* newconfig(new OpticalConfig(numofsurfaces, _wavelength));
@@ -20,10 +25,23 @@ bool StorageManager::jobCheckOut(OpticalConfig *& job, int numofsurfaces, float 
 		opticalConfigLedger.emplace_back(StorageHolder<OpticalConfig*>(newconfig));
 	}
 
-	//save new wavelength to the ledger
+	//if wavelength has not already exist, save new wavelength to the ledger
+	auto pred2 = [_wavelength](const StorageHolder<float>& thisholder)
+	{
+		bool cond = thisholder.content == _wavelength;
+		return cond;
+	};
+
+	std::list<StorageHolder<float>>::iterator token2;//...ugh
 	{
 		std::lock_guard<std::mutex> lock(wavelengthLedgerLock);
-		wavelengthLedger.emplace_back(StorageHolder<float>(_wavelength));
+		token2 = std::find_if(wavelengthLedger.begin(), wavelengthLedger.end(), pred2);
+	}
+
+	if (token2 == wavelengthLedger.end())
+	{
+		std::lock_guard<std::mutex> lock(wavelengthLedgerLock);
+		wavelengthLedger.push_back(StorageHolder<float>(_wavelength));
 	}
 
 	return true;
@@ -284,11 +302,12 @@ bool StorageManager::takeOne(float *& wavelength, StorageHolder<float>::Status r
 
 	if (token == wavelengthLedger.end()) return false; //if none is found
 
-	//return the found object, set its status to inUse
-	token->status = StorageHolder<float>::nextStatus(requiredstatus);
+	//return the found object, set its status to next status
+	if (token->status != StorageHolder<float>::Status::completed2) //won't advance further if status already at completed 2
+		token->status = StorageHolder<float>::nextStatus(requiredstatus);
 	wavelength = &(token->content);
 
-	std::cout << wavelengthLedger.size() << "\n";
+	//std::cout << wavelengthLedger.size() << "\n";
 
 	return true;
 }
@@ -314,4 +333,157 @@ bool StorageManager::jobCheckIn(float *& job, StorageHolder<float>::Status nexts
 	token->status = nextstatus;
 
 	return true;
+}
+
+bool StorageManager::infoCheckOut(float *& wavelengthsList, StorageHolder<float>::Status*& statusList, int& count)
+{
+	//take the size and allocate memory
+	count = wavelengthLedger.size();
+	if (count == 0)
+	{
+		return false;
+	}
+	else
+	{
+		//please delete after use
+		wavelengthsList = new float[count];
+		statusList = new StorageHolder<float>::Status[count];
+	}
+
+	{
+		std::lock_guard<std::mutex> lock(wavelengthLedgerLock);
+		int i = 0;
+		for (std::list<StorageHolder<float>>::const_iterator token = wavelengthLedger.begin(); token != wavelengthLedger.end(); token++)
+		{
+			wavelengthsList[i] = token->content;
+			statusList[i] = token->status;
+			i++;
+		}
+	}
+
+	return true;
+}
+
+void StorageManager::pleaseDelete(float wavelength)
+{
+	//find if the wavelength exists, delete it
+	//define a lambda
+	auto pred = [&wavelength](const StorageHolder<float>& thisholder)
+	{
+		bool cond1 = thisholder.content == wavelength;
+		return cond1;
+	};
+
+	std::list<StorageHolder<float>>::iterator token;
+	{
+		std::lock_guard<std::mutex> lock(wavelengthLedgerLock);
+		token = std::find_if(wavelengthLedger.begin(), wavelengthLedger.end(), pred);
+	}
+
+	if (token == wavelengthLedger.end()) return; //if none is found
+
+	{
+		std::lock_guard<std::mutex> lock(wavelengthLedgerLock);
+		wavelengthLedger.erase(token);
+	}
+
+	//clear all points, all ray bundles, optical config
+	pleaseDeleteAllPoints(wavelength);
+	pleaseDeleteAllColumns(wavelength);
+	pleaseDeleteOpticalConfig(wavelength);
+}
+
+void StorageManager::pleaseDeleteAllPoints(float wavelength)
+{
+	//define a lambda
+	auto pred = [&wavelength](const StorageHolder<LuminousPoint>& thisholder)
+	{
+		bool cond1 = thisholder.content.wavelength == wavelength;
+		bool cond2 = thisholder.status != StorageHolder<RayBundleColumn*>::Status::inUse1;
+		bool cond3 = thisholder.status != StorageHolder<RayBundleColumn*>::Status::inUse2;
+		return cond1 && cond2 && cond3;
+	};
+
+	std::list<StorageHolder<LuminousPoint>>::iterator token;
+	{
+		std::lock_guard<std::mutex> lock(pointLedgerLock);
+		//scan the ledger for suitable delete candidate
+		while ((token = std::find_if(pointLedger.begin(), pointLedger.end(), pred)) != pointLedger.end())
+		{
+			pointLedger.erase(token);
+		}		
+	}
+
+	return;
+}
+
+void StorageManager::pleaseDeleteAllColumns(float wavelength)
+{
+	//define a lambda
+	auto pred = [&wavelength](const StorageHolder<RayBundleColumn*>& thisholder)
+	{
+		bool cond0 = thisholder.content != nullptr;
+		if (cond0)
+		{
+			bool cond1 = thisholder.content->wavelength == wavelength;
+			bool cond2 = thisholder.status != StorageHolder<RayBundleColumn*>::Status::inUse1;
+			bool cond3 = thisholder.status != StorageHolder<RayBundleColumn*>::Status::inUse2;
+			return cond1 && cond2 && cond3;
+		}
+		return false;
+	};
+
+	std::list<StorageHolder<RayBundleColumn*>>::iterator token;
+	{
+		std::lock_guard<std::mutex> lock(rayBundleColumnLedgerLock);
+		//scan the ledger for suitable delete candidate
+		while ((token = std::find_if(rayBundleColumnLedger.begin(), rayBundleColumnLedger.end(), pred)) != rayBundleColumnLedger.end())
+		{
+			//perform the deletion
+			delete (*token).content;
+			(*token).content = nullptr;
+			rayBundleColumnLedger.erase(token);
+		}
+	}
+	return;
+}
+
+void StorageManager::pleaseDeleteOpticalConfig(float wavelength)
+{
+	OpticalConfig* oldconfig = nullptr;
+	if (infoCheckOut(oldconfig, wavelength))
+		pleaseDelete(oldconfig);
+}
+
+void StorageManager::resetAllPointStatus(float wavelength)
+{
+	//define a lambda
+	auto pred = [&wavelength](const StorageHolder<LuminousPoint>& thisholder)
+	{
+		bool cond1 = thisholder.content.wavelength == wavelength;
+		bool cond2 = thisholder.status != StorageHolder<LuminousPoint>::Status::uninitialized; //not reset the already resetted
+		/* //this is a forced reset
+		bool cond2 = thisholder.status != StorageHolder<LuminousPoint>::Status::inUse1;
+		bool cond3 = thisholder.status != StorageHolder<LuminousPoint>::Status::inUse2;
+		*/
+		return cond1;
+	};
+
+	std::list<StorageHolder<LuminousPoint>>::iterator token;
+	{
+		std::lock_guard<std::mutex> lock(pointLedgerLock);
+		//scan the ledger for suitable candidate
+		for (token = pointLedger.begin(); token != pointLedger.end(); token++)
+		{
+			if (pred(*token))
+			{
+				(*token).status = StorageHolder<LuminousPoint>::Status::uninitialized;
+			}
+		}
+	}
+
+	//make sense to delete all created ray columns
+	pleaseDeleteAllColumns(wavelength);
+
+	return;
 }

@@ -67,7 +67,6 @@ OutputImage::OutputImage()
 {
 }
 
-
 OutputImage::~OutputImage()
 {
 }
@@ -129,7 +128,6 @@ void OutputImage::createOutputImage(unsigned short int outputFormat)
 		}
 
 		
-
 		//apply scaling
 		cv::resize(temp1, temp2, cv::Size(), currentChannel.scaling, currentChannel.scaling, cv::INTER_NEAREST);
 
@@ -140,21 +138,21 @@ void OutputImage::createOutputImage(unsigned short int outputFormat)
 			static_cast<float>(ColorimetricLookup::lookup(currentChannel.wavelength, designatorC3))
 		};
 
-		std::cout << pimpl->CVoutputImage << std::endl;
+		//std::cout << pimpl->CVoutputImage << std::endl;
 
 		//copy to the output channels
 		for (int i = 0; i < 3; i++)
 		{
 			cv::Mat roiOnChannel = fullsizeChannels[i](cv::Rect(currentChannel.offsetX, currentChannel.offsetY, temp2.cols, temp2.rows));
-			std::cout << roiOnChannel << std::endl;
+			//std::cout << roiOnChannel << std::endl;
 			cv::scaleAdd(temp2, multiplierC[i], roiOnChannel, roiOnChannel);
-			std::cout << roiOnChannel << std::endl;
+			//std::cout << roiOnChannel << std::endl;
 		}
 	}
 
 	cv::merge(fullsizeChannels, pimpl->CVoutputImage);
 
-	std::cout << pimpl->CVoutputImage << std::endl;
+	//std::cout << pimpl->CVoutputImage << std::endl;
 }
 
 void OutputImage::saveRaw(std::string path, std::string filename)
@@ -165,8 +163,17 @@ void OutputImage::saveRGB(std::string path, std::string filename)
 {
 }
 
+extern void XYZtoBGR(cv::Mat& XYZmat, cv::Mat& BGRmat, unsigned int RGBoption);
+extern void showOnWindow(std::string windowName, cv::Mat image);
+
 void OutputImage::displayRGB(int rows, int columns, int offsetX, int offsetY, float scaling)
 {
+	//TEMPORARY VERSION: ignoring input parameters
+
+	cv::Mat toDisplay = cv::Mat::zeros(pimpl->CVoutputImage.size(), CV_8UC3);
+	XYZtoBGR(pimpl->CVoutputImage, toDisplay, IF_ADOBERGB);
+	cv::resize(toDisplay, toDisplay, cv::Size(), 500 / cv::max(toDisplay.rows, toDisplay.cols), 500 / cv::max(toDisplay.rows, toDisplay.cols), cv::INTER_NEAREST);
+	showOnWindow("test", toDisplay);
 }
 
 template<>

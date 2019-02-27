@@ -54,7 +54,7 @@ public:
 	int wanted_job_size = 3; //settable from outside
 	int job_size = 0; // real size of a batch depends on how many columns are left in the Storage
 	int numofsurfaces = 0;
-	int wavelength = 0;
+	float wavelength = 0.0;
 
 	RayBundleColumn** pcolumns = nullptr;
 	OpticalConfig* thisOpticalConfig = nullptr;
@@ -73,7 +73,7 @@ public:
 		pcolumns = new RayBundleColumn*[wanted_job_size];
 
 		//BIG QUESTION: where does the wavelength comes from?
-		wavelength = 555;
+		wavelength = activeWavelength;
 
 		//this is bad coding: job_size is used here as the counting variable
 		while ((job_size < wanted_job_size) && mainStorageManager.takeOne(pcolumns[job_size], columnStatus::initialized, wavelength))
@@ -322,7 +322,7 @@ public:
 		p_rawChannel = thisOpticalConfig->p_rawChannel;
 
 		//the following line should not be here
-		p_rawChannel->createSibling();
+		//p_rawChannel->createSibling();
 
 		//setup the kernel launch params
 		//TODO: FIX THIS POLYMORPHISM!!
@@ -380,6 +380,7 @@ public:
 	{
 		if (isEmpty) return;
 
+		/*
 		//data copy out
 		p_rawChannel->copyFromSibling();
 
@@ -400,6 +401,7 @@ public:
 		//these two lines shouldn't be here, too
 		p_rawChannel->deleteSibling();
 		p_rawChannel->deleteHostImage();
+		*/
 
 		//TODO: copy to the output image
 
@@ -415,6 +417,7 @@ private:
 
 	int RenderingTrianglesCreator(const raybundle<MYFLOATTYPE>& thisbundle) //build up vector containing the mesh
 	{
+		std::cout << "Tesselating...\n";
 		//test data
 		int arraySize = thisbundle.size;
 		point2D<int>* inputArray = thisbundle.samplinggrid;
@@ -505,6 +508,9 @@ private:
 				(thisbundle.prays)[indextriangle.i1].dir,
 				(thisbundle.prays)[indextriangle.i2].dir,
 				(thisbundle.prays)[indextriangle.i3].dir,
+				(thisbundle.prays)[indextriangle.i1].intensity,
+				(thisbundle.prays)[indextriangle.i2].intensity,
+				(thisbundle.prays)[indextriangle.i3].intensity
 				});
 		}
 
@@ -778,13 +784,13 @@ int ColumnCreator3()
 	RayBundleColumn* job = nullptr;
 	mainStorageManager.jobCheckOut(job, numofsurfaces, wavelength1);
 
-	vec3<MYFLOATTYPE> point(p_point->x, p_point->y, p_point->z);
+	//vec3<MYFLOATTYPE> point(p_point->x, p_point->y, p_point->z);
 
 	//call initializer of the first bundle in column
 	//(*job)[0].init_2D_dualpolar(point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
 	//init_2D_dualpolar(&((*job)[0]), point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
 	//init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, 2.0 / 180 * MYPI); //0.1 for release, 2.0 for debug
-	init_2D_dualpolar_v3(&((*job)[0]), thisOpticalConfig, point);
+	init_2D_dualpolar_v3(&((*job)[0]), thisOpticalConfig, *p_point);
 
 	mainStorageManager.jobCheckIn(p_point, StorageHolder<LuminousPoint>::Status::initialized);
 

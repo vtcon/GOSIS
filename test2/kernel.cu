@@ -28,6 +28,41 @@ void test3function()
 
 
 #endif
+
+typedef double(*apodizationFunction_t)(double, double, int, char*);
+
+__device__ double apdUniform(double rho, double phi, int datasize = 0, char* p_data = nullptr)
+{
+	if (rho <= 1)
+		return 1.0;
+	else
+		return 0.0;
+}
+
+__device__ double apdBartlett(double rho, double phi, int datasize = 0, char* p_data = nullptr)
+{
+	if (rho <= 1)
+	{
+		return 1.0 - rho;
+	}
+	else
+		return 0.0;
+}
+
+__device__ apodizationFunction_t testApd = apdUniform;
+
+__device__ apodizationFunction_t apdFunctionLookUp(unsigned short int apdcode)
+{
+	switch (apdcode)
+	{
+	case APD_BARTLETT:
+		return apdBartlett;
+	case APD_UNIFORM:
+	default:
+		return apdUniform;
+	}
+}
+
 /**************************************************************************************************/
 /*******************                EXPERIMENTAL ZONE ENDS                 ************************/
 /**************************************************************************************************/
@@ -137,45 +172,48 @@ __global__ void quadrictracer(
 		d1 = before.dir.x,
 		d2 = before.dir.y,
 		d3 = before.dir.z;
-	MYFLOATTYPE t, t1, t2, otherT;
-	MYFLOATTYPE deno = -2.0 * (A*d1*d1 + B * d2*d2 + C * d3*d3 + D * d1*d2 + E * d1*d3 + F * d2*d3);
+	MYFLOATTYPE t1 = 0.0, t2 = 0.0, deno = 0.0;
+	deno = -2.0 * (A*d1*d1 + B * d2*d2 + C * d3*d3 + D * d1*d2 + E * d1*d3 + F * d2*d3);
 	if (deno != 0)
 	{
-		MYFLOATTYPE delta = -4.0 * A*B*d1*d1*p2*p2 + 8.0 * A*B*d1*d2*p1*p2 - 4.0 * A*B*d2*d2*p1*p1
-			- 4.0 * A*C*d1*d1*p3*p3 + 8.0 * A*C*d1*d3*p1*p3 - 4.0 * A*C*d3*d3*p1*p1 - 4.0 * A*F*d1*d1*p2*p3
-			+ 4.0 * A*F*d1*d2*p1*p3 + 4.0 * A*F*d1*d3*p1*p2 - 4.0 * A*F*d2*d3*p1*p1 - 4.0 * B*C*d2*d2*p3*p3
-			+ 8.0 * B*C*d2*d3*p2*p3 - 4.0 * B*C*d3*d2*p2*p2 + 4.0 * B*E*d1*d2*p2*p3 - 4.0 * B*E*d1*d3*p2*p2
-			- 4.0 * B*E*d2*d2*p1*p3 + 4.0 * B*E*d2*d3*p1*p2 - 4.0 * C*D*d1*d2*p3*p3 + 4.0 * C*D*d1*d3*p2*p3
-			+ 4.0 * C*D*d2*d3*p1*p3 - 4.0 * C*D*d3*d3*p1*p2 + 1.0 * D*D*d1*d1*p2*p2 - 2.0 * D*D*d1*d2*p1*p2
-			+ 1.0 * D*D*d2*d2*p1*p1 + 2.0 * D*E*d1*d1*p2*p3 - 2.0 * D*E*d1*d2*p1*p3 - 2.0 * D*E*d1*d3*p1*p2
-			+ 2.0 * D*E*d2*d3*p1*p1 - 2.0 * D*F*d1*d2*p2*p3 + 2.0 * D*F*d1*d3*p2*p2 + 2.0 * D*F*d2*d2*p1*p3
-			- 2.0 * D*F*d2*d3*p1*p2 + 1.0 * E*E*d1*d1*p3*p3 - 2.0 * E*E*d1*d3*p1*p3 + 1.0 * E*E*d3*d3*p1*p1
-			+ 2.0 * E*F*d1*d2*p3*p3 - 2.0 * E*F*d1*d3*p2*p3 - 2.0 * E*F*d2*d3*p1*p3 + 2.0 * E*F*d3*d3*p1*p2
-			+ 1.0 * F*F*d2*d2*p3*p3 - 2.0 * F*F*d2*d3*p2*p3 + 1.0 * F*F*d3*d3*p2*p2 - 4.0 * A*H*d1*d1*p2
-			+ 4.0 * A*H*d1*d2*p1 - 4.0 * A*K*d1*d1*p3 + 4.0 * A*K*d1*d3*p1 + 4.0 * B*G*d1*d2*p2 - 4.0 * B*G*d2*d2*p1
-			- 4.0 * B*K*d2*d2*p3 + 4.0 * B*K*d2*d3*p2 + 4.0 * C*G*d1*d3*p3 - 4.0 * C*G*d3*d3*p1 + 4.0 * C*H*d2*d3*p3
-			- 4.0 * C*H*d3*d3*p2 + 2.0 * D*G*d1*d1*p2 - 2.0 * D*G*d1*d2*p1 - 2.0 * D*H*d1*d2*p2
-			+ 2.0 * D*H*d2*d2*p1 - 4.0 * D*K*d1*d2*p3 + 2.0 * D*K*d1*d3*p2 + 2.0 * D*K*d2*d3*p1 + 2.0 * E*G*d1*d1*p3
-			- 2.0 * E*G*d1*d3*p1 + 2.0 * E*H*d1*d2*p3 - 4.0 * E*H*d1*d3*p2 + 2.0 * E*H*d2*d3*p1 - 2.0 * E*K*d1*d3*p3
-			+ 2.0 * E*K*d3*d3*p1 + 2.0 * F*G*d1*d2*p3 + 2.0 * F*G*d1*d3*p2 - 4.0 * F*G*d2*d3*p1 + 2.0 * F*H*d2*d2*p3
-			- 2.0 * F*H*d2*d3*p2 - 2.0 * F*K*d2*d3*p3 + 2.0 * F*K*d3*d3*p2 - 4.0 * A*J*d1*d1 - 4.0 * B*J*d2*d2
-			- 4.0 * C*J*d3*d3 - 4.0 * D*J*d1*d2 - 4.0 * E*J*d1*d3 - 4.0 * F*J*d2*d3 + 1.0 * G*G*d1*d1 + 2.0 * G*H*d1*d2
-			+ 2.0 * G*K*d1*d3 + 1.0 * H*H*d2*d2 + 2.0 * H*K*d2*d3 + 1.0* K*K*d3*d3;
-		MYFLOATTYPE beforedelta = 2.0 * A*d1*p1 + 2.0 * B*d2*p2 + 2.0 * C*d3*p3 + D * (d1*p2 + d2 * p1) +
-			E * (d1*p3 + d3 * p1) + F * (d2*p3 + d3 * p2) + G * d1 + H * d2 + K * d3;
+		MYFLOATTYPE delta = 0.0, beforedelta = 0.0;
+		delta = 
+			-4.0*A*B*d1*d1*p2*p2 + 8.0*A*B*d1*d2*p1*p2 - 4.0*A*B*d2*d2*p1*p1 - 4.0*A*C*d1*d1*p3*p3
+			+ 8.0*A*C*d1*d3*p1*p3 - 4.0*A*C*d3*d3*p1*p1 - 4.0*A*F*d1*d1*p2*p3 + 4.0*A*F*d1*d2*p1*p3
+			+ 4.0*A*F*d1*d3*p1*p2 - 4.0*A*F*d2*d3*p1*p1 - 4.0*B*C*d2*d2*p3*p3 + 8.0*B*C*d2*d3*p2*p3
+			- 4.0*B*C*d3*d3*p2*p2 + 4.0*B*E*d1*d2*p2*p3 - 4.0*B*E*d1*d3*p2*p2 - 4.0*B*E*d2*d2*p1*p3
+			+ 4.0*B*E*d2*d3*p1*p2 - 4.0*C*D*d1*d2*p3*p3 + 4.0*C*D*d1*d3*p2*p3 + 4.0*C*D*d2*d3*p1*p3
+			- 4.0*C*D*d3*d3*p1*p2 + 1.0*D*D*d1*d1*p2*p2 - 2.0*D*D*d1*d2*p1*p2 + 1.0*D*D*d2*d2*p1*p1
+			+ 2.0*D*E*d1*d1*p2*p3 - 2.0*D*E*d1*d2*p1*p3 - 2.0*D*E*d1*d3*p1*p2 + 2.0*D*E*d2*d3*p1*p1
+			- 2.0*D*F*d1*d2*p2*p3 + 2.0*D*F*d1*d3*p2*p2 + 2.0*D*F*d2*d2*p1*p3 - 2.0*D*F*d2*d3*p1*p2
+			+ 1.0*E*E*d1*d1*p3*p3 - 2.0*E*E*d1*d3*p1*p3 + 1.0*E*E*d3*d3*p1*p1 + 2.0*E*F*d1*d2*p3*p3
+			- 2.0*E*F*d1*d3*p2*p3 - 2.0*E*F*d2*d3*p1*p3 + 2.0*E*F*d3*d3*p1*p2 + 1.0*F*F*d2*d2*p3*p3
+			- 2.0*F*F*d2*d3*p2*p3 + 1.0*F*F*d3*d3*p2*p2
+			- 4.0*A*H*d1*d1*p2 + 4.0*A*H*d1*d2*p1 - 4.0*A*K*d1*d1*p3 + 4.0*A*K*d1*d3*p1 + 4.0*B*G*d1*d2*p2
+			- 4.0*B*G*d2*d2*p1 - 4.0*B*K*d2*d2*p3 + 4.0*B*K*d2*d3*p2 + 4.0*C*G*d1*d3*p3 - 4.0*C*G*d3*d3*p1
+			+ 4.0*C*H*d2*d3*p3 - 4.0*C*H*d3*d3*p2 + 2.0*D*G*d1*d1*p2 - 2.0*D*G*d1*d2*p1 - 2.0*D*H*d1*d2*p2
+			+ 2.0*D*H*d2*d2*p1 - 4.0*D*K*d1*d2*p3 + 2.0*D*K*d1*d3*p2 + 2.0*D*K*d2*d3*p1 + 2.0*E*G*d1*d1*p3
+			- 2.0*E*G*d1*d3*p1 + 2.0*E*H*d1*d2*p3 - 4.0*E*H*d1*d3*p2 + 2.0*E*H*d2*d3*p1 - 2.0*E*K*d1*d3*p3
+			+ 2.0*E*K*d3*d3*p1 + 2.0*F*G*d1*d2*p3 + 2.0*F*G*d1*d3*p2 - 4.0*F*G*d2*d3*p1 + 2.0*F*H*d2*d2*p3
+			- 2.0*F*H*d2*d3*p2 - 2.0*F*K*d2*d3*p3 + 2.0*F*K*d3*d3*p2
+			- 4.0*A*J*d1*d1 - 4.0*B*J*d2*d2 - 4.0*C*J*d3*d3 - 4.0*D*J*d1*d2 - 4.0*E*J*d1*d3 - 4.0*F*J*d2*d3
+			+ 1.0*G*G*d1*d1 + 2.0*G*H*d1*d2 + 2.0*G*K*d1*d3 + 1.0*H*H*d2*d2 + 2.0*H*K*d2*d3 + 1.0*K*K*d3*d3;
+		beforedelta = 2.0 * A*d1*p1 + 2.0 * B*d2*p2 + 2.0 * C*d3*p3 + D*d1*p2 + D*d2*p1 +
+			E*d1*p3 + E*d3*p1 + F*d2*p3 + F*d3*p2 + G*d1 + H*d2 + K*d3;
 		t1 = (delta >= 0.0) ? (beforedelta + sqrt(delta)) / deno : INFINITY;
 		t2 = (delta >= 0.0) ? (beforedelta - sqrt(delta)) / deno : INFINITY;
 	}
 	else
 	{
-		MYFLOATTYPE num = -A * p1*p1 - B * p2*p2 - C * p3*p3 - D * p1*p2 - E * p1*p3 - F * p2*p3 - G * p1 - H * p2 - K * p3 - J;
-		MYFLOATTYPE den = 2.0 * A*d1*p1 + 2.0 * B*d2*p2 + 2.0 * C*d3*p3 + D * d1*p2 + D * d2*p1 + E * d1*p3 + E * d3*p1
+		MYFLOATTYPE num = 0.0, den = 0.0;
+		num = -A * p1*p1 - B * p2*p2 - C * p3*p3 - D * p1*p2 - E * p1*p3 - F * p2*p3 - G * p1 - H * p2 - K * p3 - J;
+		den = 2.0 * A*d1*p1 + 2.0 * B*d2*p2 + 2.0 * C*d3*p3 + D * d1*p2 + D * d2*p1 + E * d1*p3 + E * d3*p1
 			+ F * d2*p3 + F * d3*p2 + G * d1 + H * d2 + K * d3;
 		t1 = num / den;
 		t2 = -INFINITY;
 	}
 
-	//TODO: fix this, not always the nearest!
+	MYFLOATTYPE t = 0.0, otherT = 0.0;
 	//pick the nearest positive intersection
 	if (t1 >= 0.0 && t2 >= 0.0)
 	{
@@ -217,6 +255,11 @@ __global__ void quadrictracer(
 		for (int run = 0; run < 2; run++)
 		{
 			at = raysegment<MYFLOATTYPE>(before.pos + t * before.dir, before.dir);
+			
+			//printf("surface %d, check equation: %f\n", kernelparams.otherparams[2], at.pos.x*at.pos.x + at.pos.y*at.pos.y + at.pos.z*at.pos.z);
+
+			//attenuation could be implemented here
+			at.intensity = before.intensity;
 
 			MYFLOATTYPE &x = at.pos.x,
 				&y = at.pos.y,
@@ -239,9 +282,25 @@ __global__ void quadrictracer(
 
 		ddotn = (ddotn < 0) ? ddotn : -ddotn; // so that the surface normal and ray are in opposite direction
 
+		if (pquad->antiParallel == false)
+			surfnormal = -surfnormal;
 
 		//is the intersection within hit box ? if not, then deactivate the ray
-		if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4.0)) goto deactivate_ray;
+		//if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4.0)) goto deactivate_ray;
+
+		//calculate normalized pupil coordinate at the intersection
+		double npc_rho = (double)(sqrt(at.pos.x*at.pos.x + at.pos.y*at.pos.y) / (pquad->diameter / 2));
+		double npc_phi = 0.0;
+		if (npc_rho != 0.0)
+		{
+			npc_phi = acos(at.pos.x / (npc_rho * (pquad->diameter / 2)));
+			if (at.pos.y < 0)
+				npc_phi = -npc_phi;
+		}
+		//check the multiplication factor from the aperture function
+		apodizationFunction_t apdToUse = apdFunctionLookUp(pquad->apodizationType);
+		double apertureFactor = apdToUse(npc_rho, npc_phi, pquad->data_size, pquad->p_data);
+		if (apertureFactor == 0.0) goto deactivate_ray;
 
 		// if it is a refractive surface, do refractive ray transfer
 		if (pquad->type == mysurface<MYFLOATTYPE>::SurfaceTypes::refractive)
@@ -271,6 +330,9 @@ __global__ void quadrictracer(
 			}
 
 			after.dir = (pquad->n1)*(at.dir - surfnormal * ddotn) / (pquad->n2) - surfnormal * (MYFLOATTYPE)sqrt(factor1);
+			after.dir = normalize(after.dir);
+			//light attenuation due to apodization
+			after.intensity = at.intensity*apertureFactor;
 
 			//coordinate detransformation, write out result
 			after.pos = after.pos + pquad->pos;
@@ -310,6 +372,7 @@ deactivate_ray:
 		// TO DO: write out ray status, copy input to output
 		(outbundle->prays)[idx] = (inbundle->prays)[idx];
 		(outbundle->prays)[idx].status = raysegment<MYFLOATTYPE>::Status::deactivated;
+		(outbundle->prays)[idx].intensity = 0.0;
 	};
 
 	//clean up the test case
@@ -469,4 +532,3 @@ int GPUmanager(int argc = 0, char** argv = nullptr)
 	return 0;
 }
 #endif
-

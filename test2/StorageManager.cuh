@@ -31,24 +31,6 @@ public:
 	}
 };
 
-class LuminousPoint
-{
-public:
-	float x = 0.0;
-	float y = 0.0;
-	float z = 0.0;
-	float wavelength = 555.0;
-	float intensity = 1.0;
-
-	bool operator==(const LuminousPoint& rhs) const
-	{
-		if (x == rhs.x &&y == rhs.y &&z == rhs.z &&wavelength == rhs.wavelength &&intensity == rhs.intensity)
-			return true;
-		else
-			return false;
-	}
-};
-
 //this class should be wayyyyyy below
 class StorageManager
 {
@@ -86,9 +68,6 @@ public:
 	//delete a point
 	void pleaseDelete(LuminousPoint todelete);
 
-	//delete all points of a specific wavelength
-	void pleaseDeleteAllPoints(float wavelength);
-
 	//delete all points 
 	void pleaseDeleteAllPoints();
 
@@ -100,7 +79,24 @@ public:
 
 	//mark a wavelength to desired status
 	bool jobCheckIn(float*& job, StorageHolder<float>::Status nextstatus);
-	
+
+	//check out list of wavelengths and statuses, please call delete[] after use!
+	bool infoCheckOut(float *& wavelengthsList, StorageHolder<float>::Status *& statusList, int & count);
+
+	//delete everything relating to a wavelength
+	void pleaseDelete(float wavelength);
+
+	//delete all points of a specific wavelength
+	void pleaseDeleteAllPoints(float wavelength);
+
+	//delete all columns of a specific wavelength
+	void pleaseDeleteAllColumns(float wavelength);
+
+	//delete the optical config of a specific wavelength
+	void pleaseDeleteOpticalConfig(float wavelength);
+
+	void resetAllPointStatus(float wavelength);
+
 private:
 	std::mutex opticalConfigLedgerLock;
 	std::list<StorageHolder<OpticalConfig*>> opticalConfigLedger;
@@ -112,9 +108,11 @@ private:
 	std::mutex pointLedgerLock;
 	std::list<StorageHolder<LuminousPoint>> pointLedger;
 
-	//TODO: image ledger
+	//image ledger: is implemented in ProgramInterface.cu
+	/*
 	std::mutex imageLedgerLock;
 	std::list<StorageHolder<OutputImage*>> outputImageLedger;
+	*/
 
 	//TODO: wavelength ledger
 	std::mutex wavelengthLedgerLock;

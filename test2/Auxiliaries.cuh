@@ -21,5 +21,5 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 //please only send initialized bundles and optical configs to this function
 
 template<typename T>
-void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig, vec3<T> origin);
+void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig, LuminousPoint point);
 //please only send initialized bundles and optical configs to this function
