@@ -8,6 +8,13 @@
 #include "ImageFacilities.h"
 #include "ColorimetricLookup.h"
 
+//external variables
+extern unsigned int PI_rgbStandard;
+
+//external functions
+extern void XYZtoBGR(cv::Mat& XYZmat, cv::Mat& BGRmat, unsigned int RGBoption);
+extern void showOnWindow(std::string windowName, cv::Mat image);
+
 class OutputImageChannel
 {
 public:
@@ -155,23 +162,48 @@ void OutputImage::createOutputImage(unsigned short int outputFormat)
 	//std::cout << pimpl->CVoutputImage << std::endl;
 }
 
-void OutputImage::saveRaw(std::string path, std::string filename)
+bool OutputImage::saveRaw(std::string path)
 {
+	if (path.empty())
+	{
+		std::cout << "Path invalid!\n";
+		return false;
+	}
+
+	cv::FileStorage newRawFile(path, cv::FileStorage::WRITE);
+	newRawFile << "Rows: " << pimpl->CVoutputImage.rows << "\n";
+	newRawFile << "Cols: " << pimpl->CVoutputImage.cols << "\n";
+	newRawFile << "Format: CV_64FC3\n";
+	newRawFile << pimpl->CVoutputImage;
+	return true;
 }
 
-void OutputImage::saveRGB(std::string path, std::string filename)
+bool OutputImage::saveRGB(std::string path)
 {
-}
+	cv::Mat toSave = cv::Mat::zeros(pimpl->CVoutputImage.size(), CV_8UC3);
+	XYZtoBGR(pimpl->CVoutputImage, toSave, PI_rgbStandard);
 
-extern void XYZtoBGR(cv::Mat& XYZmat, cv::Mat& BGRmat, unsigned int RGBoption);
-extern void showOnWindow(std::string windowName, cv::Mat image);
+	if (path.empty())
+	{
+		std::cout << "Path invalid!\n";
+		return false;
+	}
+
+	bool result = cv::imwrite(path, toSave);
+	if (result != true)
+	{
+		std::cout << "Cannot save image to " << path << " \n";
+		return false;
+	}
+	return true;
+}
 
 void OutputImage::displayRGB(int rows, int columns, int offsetX, int offsetY, float scaling)
 {
 	//TEMPORARY VERSION: ignoring input parameters
 
 	cv::Mat toDisplay = cv::Mat::zeros(pimpl->CVoutputImage.size(), CV_8UC3);
-	XYZtoBGR(pimpl->CVoutputImage, toDisplay, IF_ADOBERGB);
+	XYZtoBGR(pimpl->CVoutputImage, toDisplay, PI_rgbStandard);
 	cv::resize(toDisplay, toDisplay, cv::Size(), 500 / cv::max(toDisplay.rows, toDisplay.cols), 500 / cv::max(toDisplay.rows, toDisplay.cols), cv::INTER_NEAREST);
 	showOnWindow("test", toDisplay);
 }

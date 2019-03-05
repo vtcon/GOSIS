@@ -15,6 +15,8 @@
 extern StorageManager mainStorageManager;
 extern float activeWavelength;
 extern int PI_ThreadsPerKernelLaunch;
+extern int PI_traceJobSize;
+extern int PI_renderJobSize;
 
 // external function definitions:
 extern __global__ void quadrictracer(QuadricTracerKernelLaunchParams kernelparams);
@@ -51,7 +53,7 @@ class QuadricTracerJob :public GPUJob
 public:
 	QuadricTracerKernelLaunchParams kernelLaunchParams;
 
-	int wanted_job_size = 3; //settable from outside
+	int wanted_job_size = PI_traceJobSize; //settable from outside
 	int job_size = 0; // real size of a batch depends on how many columns are left in the Storage
 	int numofsurfaces = 0;
 	float wavelength = 0.0;
@@ -254,7 +256,7 @@ public:
 	PixelArrayDescriptor* p_retinaDescriptor;
 	RetinaImageChannel* p_rawChannel;
 
-	int wanted_job_size = 3;
+	int wanted_job_size = PI_renderJobSize;
 	int job_size = 0; 
 	float wavelength = 0;
 	long m_triangleCount = 0;

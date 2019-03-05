@@ -26,9 +26,9 @@ public:
 
 	void createOutputImage(unsigned short int outputFormat);
 
-	void saveRaw(std::string path, std::string filename);
+	bool saveRaw(std::string path);
 
-	void saveRGB(std::string path, std::string filename);
+	bool saveRGB(std::string path);
 
 	void displayRGB(int rows = -1, int columns = -1, int offsetX = 0, int offsetY = 0, float scaling = 1.0);
 	//if value of rows or column == -1, the function will display all pixels from offset until end of image

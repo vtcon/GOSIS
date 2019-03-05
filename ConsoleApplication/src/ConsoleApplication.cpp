@@ -294,6 +294,6 @@ int main()
 	char t;
 	std::cin >> t;
 #endif
-
+	system("PAUSE");
 	return 0;
 }

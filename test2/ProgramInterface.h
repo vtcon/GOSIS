@@ -15,6 +15,9 @@
 
 namespace tracer
 {
+	static float PI_traceProgress; //from 0.0 to 1.0
+	static float PI_renderProgress; //from 0.0 to 1.0
+
 	//Program classes for export
 	class EXPORT PI_LuminousPoint
 	{
@@ -53,19 +56,24 @@ namespace tracer
 	PI_Message EXPORT clearSession();
 
 	PI_Message EXPORT addPoint(PI_LuminousPoint& toAdd);
-	PI_Message EXPORT removePoint(PI_LuminousPoint& toRemove);
-	PI_Message EXPORT clearAllPoints();
+	//PI_Message EXPORT removePoint(PI_LuminousPoint& toRemove);
+	//PI_Message EXPORT clearAllPoints();
 
-	PI_Message EXPORT getAllWavelength(float*& outputArray);
+	//PI_Message EXPORT getAllWavelength(float*& outputArray);
 
-	PI_Message EXPORT getOpticalConfigAt(float wavelength, int& count, PI_Surface*& output, float& angularResolution, float& angularExtend);
+	//PI_Message EXPORT getOpticalConfigAt(float wavelength, int& count, PI_Surface*& output, float& angularResolution, float& angularExtend);
 	PI_Message EXPORT addOpticalConfigAt(float wavelength, int count, PI_Surface*& toAdd, float angularResolution, float angularExtend);
-	PI_Message EXPORT modifyOpticalConfigAt(float wavelength, int count, PI_Surface*& toModify, float angularResolution, float angularExtend);
+	//PI_Message EXPORT modifyOpticalConfigAt(float wavelength, int count, PI_Surface*& toModify, float angularResolution, float angularExtend);
 
 
 	PI_Message EXPORT checkData();
 	PI_Message EXPORT trace();
 	PI_Message EXPORT render();
+
+	PI_Message EXPORT showRaw(float* wavelengths, int count);
+	PI_Message EXPORT showRGB(int uniqueID);
+	PI_Message EXPORT saveRaw(const char* path, int uniqueID);
+	PI_Message EXPORT saveRGB(const char* path, int uniqueID);
 
 	PI_Message EXPORT setLinearRayDensity(unsigned int newDensity);
 	PI_Message EXPORT getLinearRayDensity();

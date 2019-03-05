@@ -3,6 +3,7 @@
 #include "ManagerFunctions.cuh"
 #include "Auxiliaries.cuh"
 #include "../ConsoleApplication/src/ImageFacilities.h"
+#include "../ConsoleApplication/src/OutputImage.h"
 
 #include <list>
 #include <string>
@@ -21,6 +22,16 @@ std::unordered_map<int, OutputImage> outputImages;
 //external global variables
 int PI_ThreadsPerKernelLaunch = 16;
 int PI_linearRayDensity = 30;//20 is ok
+unsigned int PI_rgbStandard = IF_ADOBERGB;
+int PI_traceJobSize = 3;
+int PI_renderJobSize = 3;
+
+//these variables serves the progress count
+long toTraceCount = 0;
+long tracedCount = 0;
+long toRenderCount = 0;
+long renderedCount = 0;
+void updateProgress();
 
 //function definitions
 bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
@@ -33,30 +44,150 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 
 PI_Message tracer::test()
 {
-	int count = 3;
+	/*
+	int count = 0;
+	std::cout << "Please enter the number of surfaces\n";
+	std::cin >> count;
+
 	PI_Surface* surfaces = new PI_Surface[count];
-	surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 2.0;
-	surfaces[1].z = 10.0; surfaces[1].diameter = 40.0; surfaces[1].radius = -40.0; surfaces[1].refractiveIndex = 1.0;
-	surfaces[2].diameter = 40.0; surfaces[2].radius = -60.0;
-	float angularResol = 2.0;
-	float angularExtend = 90.0;
+	float angularResol;
+	//float angularExtend;
+
+	for (int i = 0; i < count - 1; i++)
+	{
+		std::cout << "For surface " << i + 1 << ":\n";
+		std::cout << "Please enter vertex position\n";
+		std::cin >> surfaces[i].z;
+		std::cout << "Please enter diameter\n";
+		std::cin >> surfaces[i].diameter;
+		std::cout << "Please enter curvature radius\n";
+		std::cin >> surfaces[i].radius;
+		std::cout << "Please enter refractive index\n";
+		std::cin >> surfaces[i].refractiveIndex;
+	}
+	{
+		int i = count - 1;
+		std::cout << "For image surface:\n";
+		std::cout << "Please enter diameter\n";
+		std::cin >> surfaces[i].diameter;
+		std::cout << "Please enter curvature radius\n";
+		std::cin >> surfaces[i].radius;
+	}
+	{
+		std::cout << "For the retina: \n";
+		std::cout << "Please angular resolution\n";
+		std::cin >> angularResol;
+		//std::cout << "Please angular extend\n";
+		//std::cin >> angularExtend;
+	}
+	*/
+
+	//test data
+	{
+		int count = 4;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
+
+		float angularExtend = 90.0;
 
 
-	addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+		addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
+	{
+		int count = 4;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
 
-	int pcount = 1;
-	
-	PI_LuminousPoint point;
-	point.x = 0.0;
-	point.y = 0.0;
-	point.z = 100.0;
-	addPoint(point);
-	
+		float angularExtend = 90.0;
+
+
+		addOpticalConfigAt(400.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
+	{
+		int count = 4;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
+
+		float angularExtend = 90.0;
+
+
+		addOpticalConfigAt(650.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
+	/*
+	std::cout << "Please enter the number of points\n";
+	int pcount = 0;
+	std::cin >> pcount;
+
+	for (int i = 0; i < pcount; i++)
+	{
+		PI_LuminousPoint point;
+		std::cout << "For point " << i + 1 << ":\n";
+		std::cout << "Please enter X\n";
+		std::cin >> point.x;
+		std::cout << "Please enter Y\n";
+		std::cin >> point.y;
+		std::cout << "Please enter Z\n";
+		std::cin >> point.z;
+		addPoint(point);
+	}
+	*/
+	{
+		PI_LuminousPoint point;
+		point.x = 20;	point.y = 20;	point.z = 160;	point.wavelength = 555.0;
+		addPoint(point);
+		point.x = -20;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 30;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = -20;	point.y = -20;	point.z = 160;	point.wavelength = 555.0;
+		addPoint(point);
+		point.x = 0;	point.y = 0;	point.z = 160;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 20;	point.y = 0;	point.z = 200;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 0;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = -30;	point.y = 0;	point.z = 160;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = 40;	point.y = 0;	point.z = 200;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+		point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
+		addPoint(point);
+	}
+
+	/*
+	int rayDensity = 20;
+	std::cout << "Enter desired linear ray generation density: \n";
+	std::cin >> rayDensity;
+	*/
+	std::cout << "Starting...\n";
+
 	checkData();
 	trace();
 	render();
 
-	delete[] surfaces;
+	{
+		float wavelengths[3] = { 400.0,555.0, 650.0 };
+		int imageID = 0;
+		createOutputImage(3, wavelengths, imageID);
+	}
+
+	clearStorage();
 
 	return {PI_OK, "Test OK"};
 }
@@ -69,8 +200,20 @@ PI_Message tracer::addPoint(PI_LuminousPoint & toAdd)
 	point.z = toAdd.z;
 	point.intensity = toAdd.intensity;
 	point.wavelength = toAdd.wavelength;
-	mainStorageManager.add(point);
-	return PI_Message();
+	bool result = mainStorageManager.add(point);
+	if (result)
+	{
+		toTraceCount++;
+		toRenderCount++;
+
+		return { PI_OK, "Point added successfully!\n" };
+	}
+	else
+	{
+		std::stringstream errormsg;
+		errormsg << "Could not add point (" << toAdd.x << ", " << toAdd.y << " ," << toAdd.z << "), " << toAdd.intensity << " at " << toAdd.wavelength << " nm!\n";
+		return { PI_INPUT_ERROR, errormsg.str().c_str() };
+	}
 }
 
 PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *& toAdd, float angularResolution, float angularExtend)
@@ -178,7 +321,12 @@ PI_Message tracer::trace()
 		//trace all points
 		activeWavelength = *currentwavelength;
 		std::cout << "Tracing at wavelength = " << activeWavelength << "\n";
-		while (KernelLauncher(0, nullptr) != -2);
+		while (KernelLauncher(0, nullptr) != -2)
+		{
+			tracedCount = tracedCount + PI_traceJobSize;
+			updateProgress();
+		}
+
 		mainStorageManager.jobCheckIn(currentwavelength, StorageHolder<float>::Status::completed1);
 	}
 	
@@ -213,7 +361,11 @@ PI_Message tracer::render()
 		thisOpticalConfig->p_rawChannel->createSibling();
 
 		//run the renderer
-		while (KernelLauncher2(0, nullptr) != -2);
+		while (KernelLauncher2(0, nullptr) != -2)
+		{
+			renderedCount = renderedCount + PI_renderJobSize;
+			updateProgress();
+		}
 
 		//deal with the output
 		//data copy out
@@ -221,7 +373,7 @@ PI_Message tracer::render()
 
 		//testing: draw all retina
 		//thisOpticalConfig->p_rawChannel->setToValue(1.0, *(thisOpticalConfig->p_retinaDescriptor));
-
+		/*
 		//display data with scaling
 		void* mapX = nullptr;
 		void* mapY = nullptr;
@@ -233,6 +385,7 @@ PI_Message tracer::render()
 
 		quickDisplayv2(thisOpticalConfig->p_rawChannel->hp_raw, thisOpticalConfig->p_rawChannel->m_dimension.y,
 			thisOpticalConfig->p_rawChannel->m_dimension.x, mapX, mapY, 700);
+		*/
 
 		//performing clean up
 		thisOpticalConfig->p_rawChannel->deleteSibling();
@@ -259,6 +412,92 @@ PI_Message tracer::render()
 	*/
 
 	return { PI_OK, "Rendering completed!\n" };
+}
+
+PI_Message tracer::showRaw(float* wavelengths, int count)
+{
+	if (count != 0)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			float currentWavelength = wavelengths[i];
+
+			//get the corresponding optical config
+			OpticalConfig* thisOpticalConfig = nullptr;
+			bool b_getConfig = mainStorageManager.infoCheckOut(thisOpticalConfig, currentWavelength);
+			if (!b_getConfig)
+			{
+				std::cout << "Cannot get optical config for wavelength at "<<currentWavelength<<" nm \n";
+				return { PI_UNKNOWN_ERROR, "Cannot get optical config for this wavelength\n" };
+			}
+
+			//display data with scaling
+			void* mapX = nullptr;
+			void* mapY = nullptr;
+			SimpleRetinaDescriptor* tempDescriptor = dynamic_cast<SimpleRetinaDescriptor*>(thisOpticalConfig->p_retinaDescriptor);
+
+			MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
+			generateProjectionMap(mapX, mapY, thisOpticalConfig->p_rawChannel->m_dimension.y,
+				thisOpticalConfig->p_rawChannel->m_dimension.x, IF_PROJECTION_ALONGZ, 4, scalingargs);
+
+			quickDisplayv2(thisOpticalConfig->p_rawChannel->hp_raw, thisOpticalConfig->p_rawChannel->m_dimension.y,
+				thisOpticalConfig->p_rawChannel->m_dimension.x, mapX, mapY, 700);
+		}
+	}
+	else
+	{
+		std::cout << "Nothing to show!\n";
+		return { PI_INPUT_ERROR, "Empty selection\n" };
+	}
+	return { PI_OK, "Successful!\n" };
+}
+
+PI_Message tracer::showRGB(int uniqueID)
+{
+	std::unordered_map<int, OutputImage>::iterator token = outputImages.find(uniqueID);
+
+	if (token == outputImages.end())
+	{
+		std::cout << "Image at ID " << uniqueID << " does not exist!\n";
+		return { PI_INPUT_ERROR, "Image ID does not exist!\n" };
+	}
+	else
+	{
+		outputImages[uniqueID].displayRGB();
+		return { PI_OK, "Successful!\n" };
+	}
+}
+
+PI_Message tracer::saveRaw(const char * path, int uniqueID)
+{
+	std::unordered_map<int, OutputImage>::iterator token = outputImages.find(uniqueID);
+
+	if (token == outputImages.end())
+	{
+		std::cout << "Image at ID " << uniqueID << " does not exist!\n";
+		return { PI_INPUT_ERROR, "Image ID does not exist!\n" };
+	}
+	else
+	{
+		outputImages[uniqueID].saveRaw(path);
+		return { PI_OK, "Successful!\n" };
+	}
+}
+
+PI_Message tracer::saveRGB(const char * path, int uniqueID)
+{
+	std::unordered_map<int, OutputImage>::iterator token = outputImages.find(uniqueID);
+
+	if (token == outputImages.end())
+	{
+		std::cout << "Image at ID " << uniqueID << " does not exist!\n";
+		return { PI_INPUT_ERROR, "Image ID does not exist!\n" };
+	}
+	else
+	{
+		outputImages[uniqueID].saveRGB(path);
+		return { PI_OK, "Successful!\n" };
+	}
 }
 
 PI_Message tracer::setLinearRayDensity(unsigned int newDensity)
@@ -379,6 +618,13 @@ PI_Message tracer::deleteOutputImage(int uniqueID)
 
 PI_Message tracer::clearStorage()
 {
+	//clear the progress counter variables
+	toTraceCount = 0;
+	tracedCount = 0;
+	toRenderCount = 0;
+	renderedCount = 0;
+	updateProgress();
+
 	//check for wavelength info from the main storage
 	float* wavelengthStorageList = nullptr;
 	int wavelengthStorageCount = 0;
@@ -394,4 +640,55 @@ PI_Message tracer::clearStorage()
 	}
 
 	return { PI_OK, "Storage cleared!\n" };
+}
+
+void updateProgress()
+{
+	if (toTraceCount == 0)
+	{
+		PI_traceProgress = 0;
+	}
+	else
+	{
+		if (tracedCount < 0)
+		{
+			tracedCount = 0;
+			PI_traceProgress = 0;
+		}
+		else if (tracedCount > toTraceCount)
+		{
+			tracedCount = toTraceCount;
+			PI_traceProgress = 1.0;
+		}
+		else
+		{
+			PI_traceProgress = (float)tracedCount / (float)toTraceCount;
+			
+		}
+	}
+	
+	if (toRenderCount == 0)
+	{
+		PI_renderProgress = 0;
+	}
+	else
+	{
+		if (renderedCount < 0)
+		{
+			renderedCount = 0;
+			PI_renderProgress = 0;
+		}
+		else if (renderedCount > toRenderCount)
+		{
+			renderedCount = toRenderCount;
+			PI_renderProgress = 1.0;
+		}
+		else
+		{
+			PI_renderProgress = (float)renderedCount / (float)toRenderCount;
+			
+		}
+	}
+	std::cout << "Trace progress: " << PI_traceProgress * 100 << " %\n";
+	std::cout << "Render progress: " << PI_renderProgress * 100 << " %\n";
 }
