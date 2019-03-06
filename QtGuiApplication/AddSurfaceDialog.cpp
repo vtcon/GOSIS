@@ -43,10 +43,12 @@ void AddSurfaceDialog::on_pushAddSurface_clicked()
 		errorstr.append("Normal optical material should have refractive index not smaller than 1.\n");
 	}
 
+	/*
 	if (apo != 0)
 	{
 		errorstr.append("Apodization not yet supported.\n");
 	}
+	*/
 
 	if (errorstr.isEmpty())
 	{

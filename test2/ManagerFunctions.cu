@@ -836,7 +836,7 @@ void testbenchGPU()
 	*/
 }
 
-bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int surfaceType, vec3<MYFLOATTYPE> vertexPos, MYFLOATTYPE R, MYFLOATTYPE diam, unsigned short int side, MYFLOATTYPE n1, MYFLOATTYPE n2, MYFLOATTYPE K, point2D<MYFLOATTYPE> tiptilt)
+bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int surfaceType, vec3<MYFLOATTYPE> vertexPos, MYFLOATTYPE R, MYFLOATTYPE diam, unsigned short int side, MYFLOATTYPE n1, MYFLOATTYPE n2, MYFLOATTYPE K, unsigned short int apodization, point2D<MYFLOATTYPE> tiptilt)
 {
 	//NOTE: this is a very basic implementation, tip/tilt has not been taken into account
 	R = abs(R);
@@ -847,7 +847,7 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 	MYFLOATTYPE I = 0;
 	MYFLOATTYPE J = -R * R;
 	bool antiParallel = true;
-	if (K == 0) //spherical surface
+	if (K == 1.0) //spherical surface
 	{
 		switch (surfaceType)
 		{
@@ -886,9 +886,23 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 			break;
 		}
 
+		//apodization translator, incase somebody mess things up
+		unsigned short int translatedApo = APD_UNIFORM;
+		switch (apodization)
+		{
+		case PI_APD_BARTLETT:
+			translatedApo = APD_BARTLETT;
+			break;
+		case PI_APD_UNIFORM:
+		default:
+			translatedApo = APD_UNIFORM;
+			break;
+		}
+
 		p_surface = new quadricsurface<MYFLOATTYPE>(type,
 			quadricparam<MYFLOATTYPE>(ABC, ABC, ABC, 0, 0, 0, 0, 0, I, J), n1, n2, center, diam,
 			antiParallel, tiptilt);
+		p_surface->apodizationType = translatedApo;
 	}
 	else
 	{

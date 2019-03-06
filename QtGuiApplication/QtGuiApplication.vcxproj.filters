@@ -45,6 +45,9 @@
     <ClCompile Include="QtGuiApplication.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ConsoleOut.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="AddPointDialog.h">
@@ -59,6 +62,9 @@
     <QtMoc Include="RenderProgressEmittor.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="ConsoleOut.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="QtGuiApplication.ui">
@@ -68,6 +74,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="AddSurfaceDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="ConsoleOut.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

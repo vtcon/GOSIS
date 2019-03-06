@@ -2,8 +2,11 @@
 
 #include <QtWidgets/QMainWindow>
 #include "ui_QtGuiApplication.h"
+#include <qthread.h>
+
 #include "qmessagebox.h"
 #include "QDebugStream.h"
+#include "ConsoleOut.h"
 
 #include "../test2/ProgramInterface.h"
 
@@ -27,7 +30,9 @@ private:
 	Ui::QtGuiApplicationClass ui;
 
 	//output for std::cout
-	QDebugStream* m_qd;
+	ConsoleOut* w2 = nullptr;
+	QThread consolethread;
+
 
 	//state machine
 	unsigned short int stateCounter = 0;
@@ -63,6 +68,8 @@ private:
 			ui.pushDisplayRGB->setEnabled(false);
 			ui.pushSaveRaw->setEnabled(false);
 			ui.pushSaveRGB->setEnabled(false);
+			ui.progressTrace->setValue(0);
+			ui.progressRender->setValue(0);
 			break;
 		case 1:
 			ui.pushTrace->setEnabled(true);
@@ -110,6 +117,7 @@ private slots:
 	void on_pushClearInput_clicked();
 	
 	void on_pushAddSurface_clicked();
+	void on_pushRemoveSurface_clicked();
 	void on_pushAcceptConfig_clicked();
 	void on_pushClearConfig_clicked();
 	void on_listConfig_currentItemChanged();
@@ -124,17 +132,21 @@ private slots:
 	void on_pushSaveRGB_clicked();
 
 	void on_actionTest_triggered();
+	void on_actionConsoleOut_triggered();
+	
+	void on_pushSelectImage_clicked();
+	void on_pushClearImage_clicked();
 };
 
 class listConfigCompanion
 {
 public:
-	void attachTo(QListWidget* widget)
+	static void attachTo(QListWidget* widget)
 	{
 		p_widget = widget;
 	}
 
-	void addWavelength(float newwavelength)
+	static void addWavelength(float newwavelength)
 	{
 		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [newwavelength](wavelengthAndStatus holder) {return holder.wavelength == newwavelength; });
 		if (token == wavelengths.end())
@@ -146,31 +158,11 @@ public:
 		}
 	}
 
-	void removeWavelength(float wavelength)
-	{
-		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
-		if (token != wavelengths.end())
-		{
-			wavelengths.erase(token);
-			int i = 0;
-			for (; i < p_widget->count(); i++)
-			{
-				if (p_widget->item(i)->text() == QString::number(wavelength))
-				{
-					break;
-				}
-			}
-			delete p_widget->item(i);
-		}
-	}
+	static void removeWavelength(float wavelength);
 
-	void removeAllWavelengths()
-	{
-		p_widget->clear();
-		wavelengths.clear();
-	}
-
-	void addPoint(float wavelength)
+	static void removeAllWavelengths();
+	
+	static void addPoint(float wavelength)
 	{
 		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
 		if (token != wavelengths.end())
@@ -179,7 +171,7 @@ public:
 		}
 	}
 
-	void removePoint(float wavelength)
+	static void removePoint(float wavelength)
 	{
 		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
 		if (token != wavelengths.end())
@@ -192,17 +184,17 @@ public:
 		}
 	}
 
-	bool isExist(float wavelength)
+	static bool isExist(float wavelength)
 	{
 		return std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; }) != wavelengths.end();
 	}
 
-	bool isEmpty()
+	static bool isEmpty()
 	{
 		return wavelengths.size() == 0;
 	}
 
-	void setHasConfig(float wavelength, bool value)
+	static void setHasConfig(float wavelength, bool value)
 	{
 		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
 		if (token != wavelengths.end())
@@ -211,7 +203,7 @@ public:
 		}
 	}
 
-	bool getHasConfig(float wavelength)
+	static bool getHasConfig(float wavelength)
 	{
 		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
 		if (token != wavelengths.end())
@@ -221,13 +213,13 @@ public:
 		return false;
 	}
 
-	bool hasWavelength(float wavelength)
+	static bool hasWavelength(float wavelength)
 	{
 		auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
 		return token != wavelengths.end();
 	}
 
-	void getTraceableWavelengths(float*& listTraceable, int& countTraceable, float*& listUntraceable, int& countUntraceable)
+	static void getTraceableWavelengths(float*& listTraceable, int& countTraceable, float*& listUntraceable, int& countUntraceable)
 	{
 		std::vector<float> templist;
 		std::vector<float> templistNon;
@@ -267,7 +259,7 @@ public:
 	}
 
 private:
-	QListWidget* p_widget = nullptr;
+	static QListWidget* p_widget;
 
 	struct wavelengthAndStatus
 	{
@@ -277,32 +269,36 @@ private:
 		bool inputChangedSinceLastProcess = true;
 
 	};
-	std::list<wavelengthAndStatus> wavelengths;
+	static std::list<wavelengthAndStatus> wavelengths;
 };
 
 class tableConfigCompanion
 {
 public:
-	void attachTo(QTableWidget* table)
+	static void attachTo(QTableWidget* table)
 	{
 		p_table = table;
 	}
 
-	void checkOutWavelength(float wavelength);
+	static void checkOutWavelength(float wavelength);
 
-	bool addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo);
+	static bool addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo);
 
-	bool acceptCurrentConfig();
+	static bool deleteSurfaceAtCurrentRow();
 
-	bool clearCurrentConfig();
+	static bool acceptCurrentConfig();
 
-	bool getConfigAt(float wavelength, std::list<tracer::PI_Surface>& output);
+	static bool clearCurrentConfig();
+
+	static bool clearConfigAt(float wavelength);
+
+	static bool getConfigAt(float wavelength, std::list<tracer::PI_Surface>& output);
 
 private:
-	QTableWidget* p_table = nullptr;
+	static QTableWidget* p_table;
 
-	float currentWavelength;
-	std::list<tracer::PI_Surface> currentConfig;
+	static float currentWavelength;
+	static std::list<tracer::PI_Surface> currentConfig;
 
 	struct wavelengthAndConfig
 	{
@@ -310,5 +306,5 @@ private:
 		std::list<tracer::PI_Surface> surfaces;
 	};
 
-	std::list<wavelengthAndConfig> configs;
+	static std::list<wavelengthAndConfig> configs;
 };

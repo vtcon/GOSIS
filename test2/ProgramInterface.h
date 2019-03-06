@@ -13,10 +13,13 @@
 #define PI_INFO_RESPONSE 201
 #define PI_INPUT_ERROR 300
 
+//definition of apodization options
+#define PI_APD_UNIFORM 0
+#define PI_APD_BARTLETT 1
+
 namespace tracer
 {
-	static float PI_traceProgress; //from 0.0 to 1.0
-	static float PI_renderProgress; //from 0.0 to 1.0
+	
 
 	//Program classes for export
 	class EXPORT PI_LuminousPoint
@@ -40,7 +43,8 @@ namespace tracer
 		float diameter = 0.0;
 		float radius = 1.0;
 		float refractiveIndex = 1.0;
-		float asphericity = 0.0;
+		float asphericity = 1.0; //1.0 is default for spherical surfaces
+		unsigned short int apodization = PI_APD_UNIFORM;
 	};
 
 	struct EXPORT PI_Message
@@ -82,4 +86,8 @@ namespace tracer
 	PI_Message EXPORT deleteOutputImage(int uniqueID);
 
 	PI_Message EXPORT clearStorage();
+
+	PI_Message EXPORT getProgress(float& traceProgress, float& renderProgress);
+
+	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB);
 }

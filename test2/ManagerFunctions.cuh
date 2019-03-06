@@ -66,6 +66,7 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface,
 	MYFLOATTYPE n1 = 1,
 	MYFLOATTYPE n2 = 1,
 	MYFLOATTYPE conicConstantK = 0,
+	unsigned short int apodization = APD_UNIFORM,
 	point2D<MYFLOATTYPE> primaryAxisTiltThetaAndPhiInDegree = { 0,0 });
 
 int ColumnCreator3();

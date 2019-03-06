@@ -178,7 +178,7 @@ public:
     {
         AddSurfaceDialog->setWindowTitle(QApplication::translate("AddSurfaceDialog", "AddSurfaceDialog", nullptr));
         label->setText(QApplication::translate("AddSurfaceDialog", "Z Coordinate", nullptr));
-        lineZ->setText(QApplication::translate("AddSurfaceDialog", "40", nullptr));
+        lineZ->setText(QApplication::translate("AddSurfaceDialog", "100", nullptr));
         label_2->setText(QApplication::translate("AddSurfaceDialog", "X Coordinate", nullptr));
         lineX->setText(QApplication::translate("AddSurfaceDialog", "0", nullptr));
         label_3->setText(QApplication::translate("AddSurfaceDialog", "Y Coordinate", nullptr));
@@ -186,9 +186,9 @@ public:
         label_4->setText(QApplication::translate("AddSurfaceDialog", "Diameter", nullptr));
         lineDiam->setText(QApplication::translate("AddSurfaceDialog", "40", nullptr));
         label_5->setText(QApplication::translate("AddSurfaceDialog", "Curvature Radius", nullptr));
-        lineRadius->setText(QApplication::translate("AddSurfaceDialog", "40", nullptr));
+        lineRadius->setText(QApplication::translate("AddSurfaceDialog", "26.612", nullptr));
         label_6->setText(QApplication::translate("AddSurfaceDialog", "Refractive Index", nullptr));
-        lineRefracI->setText(QApplication::translate("AddSurfaceDialog", "2.0", nullptr));
+        lineRefracI->setText(QApplication::translate("AddSurfaceDialog", "1.5168", nullptr));
         label_7->setText(QApplication::translate("AddSurfaceDialog", "Asphericity", nullptr));
         lineAsph->setText(QApplication::translate("AddSurfaceDialog", "1.0", nullptr));
         label_8->setText(QApplication::translate("AddSurfaceDialog", "Apodization", nullptr));

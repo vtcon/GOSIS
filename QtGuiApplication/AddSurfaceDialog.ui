@@ -39,7 +39,7 @@
      <item row="0" column="1" colspan="2">
       <widget class="QLineEdit" name="lineZ">
        <property name="text">
-        <string>40</string>
+        <string>100</string>
        </property>
       </widget>
      </item>
@@ -95,7 +95,7 @@
      <item row="4" column="1" colspan="2">
       <widget class="QLineEdit" name="lineRadius">
        <property name="text">
-        <string>40</string>
+        <string>26.612</string>
        </property>
       </widget>
      </item>
@@ -109,7 +109,7 @@
      <item row="5" column="1" colspan="2">
       <widget class="QLineEdit" name="lineRefracI">
        <property name="text">
-        <string>2.0</string>
+        <string>1.5168</string>
        </property>
       </widget>
      </item>

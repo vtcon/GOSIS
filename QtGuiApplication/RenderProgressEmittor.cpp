@@ -23,7 +23,7 @@ void RenderProgressEmittor::setProgress(int value)
 
 void RenderProgressEmittor::watchProgress()
 {
-	while (true)
+	/*while (true)
 	{
 		int newvalue = (int)(100.0*tracer::PI_renderProgress);
 		if (newvalue != m_progress)
@@ -34,4 +34,5 @@ void RenderProgressEmittor::watchProgress()
 		using namespace std::literals::chrono_literals;
 		std::this_thread::sleep_for(0.5s);
 	}
+	*/
 }

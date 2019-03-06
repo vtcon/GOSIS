@@ -115,6 +115,7 @@
   <ItemGroup>
     <ClCompile Include="AddPointDialog.cpp" />
     <ClCompile Include="AddSurfaceDialog.cpp" />
+    <ClCompile Include="ConsoleOut.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RenderProgressEmittor.cpp" />
     <ClCompile Include="QtGuiApplication.cpp">
@@ -135,6 +136,7 @@
   <ItemGroup>
     <QtUic Include="AddPointDialog.ui" />
     <QtUic Include="AddSurfaceDialog.ui" />
+    <QtUic Include="ConsoleOut.ui" />
     <QtUic Include="QtGuiApplication.ui" />
   </ItemGroup>
   <ItemGroup>
@@ -158,6 +160,10 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="ConsoleOut.h">
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+      <IncludePath Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>
+    </QtMoc>
     <ClInclude Include="QDebugStream.h" />
     <QtMoc Include="RenderProgressEmittor.h">
       <IncludePath Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\GeneratedFiles;.;$(QTDIR)\include;.\GeneratedFiles\$(ConfigurationName);$(QTDIR)\include\QtCore;$(QTDIR)\include\QtGui;$(QTDIR)\include\QtANGLE;$(QTDIR)\include\QtWidgets</IncludePath>

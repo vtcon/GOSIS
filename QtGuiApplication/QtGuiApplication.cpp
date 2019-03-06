@@ -3,8 +3,9 @@
 #include "AddPointDialog.h"
 #include "AddSurfaceDialog.h"
 
+
 #include <qobject.h>
-#include <qthread.h>
+
 #include "qmessagebox.h"
 #include <QFileDialog>
 #include <qtimer.h>
@@ -19,10 +20,18 @@
 //supporting structures
 #include "RenderProgressEmittor.h"
 
+//static initialization
+QListWidget* listConfigCompanion::p_widget = nullptr;
+std::list<listConfigCompanion::wavelengthAndStatus> listConfigCompanion::wavelengths;
+QTableWidget* tableConfigCompanion::p_table = nullptr;
+float tableConfigCompanion::currentWavelength;
+std::list<tracer::PI_Surface> tableConfigCompanion::currentConfig;
+std::list<tableConfigCompanion::wavelengthAndConfig> tableConfigCompanion::configs;
+
 //global variables
 //std::vector<float> inputWavelengths;
-listConfigCompanion wavelengthList;
-tableConfigCompanion configTable;
+//listConfigCompanion wavelengthList;
+//tableConfigCompanion configTable;
 std::vector<int> outputImageIDs;
 
 QtGuiApplication::QtGuiApplication(QWidget *parent)
@@ -32,13 +41,13 @@ QtGuiApplication::QtGuiApplication(QWidget *parent)
 	ui.tableInput->setColumnHidden(3, true);
 
 	//
-	m_qd = new QDebugStream(std::cout, ui.textEditProcess); //Redirect Console output to QTextEdit
+	//m_qd = new QDebugStream(std::cout, ui.textEditProcess); //Redirect Console output to QTextEdit
 	//m_qd->QDebugStream::registerQDebugMessageHandler(); //Redirect qDebug() output to QTextEdit
 
 
 	//attach global variables to widgets
-	wavelengthList.attachTo(ui.listConfig);
-	configTable.attachTo(ui.tableConfig);
+	listConfigCompanion::attachTo(ui.listConfig);
+	tableConfigCompanion::attachTo(ui.tableConfig);
 
 	//start the state machine
 	stateCounter = 0;
@@ -67,7 +76,9 @@ void QtGuiApplication::on_radioManual_clicked()
 
 void QtGuiApplication::updateRenderProgressDirectly()
 {
-	int newvalue = (int)(100.0*tracer::PI_renderProgress);
+	float tempvalue1 = 0.0, tempvalue2 = 0.0;
+	tracer::getProgress(tempvalue1, tempvalue2);
+	int newvalue = tempvalue2*100;
 	newvalue = (newvalue < 0) ? 0 : newvalue;
 	newvalue = (newvalue > 100) ? 100 : newvalue;
 	std::cout << "[GUI]Render at " << newvalue << " %\n";
@@ -158,7 +169,7 @@ void QtGuiApplication::on_pushRemovePoint_clicked()
 		msgBox.exec();
 	}
 
-	wavelengthList.removePoint(wavelength);
+	listConfigCompanion::removePoint(wavelength);
 	ui.tableInput->removeRow(currentRow);
 
 	stateReset();
@@ -173,9 +184,10 @@ void QtGuiApplication::on_pushClearInput_clicked()
 		ui.tableInput->clearContents();
 		ui.tableInput->setRowCount(0);
 		inputTableData.clear();
+		listConfigCompanion::removeAllWavelengths();
 		break;
 	case 1:
-		//TODO: implement this
+		on_pushClearImage_clicked();
 		break;
 	case 2:
 		//TODO: implement this
@@ -201,29 +213,42 @@ void QtGuiApplication::on_pushAddSurface_clicked()
 		float asph = dialog.lineAsph->text().toFloat();
 		int apo = dialog.comboBox->currentIndex();
 
-		configTable.addSurface(X, Y, Z, diam, R, refracI, asph, apo);
+		tableConfigCompanion::addSurface(X, Y, Z, diam, R, refracI, asph, apo);
 	}
+}
+
+void QtGuiApplication::on_pushRemoveSurface_clicked()
+{
+	tableConfigCompanion::deleteSurfaceAtCurrentRow();
 }
 
 void QtGuiApplication::on_pushAcceptConfig_clicked()
 {
 	//TODO: add some data checking here
 	
-	configTable.acceptCurrentConfig();
+	tableConfigCompanion::acceptCurrentConfig();
 
 	stateReset();
 }
 
 void QtGuiApplication::on_pushClearConfig_clicked()
 {
-	configTable.clearCurrentConfig();
+	tableConfigCompanion::clearCurrentConfig();
 	stateReset();
 }
 
 void QtGuiApplication::on_listConfig_currentItemChanged()
 {
-	float selectedwavelength = ui.listConfig->currentItem()->text().toFloat();
-	configTable.checkOutWavelength(selectedwavelength);
+	float selectedwavelength = 0;
+	if (ui.listConfig->currentItem() != nullptr)
+	{
+		selectedwavelength = ui.listConfig->currentItem()->text().toFloat();
+	}
+	else
+	{
+		return;
+	}
+	tableConfigCompanion::checkOutWavelength(selectedwavelength);
 
 	if (ui.listConfig->count() > 0) {
 		ui.listConfig->currentItem()->setSelected(true);
@@ -262,6 +287,47 @@ void QtGuiApplication::on_pushCheckData_clicked()
 	}
 
 	//TODO: input points from the picture
+	{
+		QString fileName = ui.lineImagePath->text();
+		if (fileName.isEmpty() == false)
+		{
+			QByteArray fileName_ba = fileName.toLatin1();
+			const char *c_strFileName = fileName_ba.data();
+
+			float posX = ui.lineImagePosX->text().toFloat();
+			float posY = ui.lineImagePosY->text().toFloat();
+			float posZ = ui.lineImagePosZ->text().toFloat();
+			float rotX = ui.lineImageRotX->text().toFloat();
+			float rotY = ui.lineImageRotY->text().toFloat();
+			float rotZ = ui.lineImageRotZ->text().toFloat();
+			float horzSize = ui.lineImageHorzSize->text().toFloat();
+			float vertSize = ui.lineImageVertSize->text().toFloat();
+			float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
+			float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
+			float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
+
+			//data check has been done when add image path, no need to add again
+
+			//calling API
+			tracer::PI_Message message = tracer::importImage(c_strFileName, posX, posY, posZ, horzSize, vertSize, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB);
+			if (message.code != PI_OK)
+			{
+				std::cout << "[GUI] Could not import image!\n";
+				QMessageBox msgBox;
+				msgBox.setWindowTitle("Input Error");
+				msgBox.setText("Could not import image!\n");
+				msgBox.setInformativeText(message.detail);
+				msgBox.setStandardButtons(QMessageBox::Ok);
+				msgBox.setDefaultButton(QMessageBox::Ok);
+				msgBox.exec();
+			}
+		}
+		else
+		{
+			std::cout << "[GUI] No image was added\n";
+		}
+	}
+
 	//TODO: input points from external file
 
 	//check the image surface
@@ -311,7 +377,7 @@ void QtGuiApplication::on_pushCheckData_clicked()
 	int traceableCount = 0;
 	float* untraceableWavelengths = nullptr;
 	int untraceableCount = 0;
-	wavelengthList.getTraceableWavelengths(traceableWavelengths, traceableCount, untraceableWavelengths, untraceableCount);
+	listConfigCompanion::getTraceableWavelengths(traceableWavelengths, traceableCount, untraceableWavelengths, untraceableCount);
 
 	if (untraceableCount != 0)
 	{
@@ -371,7 +437,7 @@ void QtGuiApplication::on_pushCheckData_clicked()
 	for (int i = 0; i < traceableCount; i++)
 	{
 		std::list<tracer::PI_Surface> configToAdd;
-		if (!configTable.getConfigAt(traceableWavelengths[i], configToAdd))
+		if (!tableConfigCompanion::getConfigAt(traceableWavelengths[i], configToAdd))
 		{
 			continue;
 		}
@@ -486,23 +552,43 @@ void QtGuiApplication::on_pushRender_clicked()
 
 	thread->start();
 	*/
-	/*
+	
+
 	QTimer *timer = new QTimer(this);
-	//connect(timer, SIGNAL(timeout()), this, SLOT(timerTest()));
+	connect(timer, SIGNAL(timeout()), this, SLOT(timerTest()));
 	connect(timer, SIGNAL(timeout()), this, SLOT(updateRenderProgressDirectly()));
-	timer->start();
-	*/
-	if (tracer::render().code != PI_OK)
+	timer->start(200);
+
+	//std::future<tracer::PI_Message> asyncresult = std::async(std::launch::async, &tracer::render);
+	//auto rendermsg = tracer::render();
+	//std::thread rendererThread(tracer::render);
+	tracer::render();
+	if (false)
 	{
-		/*
-		if (threadRenderProgress.joinable())
-			threadRenderProgress.join();
-		*/
-		/*
-		thread->quit();
-		thread->wait();
-		*/
-		//timer->stop();
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Rendering...");
+		msgBox.setText("Please be patient!\n");
+		msgBox.setStandardButtons(QMessageBox::Ok);
+		msgBox.setDefaultButton(QMessageBox::Ok);
+		msgBox.exec();
+	}
+	{
+		//std::cout << "[GUI] Renderer is running!\n";
+	}
+	
+	//auto rendermsg = asyncresult.get();
+	/*
+	if (rendermsg.code != PI_OK)
+	{
+		
+		//if (threadRenderProgress.joinable())
+		//	threadRenderProgress.join();
+		
+		//thread->quit();
+		//thread->wait();
+		
+		ui.progressRender->setValue(0);
+		timer->stop();
 
 		QMessageBox msgBox;
 		msgBox.setWindowTitle("Core API error");
@@ -514,7 +600,14 @@ void QtGuiApplication::on_pushRender_clicked()
 		stateReset();
 		return;
 	}
-	//timer->stop();
+	*/
+
+	//if (rendererThread.joinable()) rendererThread.join();
+
+	ui.progressRender->setValue(100);
+	timer->stop();
+
+	
 	/*
 	thread->quit();
 	thread->wait();
@@ -525,12 +618,14 @@ void QtGuiApplication::on_pushRender_clicked()
 
 	emittor.setProgress((int)(75));
 	*/
+	
+	
 	//create output image: these codes temporarily lies here
 	float* traceableWavelengths = nullptr;
 	int traceableCount = 0;
 	float* untraceableWavelengths = nullptr;
 	int untraceableCount = 0;
-	wavelengthList.getTraceableWavelengths(traceableWavelengths, traceableCount, untraceableWavelengths, untraceableCount);
+	listConfigCompanion::getTraceableWavelengths(traceableWavelengths, traceableCount, untraceableWavelengths, untraceableCount);
 	
 	for (auto oldID : outputImageIDs)
 	{
@@ -552,7 +647,7 @@ void QtGuiApplication::on_pushRender_clicked()
 		msgBox.setDefaultButton(QMessageBox::Ok);
 		msgBox.exec();
 	}
-
+	
 	stateNext();
 }
 
@@ -672,12 +767,136 @@ void QtGuiApplication::on_actionTest_triggered()
 	tracer::test();
 }
 
+void QtGuiApplication::on_actionConsoleOut_triggered()
+{
+	if (w2 != nullptr)
+		delete w2;
+	w2 = new ConsoleOut();
+	w2->show();
+}
+
+void QtGuiApplication::on_pushSelectImage_clicked()
+{
+	//first check the image parameters
+
+	float posZ = ui.lineImagePosZ->text().toFloat();
+	float horzSize = ui.lineImageHorzSize->text().toFloat();
+	float vertSize = ui.lineImageVertSize->text().toFloat();
+	float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
+	float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
+	float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
+
+	//rectify the wavelength number
+	float tempwavelengthR = ((float)round(10 * wavelengthR)) / 10.0;
+	ui.lineImageRedWavelength->setText(QString::number(tempwavelengthR));
+	float tempwavelengthG = ((float)round(10 * wavelengthG)) / 10.0;
+	ui.lineImageGreenWavelength->setText(QString::number(tempwavelengthG));
+	float tempwavelengthB = ((float)round(10 * wavelengthB)) / 10.0;
+	ui.lineImageBlueWavelength->setText(QString::number(tempwavelengthB));
+	
+	{
+		QString errorstr;
+
+		if (posZ <= 0)
+		{
+			errorstr.append("Z position should be positive!\n");
+		}
+
+		if (horzSize <= 0)
+		{
+			errorstr.append("Horizontal size of image should be positive\n");
+		}
+
+		if (vertSize <= 0)
+		{
+			errorstr.append("Vertical size of image should be positive\n");
+		}
+
+		if (wavelengthR < 380.0 || wavelengthR > 830.0)
+		{
+			errorstr.append("Red wavelength outside visible range.\n");
+		}
+
+		if (wavelengthG < 380.0 || wavelengthG > 830.0)
+		{
+			errorstr.append("Green wavelength outside visible range.\n");
+		}
+
+		if (wavelengthB < 380.0 || wavelengthB > 830.0)
+		{
+			errorstr.append("Blue wavelength outside visible range.\n");
+		}
+
+		if (errorstr.isEmpty() == false)
+		{
+			QMessageBox msgBox;
+			msgBox.setWindowTitle("Input Error");
+			msgBox.setText("Please check the following error(s) before continue:");
+			msgBox.setInformativeText(errorstr);
+			msgBox.setStandardButtons(QMessageBox::Ok);
+			msgBox.setDefaultButton(QMessageBox::Ok);
+			msgBox.exec();
+			return;
+		}
+	}
+
+	QString fileName = QFileDialog::getOpenFileName(this,
+		tr("Open Image"), "", tr("Image Files (*.png *.jpg *.bmp)"));
+
+	if (fileName.isEmpty())
+		return;
+
+	ui.lineImagePath->setText(fileName);
+
+	//make all edits read only, because i don't want to re-perform the data check at the on_pushDataCheckin_clicked()
+	ui.lineImagePosX->setReadOnly(true);
+	ui.lineImagePosY->setReadOnly(true);
+	ui.lineImagePosZ->setReadOnly(true);
+	ui.lineImageRotX->setReadOnly(true);
+	ui.lineImageRotY->setReadOnly(true);
+	ui.lineImageRotZ->setReadOnly(true);
+	ui.lineImageHorzSize->setReadOnly(true);
+	ui.lineImageVertSize->setReadOnly(true);
+	ui.lineImageRedWavelength->setReadOnly(true);
+	ui.lineImageGreenWavelength->setReadOnly(true);
+	ui.lineImageBlueWavelength->setReadOnly(true);
+
+	listConfigCompanion::addWavelength(tempwavelengthR);
+	listConfigCompanion::addWavelength(tempwavelengthG);
+	listConfigCompanion::addWavelength(tempwavelengthB);
+}
+
+void QtGuiApplication::on_pushClearImage_clicked()
+{
+	ui.lineImagePath->clear();
+
+	float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
+	float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
+	float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
+
+	listConfigCompanion::removeWavelength(wavelengthR);
+	listConfigCompanion::removeWavelength(wavelengthG);
+	listConfigCompanion::removeWavelength(wavelengthB);
+
+	ui.lineImagePosX->setReadOnly(false);
+	ui.lineImagePosY->setReadOnly(false);
+	ui.lineImagePosZ->setReadOnly(false);
+	ui.lineImageRotX->setReadOnly(false);
+	ui.lineImageRotY->setReadOnly(false);
+	ui.lineImageRotZ->setReadOnly(false);
+	ui.lineImageHorzSize->setReadOnly(false);
+	ui.lineImageVertSize->setReadOnly(false);
+	ui.lineImageRedWavelength->setReadOnly(false);
+	ui.lineImageGreenWavelength->setReadOnly(false);
+	ui.lineImageBlueWavelength->setReadOnly(false);
+}
+
 void tableConfigCompanion::checkOutWavelength(float wavelength)
 {
 	auto token = std::find_if(configs.begin(), configs.end(), [wavelength](wavelengthAndConfig& holder) {return holder.wavelength == wavelength; });
 	if (token == configs.end())
 	{
-		if (wavelengthList.hasWavelength(wavelength))
+		if (listConfigCompanion::hasWavelength(wavelength))
 		{
 			//add new config
 			wavelengthAndConfig newitem;
@@ -739,10 +958,43 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 	newsurface.radius = R;
 	newsurface.refractiveIndex = refracI;
 	newsurface.asphericity = asph;
-	//newsurface.apodization = apo;
+	//apodization translator
+	QString apoName;
+	switch (apo)
+	{
+	case 1:
+		apoName = "Bartlett";
+		newsurface.apodization = PI_APD_BARTLETT;
+		break;
+	case 0:
+	default:
+		apoName = "Uniform";
+		newsurface.apodization = PI_APD_UNIFORM;
+		break;
+	}
+	
 
 	if (currentConfig.size() != 0)
 	{
+		//first make sure there is no duplication
+		for (auto eachsurface : currentConfig)
+		{
+			if (eachsurface.x == X &&
+				eachsurface.y == Y &&
+				eachsurface.z == Z &&
+				eachsurface.radius == R &&
+				eachsurface.asphericity == asph)
+			{
+				QMessageBox msgBox;
+				msgBox.setWindowTitle("Input error");
+				msgBox.setText("Surface cannot have the same geometry and position as existing surface!\n");
+				msgBox.setStandardButtons(QMessageBox::Ok);
+				msgBox.setDefaultButton(QMessageBox::Ok);
+				msgBox.exec();
+				return false;
+			}
+		}
+
 		int index = 0;
 		auto token = currentConfig.begin();
 		for (; token != currentConfig.end(); token++)
@@ -760,7 +1012,7 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 			currentConfig.insert(currentConfig.end(), newsurface);
 		}
 
-		p_table->setRowCount(currentConfig.size() + 1);
+		//p_table->setRowCount(currentConfig.size() + 1);
 		p_table->insertRow(index);
 
 		p_table->setItem(index, 0, new QTableWidgetItem(QObject::tr("(%1, %2, %3)").arg(newsurface.x).arg(newsurface.y).arg(newsurface.z)));
@@ -768,8 +1020,7 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 		p_table->setItem(index, 2, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.radius)));
 		p_table->setItem(index, 3, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.refractiveIndex)));
 		p_table->setItem(index, 4, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.asphericity)));
-		//p_table->setItem(index, 5, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.apodization)));
-		p_table->setItem(index, 5, new QTableWidgetItem(QObject::tr("Uniform")));
+		p_table->setItem(index, 5, new QTableWidgetItem(apoName));
 
 	}
 	else
@@ -781,11 +1032,45 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 		p_table->setItem(0, 2, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.radius)));
 		p_table->setItem(0, 3, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.refractiveIndex)));
 		p_table->setItem(0, 4, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.asphericity)));
-		//p_table->setItem(0, 5, new QTableWidgetItem(QObject::tr("%1").arg(newsurface.apodization)));
-		p_table->setItem(0, 5, new QTableWidgetItem(QObject::tr("Uniform")));
+		p_table->setItem(0, 5, new QTableWidgetItem(apoName));
 	}
 	
-	return false;
+	return true;
+}
+
+bool tableConfigCompanion::deleteSurfaceAtCurrentRow()
+{
+	int rowCount = p_table->rowCount();
+	if (rowCount == 0)
+	{
+		//nothing to delete, return
+		return false;
+	}
+
+	int currentRow = 0;
+	currentRow = p_table->currentRow();
+
+	auto token = currentConfig.begin();
+	for (int i = 0; i < currentRow; i++)
+	{
+		token++;
+		if (token == currentConfig.end()) 
+		{
+			QMessageBox msgBox;
+			msgBox.setWindowTitle("Error");
+			msgBox.setText("Count mismatch between tableConfig and its companion!\n");
+			msgBox.setStandardButtons(QMessageBox::Ok);
+			msgBox.setDefaultButton(QMessageBox::Ok);
+			msgBox.exec();
+			return false;
+		}
+	}
+
+	currentConfig.erase(token);
+	p_table->removeRow(currentRow);
+	p_table->setRowCount(rowCount - 1);
+
+	return true;
 }
 
 bool tableConfigCompanion::acceptCurrentConfig()
@@ -800,12 +1085,22 @@ bool tableConfigCompanion::acceptCurrentConfig()
 			token->surfaces = currentConfig;
 		}
 
-		wavelengthList.setHasConfig(wavelength, true);
+		listConfigCompanion::setHasConfig(wavelength, true);
+
+		{
+			QMessageBox msgBox;
+			msgBox.setWindowTitle("Info");
+			msgBox.setText("Configuration saved!\n");
+			msgBox.setStandardButtons(QMessageBox::Ok);
+			msgBox.setDefaultButton(QMessageBox::Ok);
+			msgBox.exec();
+		}
+
 		return true;
 	}
 	else
 	{
-		wavelengthList.setHasConfig(currentWavelength, false);
+		listConfigCompanion::setHasConfig(currentWavelength, false);
 
 		QMessageBox msgBox;
 		msgBox.setWindowTitle("Info");
@@ -828,11 +1123,41 @@ bool tableConfigCompanion::clearCurrentConfig()
 		token->surfaces.clear();
 	}
 
-	wavelengthList.setHasConfig(wavelength, false);
+	currentConfig.clear();
+
+	listConfigCompanion::setHasConfig(wavelength, false);
 
 	p_table->clearContents();
 	p_table->setRowCount(0);
 
+	return true;
+}
+
+bool tableConfigCompanion::clearConfigAt(float wavelength)
+{
+	auto token = std::find_if(configs.begin(), configs.end(), [wavelength](wavelengthAndConfig& holder) {return holder.wavelength == wavelength; });
+	if (token != configs.end())
+	{
+		configs.erase(token);
+	}
+
+	if (wavelength == currentWavelength)
+	{
+		if (configs.size() == 0)
+		{
+			currentWavelength = 0;
+			currentConfig.clear();
+			p_table->clearContents();
+			p_table->setRowCount(0);
+		}
+		else
+		{
+			auto token = configs.begin();
+			currentWavelength = token->wavelength;
+			currentConfig = token->surfaces;
+			checkOutWavelength(wavelength);
+		}
+	}
 	return true;
 }
 
@@ -851,3 +1176,32 @@ bool tableConfigCompanion::getConfigAt(float wavelength, std::list<tracer::PI_Su
 	}
 }
 
+void listConfigCompanion::removeWavelength(float wavelength)
+{
+	auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
+	if (token != wavelengths.end())
+	{
+		wavelengths.erase(token);
+		int i = 0;
+		for (; i < p_widget->count(); i++)
+		{
+			if (p_widget->item(i)->text() == QString::number(wavelength))
+			{
+				break;
+			}
+		}
+		delete p_widget->item(i);
+
+		tableConfigCompanion::clearConfigAt(wavelength);
+	}
+}
+
+void listConfigCompanion::removeAllWavelengths()
+{
+	p_widget->clear();
+	for (auto eachwavelength : wavelengths)
+	{
+		tableConfigCompanion::clearConfigAt(eachwavelength.wavelength);
+	}
+	wavelengths.clear();
+}

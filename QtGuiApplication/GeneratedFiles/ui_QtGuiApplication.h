@@ -51,6 +51,7 @@ public:
     QAction *actionDocumentation;
     QAction *actionHelp;
     QAction *actionTest;
+    QAction *actionConsoleOut;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout;
     QTabWidget *tabWidget;
@@ -66,34 +67,43 @@ public:
     QPushButton *pushRemovePoint;
     QSpacerItem *verticalSpacer;
     QWidget *pagePicture;
-    QGridLayout *gridLayout_6;
-    QHBoxLayout *horizontalLayout_2;
-    QPushButton *pushButton;
-    QLineEdit *lineEdit;
-    QSpacerItem *horizontalSpacer_2;
-    QPushButton *pushButton_2;
+    QGridLayout *gridLayout_15;
+    QGridLayout *gridLayout_14;
+    QLabel *label_23;
+    QLineEdit *lineImagePath;
+    QPushButton *pushSelectImage;
+    QPushButton *pushClearImage;
     QGroupBox *groupBox_2;
     QGridLayout *gridLayout_3;
     QLabel *label_5;
-    QLineEdit *lineEdit_2;
+    QLineEdit *lineImagePosX;
     QLabel *label_6;
-    QLineEdit *lineEdit_3;
+    QLineEdit *lineImagePosY;
     QLabel *label_7;
-    QLineEdit *lineEdit_4;
+    QLineEdit *lineImagePosZ;
+    QGroupBox *groupBox_8;
     QGridLayout *gridLayout_5;
-    QSpacerItem *horizontalSpacer_3;
-    QPlainTextEdit *plainTextEdit;
     QLabel *label_11;
+    QLineEdit *lineImageHorzSize;
+    QLabel *label_18;
+    QLineEdit *lineImageVertSize;
     QGroupBox *groupBox_3;
     QGridLayout *gridLayout_4;
     QLabel *label_8;
-    QLineEdit *lineEdit_5;
+    QLineEdit *lineImageRotX;
     QLabel *label_9;
-    QLineEdit *lineEdit_6;
+    QLineEdit *lineImageRotY;
     QLabel *label_10;
-    QLineEdit *lineEdit_7;
-    QSpacerItem *verticalSpacer_3;
-    QSpacerItem *verticalSpacer_4;
+    QLineEdit *lineImageRotZ;
+    QLabel *label_22;
+    QGroupBox *groupBox_10;
+    QGridLayout *gridLayout_6;
+    QLabel *label_19;
+    QLineEdit *lineImageRedWavelength;
+    QLabel *label_20;
+    QLineEdit *lineImageGreenWavelength;
+    QLabel *label_21;
+    QLineEdit *lineImageBlueWavelength;
     QWidget *pageList;
     QGridLayout *gridLayout_7;
     QHBoxLayout *horizontalLayout_3;
@@ -120,6 +130,7 @@ public:
     QGridLayout *gridLayout_8;
     QSpacerItem *horizontalSpacer_5;
     QPushButton *pushAddSurface;
+    QPushButton *pushModifySurface;
     QPushButton *pushRemoveSurface;
     QTableWidget *tableConfig;
     QSpacerItem *horizontalSpacer_6;
@@ -172,7 +183,7 @@ public:
     {
         if (QtGuiApplicationClass->objectName().isEmpty())
             QtGuiApplicationClass->setObjectName(QString::fromUtf8("QtGuiApplicationClass"));
-        QtGuiApplicationClass->resize(898, 571);
+        QtGuiApplicationClass->resize(874, 546);
         actionNew = new QAction(QtGuiApplicationClass);
         actionNew->setObjectName(QString::fromUtf8("actionNew"));
         actionOpen = new QAction(QtGuiApplicationClass);
@@ -193,6 +204,8 @@ public:
         actionHelp->setObjectName(QString::fromUtf8("actionHelp"));
         actionTest = new QAction(QtGuiApplicationClass);
         actionTest->setObjectName(QString::fromUtf8("actionTest"));
+        actionConsoleOut = new QAction(QtGuiApplicationClass);
+        actionConsoleOut->setObjectName(QString::fromUtf8("actionConsoleOut"));
         centralWidget = new QWidget(QtGuiApplicationClass);
         centralWidget->setObjectName(QString::fromUtf8("centralWidget"));
         verticalLayout = new QVBoxLayout(centralWidget);
@@ -261,34 +274,36 @@ public:
         stackedInput->addWidget(pageManual);
         pagePicture = new QWidget();
         pagePicture->setObjectName(QString::fromUtf8("pagePicture"));
-        gridLayout_6 = new QGridLayout(pagePicture);
-        gridLayout_6->setSpacing(6);
-        gridLayout_6->setContentsMargins(11, 11, 11, 11);
-        gridLayout_6->setObjectName(QString::fromUtf8("gridLayout_6"));
-        horizontalLayout_2 = new QHBoxLayout();
-        horizontalLayout_2->setSpacing(6);
-        horizontalLayout_2->setObjectName(QString::fromUtf8("horizontalLayout_2"));
-        pushButton = new QPushButton(pagePicture);
-        pushButton->setObjectName(QString::fromUtf8("pushButton"));
+        gridLayout_15 = new QGridLayout(pagePicture);
+        gridLayout_15->setSpacing(6);
+        gridLayout_15->setContentsMargins(11, 11, 11, 11);
+        gridLayout_15->setObjectName(QString::fromUtf8("gridLayout_15"));
+        gridLayout_14 = new QGridLayout();
+        gridLayout_14->setSpacing(6);
+        gridLayout_14->setObjectName(QString::fromUtf8("gridLayout_14"));
+        label_23 = new QLabel(pagePicture);
+        label_23->setObjectName(QString::fromUtf8("label_23"));
 
-        horizontalLayout_2->addWidget(pushButton);
+        gridLayout_14->addWidget(label_23, 0, 0, 1, 1);
 
-        lineEdit = new QLineEdit(pagePicture);
-        lineEdit->setObjectName(QString::fromUtf8("lineEdit"));
+        lineImagePath = new QLineEdit(pagePicture);
+        lineImagePath->setObjectName(QString::fromUtf8("lineImagePath"));
+        lineImagePath->setReadOnly(true);
 
-        horizontalLayout_2->addWidget(lineEdit);
+        gridLayout_14->addWidget(lineImagePath, 0, 1, 1, 1);
+
+        pushSelectImage = new QPushButton(pagePicture);
+        pushSelectImage->setObjectName(QString::fromUtf8("pushSelectImage"));
+
+        gridLayout_14->addWidget(pushSelectImage, 0, 2, 1, 1);
+
+        pushClearImage = new QPushButton(pagePicture);
+        pushClearImage->setObjectName(QString::fromUtf8("pushClearImage"));
+
+        gridLayout_14->addWidget(pushClearImage, 0, 3, 1, 1);
 
 
-        gridLayout_6->addLayout(horizontalLayout_2, 0, 0, 1, 1);
-
-        horizontalSpacer_2 = new QSpacerItem(134, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-        gridLayout_6->addItem(horizontalSpacer_2, 0, 1, 1, 1);
-
-        pushButton_2 = new QPushButton(pagePicture);
-        pushButton_2->setObjectName(QString::fromUtf8("pushButton_2"));
-
-        gridLayout_6->addWidget(pushButton_2, 0, 2, 1, 1);
+        gridLayout_15->addLayout(gridLayout_14, 0, 0, 1, 2);
 
         groupBox_2 = new QGroupBox(pagePicture);
         groupBox_2->setObjectName(QString::fromUtf8("groupBox_2"));
@@ -301,53 +316,62 @@ public:
 
         gridLayout_3->addWidget(label_5, 0, 0, 1, 1);
 
-        lineEdit_2 = new QLineEdit(groupBox_2);
-        lineEdit_2->setObjectName(QString::fromUtf8("lineEdit_2"));
+        lineImagePosX = new QLineEdit(groupBox_2);
+        lineImagePosX->setObjectName(QString::fromUtf8("lineImagePosX"));
 
-        gridLayout_3->addWidget(lineEdit_2, 0, 1, 1, 1);
+        gridLayout_3->addWidget(lineImagePosX, 0, 1, 1, 1);
 
         label_6 = new QLabel(groupBox_2);
         label_6->setObjectName(QString::fromUtf8("label_6"));
 
         gridLayout_3->addWidget(label_6, 1, 0, 1, 1);
 
-        lineEdit_3 = new QLineEdit(groupBox_2);
-        lineEdit_3->setObjectName(QString::fromUtf8("lineEdit_3"));
+        lineImagePosY = new QLineEdit(groupBox_2);
+        lineImagePosY->setObjectName(QString::fromUtf8("lineImagePosY"));
 
-        gridLayout_3->addWidget(lineEdit_3, 1, 1, 1, 1);
+        gridLayout_3->addWidget(lineImagePosY, 1, 1, 1, 1);
 
         label_7 = new QLabel(groupBox_2);
         label_7->setObjectName(QString::fromUtf8("label_7"));
 
         gridLayout_3->addWidget(label_7, 2, 0, 1, 1);
 
-        lineEdit_4 = new QLineEdit(groupBox_2);
-        lineEdit_4->setObjectName(QString::fromUtf8("lineEdit_4"));
+        lineImagePosZ = new QLineEdit(groupBox_2);
+        lineImagePosZ->setObjectName(QString::fromUtf8("lineImagePosZ"));
 
-        gridLayout_3->addWidget(lineEdit_4, 2, 1, 1, 1);
+        gridLayout_3->addWidget(lineImagePosZ, 2, 1, 1, 1);
 
 
-        gridLayout_6->addWidget(groupBox_2, 1, 0, 1, 1);
+        gridLayout_15->addWidget(groupBox_2, 1, 0, 1, 1);
 
-        gridLayout_5 = new QGridLayout();
+        groupBox_8 = new QGroupBox(pagePicture);
+        groupBox_8->setObjectName(QString::fromUtf8("groupBox_8"));
+        gridLayout_5 = new QGridLayout(groupBox_8);
         gridLayout_5->setSpacing(6);
+        gridLayout_5->setContentsMargins(11, 11, 11, 11);
         gridLayout_5->setObjectName(QString::fromUtf8("gridLayout_5"));
-        horizontalSpacer_3 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-        gridLayout_5->addItem(horizontalSpacer_3, 0, 1, 1, 1);
-
-        plainTextEdit = new QPlainTextEdit(pagePicture);
-        plainTextEdit->setObjectName(QString::fromUtf8("plainTextEdit"));
-
-        gridLayout_5->addWidget(plainTextEdit, 1, 0, 1, 2);
-
-        label_11 = new QLabel(pagePicture);
+        label_11 = new QLabel(groupBox_8);
         label_11->setObjectName(QString::fromUtf8("label_11"));
 
         gridLayout_5->addWidget(label_11, 0, 0, 1, 1);
 
+        lineImageHorzSize = new QLineEdit(groupBox_8);
+        lineImageHorzSize->setObjectName(QString::fromUtf8("lineImageHorzSize"));
 
-        gridLayout_6->addLayout(gridLayout_5, 1, 1, 2, 2);
+        gridLayout_5->addWidget(lineImageHorzSize, 0, 1, 1, 1);
+
+        label_18 = new QLabel(groupBox_8);
+        label_18->setObjectName(QString::fromUtf8("label_18"));
+
+        gridLayout_5->addWidget(label_18, 1, 0, 1, 1);
+
+        lineImageVertSize = new QLineEdit(groupBox_8);
+        lineImageVertSize->setObjectName(QString::fromUtf8("lineImageVertSize"));
+
+        gridLayout_5->addWidget(lineImageVertSize, 1, 1, 1, 1);
+
+
+        gridLayout_15->addWidget(groupBox_8, 1, 1, 1, 1);
 
         groupBox_3 = new QGroupBox(pagePicture);
         groupBox_3->setObjectName(QString::fromUtf8("groupBox_3"));
@@ -360,41 +384,77 @@ public:
 
         gridLayout_4->addWidget(label_8, 0, 0, 1, 1);
 
-        lineEdit_5 = new QLineEdit(groupBox_3);
-        lineEdit_5->setObjectName(QString::fromUtf8("lineEdit_5"));
+        lineImageRotX = new QLineEdit(groupBox_3);
+        lineImageRotX->setObjectName(QString::fromUtf8("lineImageRotX"));
 
-        gridLayout_4->addWidget(lineEdit_5, 0, 1, 1, 1);
+        gridLayout_4->addWidget(lineImageRotX, 0, 1, 1, 1);
 
         label_9 = new QLabel(groupBox_3);
         label_9->setObjectName(QString::fromUtf8("label_9"));
 
         gridLayout_4->addWidget(label_9, 1, 0, 1, 1);
 
-        lineEdit_6 = new QLineEdit(groupBox_3);
-        lineEdit_6->setObjectName(QString::fromUtf8("lineEdit_6"));
+        lineImageRotY = new QLineEdit(groupBox_3);
+        lineImageRotY->setObjectName(QString::fromUtf8("lineImageRotY"));
 
-        gridLayout_4->addWidget(lineEdit_6, 1, 1, 1, 1);
+        gridLayout_4->addWidget(lineImageRotY, 1, 1, 1, 1);
 
         label_10 = new QLabel(groupBox_3);
         label_10->setObjectName(QString::fromUtf8("label_10"));
 
         gridLayout_4->addWidget(label_10, 2, 0, 1, 1);
 
-        lineEdit_7 = new QLineEdit(groupBox_3);
-        lineEdit_7->setObjectName(QString::fromUtf8("lineEdit_7"));
+        lineImageRotZ = new QLineEdit(groupBox_3);
+        lineImageRotZ->setObjectName(QString::fromUtf8("lineImageRotZ"));
 
-        gridLayout_4->addWidget(lineEdit_7, 2, 1, 1, 1);
+        gridLayout_4->addWidget(lineImageRotZ, 2, 1, 1, 1);
+
+        label_22 = new QLabel(groupBox_3);
+        label_22->setObjectName(QString::fromUtf8("label_22"));
+
+        gridLayout_4->addWidget(label_22, 3, 0, 1, 2);
 
 
-        gridLayout_6->addWidget(groupBox_3, 2, 0, 2, 1);
+        gridLayout_15->addWidget(groupBox_3, 2, 0, 1, 1);
 
-        verticalSpacer_3 = new QSpacerItem(20, 167, QSizePolicy::Minimum, QSizePolicy::Expanding);
+        groupBox_10 = new QGroupBox(pagePicture);
+        groupBox_10->setObjectName(QString::fromUtf8("groupBox_10"));
+        gridLayout_6 = new QGridLayout(groupBox_10);
+        gridLayout_6->setSpacing(6);
+        gridLayout_6->setContentsMargins(11, 11, 11, 11);
+        gridLayout_6->setObjectName(QString::fromUtf8("gridLayout_6"));
+        label_19 = new QLabel(groupBox_10);
+        label_19->setObjectName(QString::fromUtf8("label_19"));
 
-        gridLayout_6->addItem(verticalSpacer_3, 3, 2, 2, 1);
+        gridLayout_6->addWidget(label_19, 0, 0, 1, 1);
 
-        verticalSpacer_4 = new QSpacerItem(20, 129, QSizePolicy::Minimum, QSizePolicy::Expanding);
+        lineImageRedWavelength = new QLineEdit(groupBox_10);
+        lineImageRedWavelength->setObjectName(QString::fromUtf8("lineImageRedWavelength"));
 
-        gridLayout_6->addItem(verticalSpacer_4, 4, 0, 1, 1);
+        gridLayout_6->addWidget(lineImageRedWavelength, 0, 1, 1, 1);
+
+        label_20 = new QLabel(groupBox_10);
+        label_20->setObjectName(QString::fromUtf8("label_20"));
+
+        gridLayout_6->addWidget(label_20, 1, 0, 1, 1);
+
+        lineImageGreenWavelength = new QLineEdit(groupBox_10);
+        lineImageGreenWavelength->setObjectName(QString::fromUtf8("lineImageGreenWavelength"));
+
+        gridLayout_6->addWidget(lineImageGreenWavelength, 1, 1, 1, 1);
+
+        label_21 = new QLabel(groupBox_10);
+        label_21->setObjectName(QString::fromUtf8("label_21"));
+
+        gridLayout_6->addWidget(label_21, 2, 0, 1, 1);
+
+        lineImageBlueWavelength = new QLineEdit(groupBox_10);
+        lineImageBlueWavelength->setObjectName(QString::fromUtf8("lineImageBlueWavelength"));
+
+        gridLayout_6->addWidget(lineImageBlueWavelength, 2, 1, 1, 1);
+
+
+        gridLayout_15->addWidget(groupBox_10, 2, 1, 1, 1);
 
         stackedInput->addWidget(pagePicture);
         pageList = new QWidget();
@@ -528,7 +588,12 @@ public:
         pushAddSurface = new QPushButton(groupBox_6);
         pushAddSurface->setObjectName(QString::fromUtf8("pushAddSurface"));
 
-        gridLayout_8->addWidget(pushAddSurface, 0, 3, 1, 1);
+        gridLayout_8->addWidget(pushAddSurface, 0, 2, 1, 1);
+
+        pushModifySurface = new QPushButton(groupBox_6);
+        pushModifySurface->setObjectName(QString::fromUtf8("pushModifySurface"));
+
+        gridLayout_8->addWidget(pushModifySurface, 0, 3, 1, 1);
 
         pushRemoveSurface = new QPushButton(groupBox_6);
         pushRemoveSurface->setObjectName(QString::fromUtf8("pushRemoveSurface"));
@@ -551,6 +616,7 @@ public:
         QTableWidgetItem *__qtablewidgetitem9 = new QTableWidgetItem();
         tableConfig->setHorizontalHeaderItem(5, __qtablewidgetitem9);
         tableConfig->setObjectName(QString::fromUtf8("tableConfig"));
+        tableConfig->setSelectionBehavior(QAbstractItemView::SelectRows);
 
         gridLayout_8->addWidget(tableConfig, 1, 0, 1, 5);
 
@@ -780,7 +846,7 @@ public:
         QtGuiApplicationClass->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(QtGuiApplicationClass);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 898, 26));
+        menuBar->setGeometry(QRect(0, 0, 874, 26));
         menuSession = new QMenu(menuBar);
         menuSession->setObjectName(QString::fromUtf8("menuSession"));
         menuHelp = new QMenu(menuBar);
@@ -802,6 +868,8 @@ public:
         menuSession->addAction(actionSave_as);
         menuSession->addSeparator();
         menuSession->addAction(actionClose);
+        menuSession->addSeparator();
+        menuSession->addAction(actionConsoleOut);
         menuHelp->addAction(actionPreferences);
         menuHelp->addAction(actionSystem_Info);
         menuHelp->addSeparator();
@@ -831,6 +899,7 @@ public:
         actionDocumentation->setText(QApplication::translate("QtGuiApplicationClass", "Documentation", nullptr));
         actionHelp->setText(QApplication::translate("QtGuiApplicationClass", "About", nullptr));
         actionTest->setText(QApplication::translate("QtGuiApplicationClass", "Test", nullptr));
+        actionConsoleOut->setText(QApplication::translate("QtGuiApplicationClass", "Console Out", nullptr));
         pushClearInput->setText(QApplication::translate("QtGuiApplicationClass", "Clear All", nullptr));
         QTableWidgetItem *___qtablewidgetitem = tableInput->horizontalHeaderItem(0);
         ___qtablewidgetitem->setText(QApplication::translate("QtGuiApplicationClass", "Coordinate", nullptr));
@@ -842,17 +911,36 @@ public:
         ___qtablewidgetitem3->setText(QApplication::translate("QtGuiApplicationClass", "UniqueID", nullptr));
         pushAddPoint->setText(QApplication::translate("QtGuiApplicationClass", "Add Point", nullptr));
         pushRemovePoint->setText(QApplication::translate("QtGuiApplicationClass", "Remove Point", nullptr));
-        pushButton->setText(QApplication::translate("QtGuiApplicationClass", "Select File:", nullptr));
-        pushButton_2->setText(QApplication::translate("QtGuiApplicationClass", "Start Image Sampling", nullptr));
-        groupBox_2->setTitle(QApplication::translate("QtGuiApplicationClass", "World Position Of Image", nullptr));
+        label_23->setText(QApplication::translate("QtGuiApplicationClass", "Image Path:", nullptr));
+        pushSelectImage->setText(QApplication::translate("QtGuiApplicationClass", "Select Image", nullptr));
+        pushClearImage->setText(QApplication::translate("QtGuiApplicationClass", "Clear", nullptr));
+        groupBox_2->setTitle(QApplication::translate("QtGuiApplicationClass", "World Position Of Image (Top-Left Corner)", nullptr));
         label_5->setText(QApplication::translate("QtGuiApplicationClass", "X Coordinate", nullptr));
+        lineImagePosX->setText(QApplication::translate("QtGuiApplicationClass", "15", nullptr));
         label_6->setText(QApplication::translate("QtGuiApplicationClass", "Y Coordinate", nullptr));
+        lineImagePosY->setText(QApplication::translate("QtGuiApplicationClass", "10", nullptr));
         label_7->setText(QApplication::translate("QtGuiApplicationClass", "Z Coordinate", nullptr));
-        label_11->setText(QApplication::translate("QtGuiApplicationClass", "File Info", nullptr));
+        lineImagePosZ->setText(QApplication::translate("QtGuiApplicationClass", "250", nullptr));
+        groupBox_8->setTitle(QApplication::translate("QtGuiApplicationClass", "Size Of Image", nullptr));
+        label_11->setText(QApplication::translate("QtGuiApplicationClass", "Horizontal Size", nullptr));
+        lineImageHorzSize->setText(QApplication::translate("QtGuiApplicationClass", "30", nullptr));
+        label_18->setText(QApplication::translate("QtGuiApplicationClass", "Vertical Size", nullptr));
+        lineImageVertSize->setText(QApplication::translate("QtGuiApplicationClass", "20", nullptr));
         groupBox_3->setTitle(QApplication::translate("QtGuiApplicationClass", "World Orientation Of Image (Degree)", nullptr));
         label_8->setText(QApplication::translate("QtGuiApplicationClass", "X Rotation", nullptr));
+        lineImageRotX->setText(QApplication::translate("QtGuiApplicationClass", "0.0", nullptr));
         label_9->setText(QApplication::translate("QtGuiApplicationClass", "Y Rotation", nullptr));
+        lineImageRotY->setText(QApplication::translate("QtGuiApplicationClass", "0.0", nullptr));
         label_10->setText(QApplication::translate("QtGuiApplicationClass", "Z Rotation", nullptr));
+        lineImageRotZ->setText(QApplication::translate("QtGuiApplicationClass", "0.0", nullptr));
+        label_22->setText(QApplication::translate("QtGuiApplicationClass", "Note: Rotation will be applied in the order Z -> Y -> X", nullptr));
+        groupBox_10->setTitle(QApplication::translate("QtGuiApplicationClass", "Wavelength Settings Of Channels", nullptr));
+        label_19->setText(QApplication::translate("QtGuiApplicationClass", "Red Wavelength", nullptr));
+        lineImageRedWavelength->setText(QApplication::translate("QtGuiApplicationClass", "700", nullptr));
+        label_20->setText(QApplication::translate("QtGuiApplicationClass", "Green Wavelength", nullptr));
+        lineImageGreenWavelength->setText(QApplication::translate("QtGuiApplicationClass", "555", nullptr));
+        label_21->setText(QApplication::translate("QtGuiApplicationClass", "Blue Wavelength", nullptr));
+        lineImageBlueWavelength->setText(QApplication::translate("QtGuiApplicationClass", "450", nullptr));
         pushButton_3->setText(QApplication::translate("QtGuiApplicationClass", "Select File:", nullptr));
         pushButton_4->setText(QApplication::translate("QtGuiApplicationClass", "Import From File", nullptr));
         label_12->setText(QApplication::translate("QtGuiApplicationClass", "Info", nullptr));
@@ -864,6 +952,7 @@ public:
         groupBox_4->setTitle(QApplication::translate("QtGuiApplicationClass", "Wavelength:", nullptr));
         groupBox_6->setTitle(QApplication::translate("QtGuiApplicationClass", "Optical Surfaces At Selected Wavelength:", nullptr));
         pushAddSurface->setText(QApplication::translate("QtGuiApplicationClass", "Add Surface", nullptr));
+        pushModifySurface->setText(QApplication::translate("QtGuiApplicationClass", "Modify Surface", nullptr));
         pushRemoveSurface->setText(QApplication::translate("QtGuiApplicationClass", "Remove Surface", nullptr));
         QTableWidgetItem *___qtablewidgetitem4 = tableConfig->horizontalHeaderItem(0);
         ___qtablewidgetitem4->setText(QApplication::translate("QtGuiApplicationClass", "Coordinate", nullptr));
@@ -877,7 +966,7 @@ public:
         ___qtablewidgetitem8->setText(QApplication::translate("QtGuiApplicationClass", "Asphericity", nullptr));
         QTableWidgetItem *___qtablewidgetitem9 = tableConfig->horizontalHeaderItem(5);
         ___qtablewidgetitem9->setText(QApplication::translate("QtGuiApplicationClass", "Apodization", nullptr));
-        pushAcceptConfig->setText(QApplication::translate("QtGuiApplicationClass", "Save", nullptr));
+        pushAcceptConfig->setText(QApplication::translate("QtGuiApplicationClass", "Accept", nullptr));
         pushClearConfig->setText(QApplication::translate("QtGuiApplicationClass", "Clear", nullptr));
         pushLoadConfig->setText(QApplication::translate("QtGuiApplicationClass", "Load...", nullptr));
         pushCloneConfig->setText(QApplication::translate("QtGuiApplicationClass", "Clone", nullptr));

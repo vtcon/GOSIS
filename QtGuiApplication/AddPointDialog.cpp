@@ -3,7 +3,7 @@
 #include "QtGuiApplication.h"
 
 //extern std::vector<float> inputWavelengths;
-extern listConfigCompanion wavelengthList;
+//extern listConfigCompanion wavelengthList;
 
 AddPointDialog::AddPointDialog(QWidget *parent)
 	: QDialog(parent)
@@ -42,7 +42,7 @@ void AddPointDialog::on_pushButton_clicked()
 	}
 	else
 	{
-		if (wavelengthList.isExist(wavelength) == false)
+		if (listConfigCompanion::isExist(wavelength) == false)
 		{
 			QMessageBox msgBox;
 			msgBox.setWindowTitle("New Wavelength");
@@ -69,7 +69,7 @@ void AddPointDialog::on_pushButton_clicked()
 	{
 		float tempwavelength = wavelength;
 		tempwavelength = ((float)round(10 * tempwavelength)) / 10.0;
-		wavelengthList.addWavelength(tempwavelength);
+		listConfigCompanion::addWavelength(tempwavelength);
 		dataOK = true;
 	}
 	else

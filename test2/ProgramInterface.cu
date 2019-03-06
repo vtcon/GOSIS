@@ -11,6 +11,12 @@
 #include <unordered_map>
 #include <cstdlib> //for the "rand" function
 
+//for the console:
+#include <stdio.h>
+#include <io.h>
+#include <fcntl.h>
+#include <windows.h>
+
 using namespace tracer;
 
 //internal global variables
@@ -27,11 +33,14 @@ int PI_traceJobSize = 3;
 int PI_renderJobSize = 3;
 
 //these variables serves the progress count
+float PI_traceProgress; //from 0.0 to 1.0
+float PI_renderProgress; //from 0.0 to 1.0
 long toTraceCount = 0;
 long tracedCount = 0;
 long toRenderCount = 0;
 long renderedCount = 0;
-void updateProgress();
+void updateProgressTrace();
+void updateProgressRender();
 
 //function definitions
 bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
@@ -44,6 +53,7 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 
 PI_Message tracer::test()
 {
+	tracer::importImage("C:/testinput.bmp", 20, 20, 30, 25, 25, 45, 90, 45, 700, 550, 400);
 	/*
 	int count = 0;
 	std::cout << "Please enter the number of surfaces\n";
@@ -83,6 +93,7 @@ PI_Message tracer::test()
 	*/
 
 	//test data
+	/*
 	{
 		int count = 4;
 		PI_Surface* surfaces = new PI_Surface[count];
@@ -128,6 +139,7 @@ PI_Message tracer::test()
 		addOpticalConfigAt(650.0, count, surfaces, angularResol, angularExtend);
 		delete[] surfaces;
 	}
+	*/
 	/*
 	std::cout << "Please enter the number of points\n";
 	int pcount = 0;
@@ -146,6 +158,7 @@ PI_Message tracer::test()
 		addPoint(point);
 	}
 	*/
+	/*
 	{
 		PI_LuminousPoint point;
 		point.x = 20;	point.y = 20;	point.z = 160;	point.wavelength = 555.0;
@@ -169,12 +182,13 @@ PI_Message tracer::test()
 		point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
 		addPoint(point);
 	}
-
+	*/
 	/*
 	int rayDensity = 20;
 	std::cout << "Enter desired linear ray generation density: \n";
 	std::cin >> rayDensity;
 	*/
+	/*
 	std::cout << "Starting...\n";
 
 	checkData();
@@ -188,7 +202,7 @@ PI_Message tracer::test()
 	}
 
 	clearStorage();
-
+	*/
 	return {PI_OK, "Test OK"};
 }
 
@@ -200,6 +214,12 @@ PI_Message tracer::addPoint(PI_LuminousPoint & toAdd)
 	point.z = toAdd.z;
 	point.intensity = toAdd.intensity;
 	point.wavelength = toAdd.wavelength;
+	
+	//why this long initialization when we could have done point(toAdd)??
+	//because create this constructor LuminousPoint(tracer::PI_LuminousPoint) would leed to cyclical inclusion
+	//... of the header files class_hierarchy.h and programinterface.h
+	//... and would create hard to track bugs later
+
 	bool result = mainStorageManager.add(point);
 	if (result)
 	{
@@ -233,18 +253,18 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 
 		auto curveSign = (toAdd[i].radius > 0) ? MF_CONVEX : MF_CONCAVE;
 		toAdd[i].diameter = (abs(toAdd[i].diameter) < 2.0*abs(toAdd[i].radius)) ? abs(toAdd[i].diameter) : 2.0*abs(toAdd[i].radius);
-		bool output = constructSurface((newConfig->surfaces)[i], MF_REFRACTIVE, vec3<MYFLOATTYPE>(toAdd[i].x, toAdd[i].y, toAdd[i].z), abs(toAdd[i].radius), abs(toAdd[i].diameter), curveSign, previousN, toAdd[i].refractiveIndex);
+		bool output = constructSurface((newConfig->surfaces)[i], MF_REFRACTIVE, vec3<MYFLOATTYPE>(toAdd[i].x, toAdd[i].y, toAdd[i].z), abs(toAdd[i].radius), abs(toAdd[i].diameter), curveSign, previousN, toAdd[i].refractiveIndex, toAdd[i].asphericity, toAdd[i].apodization);
 		if (!output) return { PI_UNKNOWN_ERROR,"Error adding surface" };
 		previousN = toAdd[i].refractiveIndex;
 	}
 
 	//test apo function
-	(newConfig->surfaces)[0]->apodizationType = APD_BARTLETT;
+	//(newConfig->surfaces)[0]->apodizationType = APD_BARTLETT;
 
 	//for the final image surface
 	//todo: data integrity check here
 	toAdd[numofsurfaces - 1].diameter = (abs(toAdd[numofsurfaces - 1].diameter) < 2.0*abs(toAdd[numofsurfaces - 1].radius)) ? abs(toAdd[numofsurfaces - 1].diameter) : 2.0*abs(toAdd[numofsurfaces - 1].radius);
-	bool output = constructSurface((newConfig->surfaces)[numofsurfaces-1], MF_IMAGE, vec3<MYFLOATTYPE>(toAdd[count-1].x, toAdd[count - 1].y, toAdd[count - 1].z), -abs(toAdd[count - 1].radius), toAdd[count - 1].diameter, MF_CONCAVE, 1.0, FP_INFINITE);
+	bool output = constructSurface((newConfig->surfaces)[numofsurfaces-1], MF_IMAGE, vec3<MYFLOATTYPE>(toAdd[count-1].x, toAdd[count - 1].y, toAdd[count - 1].z), -abs(toAdd[count - 1].radius), toAdd[count - 1].diameter, MF_CONCAVE, 1.0, FP_INFINITE, toAdd[count-1].asphericity);
 
 	//copy to sibling surfaces on GPU side
 	LOG1("[main]create sibling surfaces\n");
@@ -324,7 +344,7 @@ PI_Message tracer::trace()
 		while (KernelLauncher(0, nullptr) != -2)
 		{
 			tracedCount = tracedCount + PI_traceJobSize;
-			updateProgress();
+			updateProgressTrace();
 		}
 
 		mainStorageManager.jobCheckIn(currentwavelength, StorageHolder<float>::Status::completed1);
@@ -364,7 +384,7 @@ PI_Message tracer::render()
 		while (KernelLauncher2(0, nullptr) != -2)
 		{
 			renderedCount = renderedCount + PI_renderJobSize;
-			updateProgress();
+			updateProgressRender();
 		}
 
 		//deal with the output
@@ -623,7 +643,8 @@ PI_Message tracer::clearStorage()
 	tracedCount = 0;
 	toRenderCount = 0;
 	renderedCount = 0;
-	updateProgress();
+	PI_traceProgress = 0;
+	PI_renderProgress = 0;
 
 	//check for wavelength info from the main storage
 	float* wavelengthStorageList = nullptr;
@@ -642,7 +663,7 @@ PI_Message tracer::clearStorage()
 	return { PI_OK, "Storage cleared!\n" };
 }
 
-void updateProgress()
+void updateProgressTrace()
 {
 	if (toTraceCount == 0)
 	{
@@ -653,20 +674,18 @@ void updateProgress()
 		if (tracedCount < 0)
 		{
 			tracedCount = 0;
-			PI_traceProgress = 0;
 		}
-		else if (tracedCount > toTraceCount)
+		if (tracedCount > toTraceCount)
 		{
 			tracedCount = toTraceCount;
-			PI_traceProgress = 1.0;
 		}
-		else
-		{
-			PI_traceProgress = (float)tracedCount / (float)toTraceCount;
-			
-		}
+		PI_traceProgress = (float)tracedCount / (float)toTraceCount;
 	}
-	
+	std::cout << "Trace progress: " << PI_traceProgress * 100 << " %\n";
+}
+
+void updateProgressRender()
+{
 	if (toRenderCount == 0)
 	{
 		PI_renderProgress = 0;
@@ -676,19 +695,59 @@ void updateProgress()
 		if (renderedCount < 0)
 		{
 			renderedCount = 0;
-			PI_renderProgress = 0;
+
 		}
-		else if (renderedCount > toRenderCount)
+		if (renderedCount > toRenderCount)
 		{
 			renderedCount = toRenderCount;
-			PI_renderProgress = 1.0;
 		}
-		else
-		{
-			PI_renderProgress = (float)renderedCount / (float)toRenderCount;
-			
-		}
+		PI_renderProgress = (float)renderedCount / (float)toRenderCount;
 	}
-	std::cout << "Trace progress: " << PI_traceProgress * 100 << " %\n";
+
 	std::cout << "Render progress: " << PI_renderProgress * 100 << " %\n";
+}
+
+PI_Message tracer::getProgress(float & traceProgress, float & renderProgress)
+{
+	traceProgress = PI_traceProgress;
+	renderProgress = PI_renderProgress;
+	return { PI_OK, "Successful!\n" };
+}
+
+PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB)
+{
+	//open CV is needed, so the main work is not done here
+	std::vector<tracer::PI_LuminousPoint> inputPoints;
+	bool result = importImageCV(inputPoints, path, posX, posY, posZ, sizeHorz, sizeVert, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB);
+	if (result)
+	{
+		int newImagePoints = 0;
+		for (auto point : inputPoints)
+		{
+			LuminousPoint toAdd;
+			toAdd.x = point.x;
+			toAdd.y = point.y;
+			toAdd.z = point.z;
+			toAdd.intensity = point.intensity;
+			toAdd.wavelength = point.wavelength;
+			bool result2 = mainStorageManager.add(toAdd);
+			if (result2)
+			{
+				toTraceCount++;
+				toRenderCount++;
+				newImagePoints++;
+			}
+			else
+			{
+				std::cout << "Could not add point (" << toAdd.x << ", " << toAdd.y << " ," << toAdd.z << "), " << toAdd.intensity << " at " << toAdd.wavelength << " nm!\n";
+			}
+		}
+		std::cout << newImagePoints << " points have been added from the image\n";
+		return { PI_OK, "Image import successfully!\n" };
+	}
+	else
+	{
+		std::cout << "Cannot import image at " << path << " \n";
+		return { PI_INPUT_ERROR, "Cannot import image!\n" };
+	}
 }

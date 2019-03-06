@@ -204,7 +204,7 @@ void OutputImage::displayRGB(int rows, int columns, int offsetX, int offsetY, fl
 
 	cv::Mat toDisplay = cv::Mat::zeros(pimpl->CVoutputImage.size(), CV_8UC3);
 	XYZtoBGR(pimpl->CVoutputImage, toDisplay, PI_rgbStandard);
-	cv::resize(toDisplay, toDisplay, cv::Size(), 500 / cv::max(toDisplay.rows, toDisplay.cols), 500 / cv::max(toDisplay.rows, toDisplay.cols), cv::INTER_NEAREST);
+	cv::resize(toDisplay, toDisplay, cv::Size(), 500.0 / cv::max(toDisplay.rows, toDisplay.cols), 500.0 / cv::max(toDisplay.rows, toDisplay.cols), cv::INTER_NEAREST);
 	showOnWindow("test", toDisplay);
 }
 

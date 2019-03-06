@@ -1081,6 +1081,9 @@ public:
 	float wavelength = 555.0;
 	float intensity = 1.0;
 
+	LuminousPoint()
+	{}
+
 	bool operator==(const LuminousPoint& rhs) const
 	{
 		if (x == rhs.x &&y == rhs.y &&z == rhs.z &&wavelength == rhs.wavelength &&intensity == rhs.intensity)
