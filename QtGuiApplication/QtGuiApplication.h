@@ -116,11 +116,17 @@ private slots:
 	void on_pushRemovePoint_clicked();
 	void on_pushClearInput_clicked();
 	
+	void on_listConfig_currentItemChanged();
+
 	void on_pushAddSurface_clicked();
+	void on_pushModifySurface_clicked();
 	void on_pushRemoveSurface_clicked();
+
 	void on_pushAcceptConfig_clicked();
 	void on_pushClearConfig_clicked();
-	void on_listConfig_currentItemChanged();
+	void on_pushCloneConfig_clicked();
+	void on_pushSaveConfig_clicked();
+	void on_pushLoadConfig_clicked();
 
 	void on_pushCheckData_clicked();
 	void on_pushTrace_clicked();
@@ -284,11 +290,19 @@ public:
 
 	static bool addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo);
 
+	static bool modifySurfaceAtCurrentRow();
+
 	static bool deleteSurfaceAtCurrentRow();
 
 	static bool acceptCurrentConfig();
 
 	static bool clearCurrentConfig();
+
+	static bool cloneToCurrentConfig();
+
+	static bool saveCurrentConfig(QString path);
+
+	static bool loadToCurrentConfig(QString path);
 
 	static bool clearConfigAt(float wavelength);
 

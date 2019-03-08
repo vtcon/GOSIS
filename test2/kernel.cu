@@ -271,8 +271,15 @@ __global__ void quadrictracer(
 			if ((pquad->antiParallel == true && ddotn > 0.0) ||
 				(pquad->antiParallel == false && ddotn < 0.0))
 			{
-				t = otherT;
-				continue;
+				if (otherT == INFINITY)
+				{
+					break;
+				}
+				else
+				{
+					t = otherT;
+					continue;
+				}
 			}
 			acceptDirection = true;
 			break;

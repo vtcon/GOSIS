@@ -486,7 +486,10 @@ void generateProjectionMap<float>(void *& mapX, void *& mapY, int rows, int colu
 template
 void generateProjectionMap<double>(void *& mapX, void *& mapY, int rows, int columns, unsigned int projection, int argc, double* argv);
 
-bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB)
+//external variable needed to do inverse scale of rgb and xyz channels
+extern unsigned short int PI_rawFormat;
+
+bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB, float brightness)
 {
 	//read in the image
 	Mat inputimg = imread(path);
@@ -547,6 +550,34 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	float origin[3];
 	step(oldorigin, origin, 0.5, 0.5);
 	
+	//lookup the inverse scaling
+	unsigned short int designatorC1, designatorC2, designatorC3;
+	switch (PI_rawFormat)
+	{
+	case OIC_LMS:
+		designatorC1 = CLU_LMS_L;
+		designatorC2 = CLU_LMS_M;
+		designatorC3 = CLU_LMS_S;
+		break;
+	case OIC_XYZ:
+	default:
+		designatorC1 = CLU_XYZ_X;
+		designatorC2 = CLU_XYZ_Y;
+		designatorC3 = CLU_XYZ_Z;
+		break;
+	}
+	
+	float inversescale[3] = {
+			static_cast<float>(ColorimetricLookup::lookup(wavelengthB, designatorC2)),
+			static_cast<float>(ColorimetricLookup::lookup(wavelengthG, designatorC2)),
+			static_cast<float>(ColorimetricLookup::lookup(wavelengthR, designatorC2))
+	};
+	
+	for (int i = 0; i < 3; i++)
+	{
+		inversescale[i] = inversescale[1] / inversescale[i];
+	}
+
 	//rasterizing the images
 	outputvec.clear();
 
@@ -562,19 +593,19 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 			pointB.y = pixelpos[1];
 			pointB.z = pixelpos[2];
 			pointB.wavelength = wavelengthB;
-			pointB.intensity = channelBGR[0].at<float>(i, j);
+			pointB.intensity = channelBGR[0].at<float>(i, j) * brightness * inversescale[0];
 
 			pointG.x = pixelpos[0];
 			pointG.y = pixelpos[1];
 			pointG.z = pixelpos[2];
 			pointG.wavelength = wavelengthG;
-			pointG.intensity = channelBGR[1].at<float>(i, j);
+			pointG.intensity = channelBGR[1].at<float>(i, j) * brightness * inversescale[1];
 
 			pointR.x = pixelpos[0];
 			pointR.y = pixelpos[1];
 			pointR.z = pixelpos[2];
 			pointR.wavelength = wavelengthR;
-			pointR.intensity = channelBGR[2].at<float>(i, j);
+			pointR.intensity = channelBGR[2].at<float>(i, j) * brightness * inversescale[2];
 
 			outputvec.push_back(pointB);
 			outputvec.push_back(pointG);

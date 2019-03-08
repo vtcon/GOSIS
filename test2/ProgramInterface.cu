@@ -31,6 +31,7 @@ int PI_linearRayDensity = 30;//20 is ok
 unsigned int PI_rgbStandard = IF_ADOBERGB;
 int PI_traceJobSize = 3;
 int PI_renderJobSize = 3;
+unsigned short int PI_rawFormat = OIC_XYZ;
 
 //these variables serves the progress count
 float PI_traceProgress; //from 0.0 to 1.0
@@ -53,7 +54,7 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 
 PI_Message tracer::test()
 {
-	tracer::importImage("C:/testinput.bmp", 20, 20, 30, 25, 25, 45, 90, 45, 700, 550, 400);
+	//tracer::importImage("C:/testinput.bmp", 20, 20, 30, 25, 25, 45, 90, 45, 700, 550, 400, 1.0);
 	/*
 	int count = 0;
 	std::cout << "Please enter the number of surfaces\n";
@@ -92,12 +93,24 @@ PI_Message tracer::test()
 	}
 	*/
 
-	//test data
+	
+	{
+		int count = 2;
+		PI_Surface* surfaces = new PI_Surface[count];
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = 0.95;
+		surfaces[1].diameter = 40.0; surfaces[1].radius = -60.0;
+		float angularResol = 0.16;//0.16 is OK
+
+		float angularExtend = 90.0;
+
+		addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+		delete[] surfaces;
+	}
 	/*
 	{
 		int count = 4;
 		PI_Surface* surfaces = new PI_Surface[count];
-		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = -0.5;
 		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
 		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
 		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
@@ -158,11 +171,12 @@ PI_Message tracer::test()
 		addPoint(point);
 	}
 	*/
-	/*
+	
 	{
 		PI_LuminousPoint point;
-		point.x = 20;	point.y = 20;	point.z = 160;	point.wavelength = 555.0;
+		point.x = 0;	point.y = 0;	point.z = 250;	point.wavelength = 555.0;
 		addPoint(point);
+		/*
 		point.x = -20;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
 		addPoint(point);
 		point.x = 30;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
@@ -181,28 +195,34 @@ PI_Message tracer::test()
 		addPoint(point);
 		point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
 		addPoint(point);
+		*/
 	}
-	*/
+	
 	/*
 	int rayDensity = 20;
 	std::cout << "Enter desired linear ray generation density: \n";
 	std::cin >> rayDensity;
 	*/
-	/*
+	
 	std::cout << "Starting...\n";
 
 	checkData();
 	trace();
 	render();
-
+	/*
 	{
 		float wavelengths[3] = { 400.0,555.0, 650.0 };
 		int imageID = 0;
 		createOutputImage(3, wavelengths, imageID);
 	}
-
-	clearStorage();
 	*/
+	{
+		float wavelengths[1] = { 555.0 };
+		int imageID = 0;
+		createOutputImage(1, wavelengths, imageID);
+	}
+	clearStorage();
+	
 	return {PI_OK, "Test OK"};
 }
 
@@ -515,7 +535,9 @@ PI_Message tracer::saveRGB(const char * path, int uniqueID)
 	}
 	else
 	{
+		std::cout << "Saving RGB...\n";
 		outputImages[uniqueID].saveRGB(path);
+		std::cout << "Saved to " << path << " \n";
 		return { PI_OK, "Successful!\n" };
 	}
 }
@@ -550,6 +572,7 @@ PI_Message tracer::createOutputImage(int count, float* wavelengthList, int& uniq
 {
 	if (count != 0)
 	{
+		std::cout << "Creating output image...\n";
 		for (bool quit = false; quit == false;)
 		{
 			//generate a random ID
@@ -604,12 +627,14 @@ PI_Message tracer::createOutputImage(int count, float* wavelengthList, int& uniq
 		}
 
 		//call createOutputImage
-		outputImages[uniqueID].createOutputImage(OIC_XYZ);
+		outputImages[uniqueID].createOutputImage(PI_rawFormat);
 		outputImages[uniqueID].displayRGB();
 
 		//clean up
 		delete[] wavelengthStorageList;
 		delete[] statusStorageList;
+
+		std::cout << "Output image created!\n";
 
 		return { PI_OK, "Output image created from selected wavelengths!\n" };
 	}
@@ -714,11 +739,11 @@ PI_Message tracer::getProgress(float & traceProgress, float & renderProgress)
 	return { PI_OK, "Successful!\n" };
 }
 
-PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB)
+PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB, float brightness)
 {
 	//open CV is needed, so the main work is not done here
 	std::vector<tracer::PI_LuminousPoint> inputPoints;
-	bool result = importImageCV(inputPoints, path, posX, posY, posZ, sizeHorz, sizeVert, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB);
+	bool result = importImageCV(inputPoints, path, posX, posY, posZ, sizeHorz, sizeVert, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB, brightness);
 	if (result)
 	{
 		int newImagePoints = 0;

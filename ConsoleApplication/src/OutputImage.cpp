@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CppCommon.h"
 #include "OutputImage.h"
+#include <fstream>
 
 #include "opencv2/core.hpp"
 #include "opencv2/opencv.hpp"
@@ -169,12 +170,23 @@ bool OutputImage::saveRaw(std::string path)
 		std::cout << "Path invalid!\n";
 		return false;
 	}
-
+	/*
 	cv::FileStorage newRawFile(path, cv::FileStorage::WRITE);
 	newRawFile << "Rows: " << pimpl->CVoutputImage.rows << "\n";
 	newRawFile << "Cols: " << pimpl->CVoutputImage.cols << "\n";
 	newRawFile << "Format: CV_64FC3\n";
 	newRawFile << pimpl->CVoutputImage;
+	*/
+
+	std::ofstream myfile;
+	myfile.open(path, std::ios::out|std::ios::binary);
+	myfile << pimpl->CVoutputImage.rows << " ";
+	myfile << pimpl->CVoutputImage.cols << " ";
+	myfile << (int)CV_64FC3 << " ";
+	myfile << pimpl->CVoutputImage;
+
+	myfile.close();
+
 	return true;
 }
 

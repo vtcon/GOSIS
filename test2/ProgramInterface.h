@@ -89,5 +89,5 @@ namespace tracer
 
 	PI_Message EXPORT getProgress(float& traceProgress, float& renderProgress);
 
-	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB);
+	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB, float brightness);
 }

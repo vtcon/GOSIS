@@ -67,7 +67,7 @@ public:
     QPushButton *pushRemovePoint;
     QSpacerItem *verticalSpacer;
     QWidget *pagePicture;
-    QGridLayout *gridLayout_15;
+    QGridLayout *gridLayout_17;
     QGridLayout *gridLayout_14;
     QLabel *label_23;
     QLineEdit *lineImagePath;
@@ -81,6 +81,9 @@ public:
     QLineEdit *lineImagePosY;
     QLabel *label_7;
     QLineEdit *lineImagePosZ;
+    QGridLayout *gridLayout_15;
+    QLabel *label_24;
+    QLineEdit *lineImageBrightness;
     QGroupBox *groupBox_8;
     QGridLayout *gridLayout_5;
     QLabel *label_11;
@@ -126,9 +129,20 @@ public:
     QGroupBox *groupBox_4;
     QVBoxLayout *verticalLayout_4;
     QListWidget *listConfig;
+    QGroupBox *groupBox_7;
+    QGridLayout *gridLayout_9;
+    QLabel *label_16;
+    QLineEdit *lineImageDiam;
+    QLabel *label_14;
+    QLineEdit *lineAngularResol;
+    QLineEdit *lineAngularExtend;
+    QLabel *label_13;
+    QLabel *label_15;
+    QLineEdit *lineImageRadius;
     QGroupBox *groupBox_6;
+    QGridLayout *gridLayout_16;
     QGridLayout *gridLayout_8;
-    QSpacerItem *horizontalSpacer_5;
+    QSpacerItem *horizontalSpacer_2;
     QPushButton *pushAddSurface;
     QPushButton *pushModifySurface;
     QPushButton *pushRemoveSurface;
@@ -136,18 +150,9 @@ public:
     QSpacerItem *horizontalSpacer_6;
     QPushButton *pushAcceptConfig;
     QPushButton *pushClearConfig;
-    QPushButton *pushLoadConfig;
     QPushButton *pushCloneConfig;
-    QGroupBox *groupBox_7;
-    QGridLayout *gridLayout_9;
-    QLabel *label_13;
-    QLineEdit *lineImageDiam;
-    QLabel *label_14;
-    QLineEdit *lineImageRadius;
-    QLabel *label_15;
-    QLineEdit *lineAngularResol;
-    QLabel *label_16;
-    QLineEdit *lineAngularExtend;
+    QPushButton *pushSaveConfig;
+    QPushButton *pushLoadConfig;
     QWidget *tabProcessAndOutput;
     QGridLayout *gridLayout_13;
     QGroupBox *groupBox_5;
@@ -183,7 +188,7 @@ public:
     {
         if (QtGuiApplicationClass->objectName().isEmpty())
             QtGuiApplicationClass->setObjectName(QString::fromUtf8("QtGuiApplicationClass"));
-        QtGuiApplicationClass->resize(874, 546);
+        QtGuiApplicationClass->resize(960, 577);
         actionNew = new QAction(QtGuiApplicationClass);
         actionNew->setObjectName(QString::fromUtf8("actionNew"));
         actionOpen = new QAction(QtGuiApplicationClass);
@@ -274,10 +279,10 @@ public:
         stackedInput->addWidget(pageManual);
         pagePicture = new QWidget();
         pagePicture->setObjectName(QString::fromUtf8("pagePicture"));
-        gridLayout_15 = new QGridLayout(pagePicture);
-        gridLayout_15->setSpacing(6);
-        gridLayout_15->setContentsMargins(11, 11, 11, 11);
-        gridLayout_15->setObjectName(QString::fromUtf8("gridLayout_15"));
+        gridLayout_17 = new QGridLayout(pagePicture);
+        gridLayout_17->setSpacing(6);
+        gridLayout_17->setContentsMargins(11, 11, 11, 11);
+        gridLayout_17->setObjectName(QString::fromUtf8("gridLayout_17"));
         gridLayout_14 = new QGridLayout();
         gridLayout_14->setSpacing(6);
         gridLayout_14->setObjectName(QString::fromUtf8("gridLayout_14"));
@@ -303,7 +308,7 @@ public:
         gridLayout_14->addWidget(pushClearImage, 0, 3, 1, 1);
 
 
-        gridLayout_15->addLayout(gridLayout_14, 0, 0, 1, 2);
+        gridLayout_17->addLayout(gridLayout_14, 0, 0, 1, 2);
 
         groupBox_2 = new QGroupBox(pagePicture);
         groupBox_2->setObjectName(QString::fromUtf8("groupBox_2"));
@@ -342,7 +347,23 @@ public:
         gridLayout_3->addWidget(lineImagePosZ, 2, 1, 1, 1);
 
 
-        gridLayout_15->addWidget(groupBox_2, 1, 0, 1, 1);
+        gridLayout_17->addWidget(groupBox_2, 1, 0, 2, 1);
+
+        gridLayout_15 = new QGridLayout();
+        gridLayout_15->setSpacing(6);
+        gridLayout_15->setObjectName(QString::fromUtf8("gridLayout_15"));
+        label_24 = new QLabel(pagePicture);
+        label_24->setObjectName(QString::fromUtf8("label_24"));
+
+        gridLayout_15->addWidget(label_24, 0, 0, 1, 1);
+
+        lineImageBrightness = new QLineEdit(pagePicture);
+        lineImageBrightness->setObjectName(QString::fromUtf8("lineImageBrightness"));
+
+        gridLayout_15->addWidget(lineImageBrightness, 0, 1, 1, 1);
+
+
+        gridLayout_17->addLayout(gridLayout_15, 1, 1, 1, 1);
 
         groupBox_8 = new QGroupBox(pagePicture);
         groupBox_8->setObjectName(QString::fromUtf8("groupBox_8"));
@@ -371,7 +392,7 @@ public:
         gridLayout_5->addWidget(lineImageVertSize, 1, 1, 1, 1);
 
 
-        gridLayout_15->addWidget(groupBox_8, 1, 1, 1, 1);
+        gridLayout_17->addWidget(groupBox_8, 2, 1, 2, 1);
 
         groupBox_3 = new QGroupBox(pagePicture);
         groupBox_3->setObjectName(QString::fromUtf8("groupBox_3"));
@@ -415,7 +436,7 @@ public:
         gridLayout_4->addWidget(label_22, 3, 0, 1, 2);
 
 
-        gridLayout_15->addWidget(groupBox_3, 2, 0, 1, 1);
+        gridLayout_17->addWidget(groupBox_3, 3, 0, 2, 1);
 
         groupBox_10 = new QGroupBox(pagePicture);
         groupBox_10->setObjectName(QString::fromUtf8("groupBox_10"));
@@ -454,7 +475,7 @@ public:
         gridLayout_6->addWidget(lineImageBlueWavelength, 2, 1, 1, 1);
 
 
-        gridLayout_15->addWidget(groupBox_10, 2, 1, 1, 1);
+        gridLayout_17->addWidget(groupBox_10, 4, 1, 1, 1);
 
         stackedInput->addWidget(pagePicture);
         pageList = new QWidget();
@@ -570,35 +591,101 @@ public:
 
         gridLayout_10->addWidget(groupBox_4, 0, 0, 1, 1);
 
-        groupBox_6 = new QGroupBox(tabConfig);
-        groupBox_6->setObjectName(QString::fromUtf8("groupBox_6"));
-        QSizePolicy sizePolicy1(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        groupBox_7 = new QGroupBox(tabConfig);
+        groupBox_7->setObjectName(QString::fromUtf8("groupBox_7"));
+        gridLayout_9 = new QGridLayout(groupBox_7);
+        gridLayout_9->setSpacing(6);
+        gridLayout_9->setContentsMargins(11, 11, 11, 11);
+        gridLayout_9->setObjectName(QString::fromUtf8("gridLayout_9"));
+        label_16 = new QLabel(groupBox_7);
+        label_16->setObjectName(QString::fromUtf8("label_16"));
+
+        gridLayout_9->addWidget(label_16, 3, 0, 1, 1);
+
+        lineImageDiam = new QLineEdit(groupBox_7);
+        lineImageDiam->setObjectName(QString::fromUtf8("lineImageDiam"));
+        QSizePolicy sizePolicy1(QSizePolicy::Preferred, QSizePolicy::Fixed);
         sizePolicy1.setHorizontalStretch(0);
         sizePolicy1.setVerticalStretch(0);
-        sizePolicy1.setHeightForWidth(groupBox_6->sizePolicy().hasHeightForWidth());
-        groupBox_6->setSizePolicy(sizePolicy1);
-        gridLayout_8 = new QGridLayout(groupBox_6);
-        gridLayout_8->setSpacing(6);
-        gridLayout_8->setContentsMargins(11, 11, 11, 11);
-        gridLayout_8->setObjectName(QString::fromUtf8("gridLayout_8"));
-        horizontalSpacer_5 = new QSpacerItem(90, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+        sizePolicy1.setHeightForWidth(lineImageDiam->sizePolicy().hasHeightForWidth());
+        lineImageDiam->setSizePolicy(sizePolicy1);
 
-        gridLayout_8->addItem(horizontalSpacer_5, 0, 1, 1, 1);
+        gridLayout_9->addWidget(lineImageDiam, 0, 1, 1, 1);
+
+        label_14 = new QLabel(groupBox_7);
+        label_14->setObjectName(QString::fromUtf8("label_14"));
+
+        gridLayout_9->addWidget(label_14, 1, 0, 1, 1);
+
+        lineAngularResol = new QLineEdit(groupBox_7);
+        lineAngularResol->setObjectName(QString::fromUtf8("lineAngularResol"));
+        sizePolicy1.setHeightForWidth(lineAngularResol->sizePolicy().hasHeightForWidth());
+        lineAngularResol->setSizePolicy(sizePolicy1);
+
+        gridLayout_9->addWidget(lineAngularResol, 2, 1, 1, 1);
+
+        lineAngularExtend = new QLineEdit(groupBox_7);
+        lineAngularExtend->setObjectName(QString::fromUtf8("lineAngularExtend"));
+        sizePolicy1.setHeightForWidth(lineAngularExtend->sizePolicy().hasHeightForWidth());
+        lineAngularExtend->setSizePolicy(sizePolicy1);
+
+        gridLayout_9->addWidget(lineAngularExtend, 3, 1, 1, 1);
+
+        label_13 = new QLabel(groupBox_7);
+        label_13->setObjectName(QString::fromUtf8("label_13"));
+
+        gridLayout_9->addWidget(label_13, 0, 0, 1, 1);
+
+        label_15 = new QLabel(groupBox_7);
+        label_15->setObjectName(QString::fromUtf8("label_15"));
+
+        gridLayout_9->addWidget(label_15, 2, 0, 1, 1);
+
+        lineImageRadius = new QLineEdit(groupBox_7);
+        lineImageRadius->setObjectName(QString::fromUtf8("lineImageRadius"));
+        sizePolicy1.setHeightForWidth(lineImageRadius->sizePolicy().hasHeightForWidth());
+        lineImageRadius->setSizePolicy(sizePolicy1);
+
+        gridLayout_9->addWidget(lineImageRadius, 1, 1, 1, 1);
+
+
+        gridLayout_10->addWidget(groupBox_7, 1, 0, 1, 1);
+
+        groupBox_6 = new QGroupBox(tabConfig);
+        groupBox_6->setObjectName(QString::fromUtf8("groupBox_6"));
+        QSizePolicy sizePolicy2(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        sizePolicy2.setHorizontalStretch(0);
+        sizePolicy2.setVerticalStretch(0);
+        sizePolicy2.setHeightForWidth(groupBox_6->sizePolicy().hasHeightForWidth());
+        groupBox_6->setSizePolicy(sizePolicy2);
+        gridLayout_16 = new QGridLayout(groupBox_6);
+        gridLayout_16->setSpacing(6);
+        gridLayout_16->setContentsMargins(11, 11, 11, 11);
+        gridLayout_16->setObjectName(QString::fromUtf8("gridLayout_16"));
+        gridLayout_8 = new QGridLayout();
+        gridLayout_8->setSpacing(6);
+        gridLayout_8->setObjectName(QString::fromUtf8("gridLayout_8"));
+        horizontalSpacer_2 = new QSpacerItem(238, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        gridLayout_8->addItem(horizontalSpacer_2, 0, 0, 1, 1);
 
         pushAddSurface = new QPushButton(groupBox_6);
         pushAddSurface->setObjectName(QString::fromUtf8("pushAddSurface"));
 
-        gridLayout_8->addWidget(pushAddSurface, 0, 2, 1, 1);
+        gridLayout_8->addWidget(pushAddSurface, 0, 1, 1, 1);
 
         pushModifySurface = new QPushButton(groupBox_6);
         pushModifySurface->setObjectName(QString::fromUtf8("pushModifySurface"));
 
-        gridLayout_8->addWidget(pushModifySurface, 0, 3, 1, 1);
+        gridLayout_8->addWidget(pushModifySurface, 0, 2, 1, 1);
 
         pushRemoveSurface = new QPushButton(groupBox_6);
         pushRemoveSurface->setObjectName(QString::fromUtf8("pushRemoveSurface"));
 
-        gridLayout_8->addWidget(pushRemoveSurface, 0, 4, 1, 1);
+        gridLayout_8->addWidget(pushRemoveSurface, 0, 3, 1, 1);
+
+
+        gridLayout_16->addLayout(gridLayout_8, 0, 0, 1, 6);
 
         tableConfig = new QTableWidget(groupBox_6);
         if (tableConfig->columnCount() < 6)
@@ -618,11 +705,11 @@ public:
         tableConfig->setObjectName(QString::fromUtf8("tableConfig"));
         tableConfig->setSelectionBehavior(QAbstractItemView::SelectRows);
 
-        gridLayout_8->addWidget(tableConfig, 1, 0, 1, 5);
+        gridLayout_16->addWidget(tableConfig, 1, 0, 1, 6);
 
         horizontalSpacer_6 = new QSpacerItem(87, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-        gridLayout_8->addItem(horizontalSpacer_6, 2, 0, 1, 1);
+        gridLayout_16->addItem(horizontalSpacer_6, 2, 0, 1, 1);
 
         pushAcceptConfig = new QPushButton(groupBox_6);
         pushAcceptConfig->setObjectName(QString::fromUtf8("pushAcceptConfig"));
@@ -631,85 +718,30 @@ public:
         font.setWeight(75);
         pushAcceptConfig->setFont(font);
 
-        gridLayout_8->addWidget(pushAcceptConfig, 2, 1, 1, 1);
+        gridLayout_16->addWidget(pushAcceptConfig, 2, 1, 1, 1);
 
         pushClearConfig = new QPushButton(groupBox_6);
         pushClearConfig->setObjectName(QString::fromUtf8("pushClearConfig"));
 
-        gridLayout_8->addWidget(pushClearConfig, 2, 2, 1, 1);
-
-        pushLoadConfig = new QPushButton(groupBox_6);
-        pushLoadConfig->setObjectName(QString::fromUtf8("pushLoadConfig"));
-
-        gridLayout_8->addWidget(pushLoadConfig, 2, 3, 1, 1);
+        gridLayout_16->addWidget(pushClearConfig, 2, 2, 1, 1);
 
         pushCloneConfig = new QPushButton(groupBox_6);
         pushCloneConfig->setObjectName(QString::fromUtf8("pushCloneConfig"));
 
-        gridLayout_8->addWidget(pushCloneConfig, 2, 4, 1, 1);
+        gridLayout_16->addWidget(pushCloneConfig, 2, 3, 1, 1);
+
+        pushSaveConfig = new QPushButton(groupBox_6);
+        pushSaveConfig->setObjectName(QString::fromUtf8("pushSaveConfig"));
+
+        gridLayout_16->addWidget(pushSaveConfig, 2, 4, 1, 1);
+
+        pushLoadConfig = new QPushButton(groupBox_6);
+        pushLoadConfig->setObjectName(QString::fromUtf8("pushLoadConfig"));
+
+        gridLayout_16->addWidget(pushLoadConfig, 2, 5, 1, 1);
 
 
         gridLayout_10->addWidget(groupBox_6, 0, 1, 2, 1);
-
-        groupBox_7 = new QGroupBox(tabConfig);
-        groupBox_7->setObjectName(QString::fromUtf8("groupBox_7"));
-        gridLayout_9 = new QGridLayout(groupBox_7);
-        gridLayout_9->setSpacing(6);
-        gridLayout_9->setContentsMargins(11, 11, 11, 11);
-        gridLayout_9->setObjectName(QString::fromUtf8("gridLayout_9"));
-        label_13 = new QLabel(groupBox_7);
-        label_13->setObjectName(QString::fromUtf8("label_13"));
-
-        gridLayout_9->addWidget(label_13, 0, 0, 1, 1);
-
-        lineImageDiam = new QLineEdit(groupBox_7);
-        lineImageDiam->setObjectName(QString::fromUtf8("lineImageDiam"));
-        QSizePolicy sizePolicy2(QSizePolicy::Preferred, QSizePolicy::Fixed);
-        sizePolicy2.setHorizontalStretch(0);
-        sizePolicy2.setVerticalStretch(0);
-        sizePolicy2.setHeightForWidth(lineImageDiam->sizePolicy().hasHeightForWidth());
-        lineImageDiam->setSizePolicy(sizePolicy2);
-
-        gridLayout_9->addWidget(lineImageDiam, 0, 1, 1, 1);
-
-        label_14 = new QLabel(groupBox_7);
-        label_14->setObjectName(QString::fromUtf8("label_14"));
-
-        gridLayout_9->addWidget(label_14, 1, 0, 1, 1);
-
-        lineImageRadius = new QLineEdit(groupBox_7);
-        lineImageRadius->setObjectName(QString::fromUtf8("lineImageRadius"));
-        sizePolicy2.setHeightForWidth(lineImageRadius->sizePolicy().hasHeightForWidth());
-        lineImageRadius->setSizePolicy(sizePolicy2);
-
-        gridLayout_9->addWidget(lineImageRadius, 1, 1, 1, 1);
-
-        label_15 = new QLabel(groupBox_7);
-        label_15->setObjectName(QString::fromUtf8("label_15"));
-
-        gridLayout_9->addWidget(label_15, 2, 0, 1, 1);
-
-        lineAngularResol = new QLineEdit(groupBox_7);
-        lineAngularResol->setObjectName(QString::fromUtf8("lineAngularResol"));
-        sizePolicy2.setHeightForWidth(lineAngularResol->sizePolicy().hasHeightForWidth());
-        lineAngularResol->setSizePolicy(sizePolicy2);
-
-        gridLayout_9->addWidget(lineAngularResol, 2, 1, 1, 1);
-
-        label_16 = new QLabel(groupBox_7);
-        label_16->setObjectName(QString::fromUtf8("label_16"));
-
-        gridLayout_9->addWidget(label_16, 3, 0, 1, 1);
-
-        lineAngularExtend = new QLineEdit(groupBox_7);
-        lineAngularExtend->setObjectName(QString::fromUtf8("lineAngularExtend"));
-        sizePolicy2.setHeightForWidth(lineAngularExtend->sizePolicy().hasHeightForWidth());
-        lineAngularExtend->setSizePolicy(sizePolicy2);
-
-        gridLayout_9->addWidget(lineAngularExtend, 3, 1, 1, 1);
-
-
-        gridLayout_10->addWidget(groupBox_7, 1, 0, 1, 1);
 
         tabWidget->addTab(tabConfig, QString());
         tabProcessAndOutput = new QWidget();
@@ -846,7 +878,7 @@ public:
         QtGuiApplicationClass->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(QtGuiApplicationClass);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 874, 26));
+        menuBar->setGeometry(QRect(0, 0, 960, 26));
         menuSession = new QMenu(menuBar);
         menuSession->setObjectName(QString::fromUtf8("menuSession"));
         menuHelp = new QMenu(menuBar);
@@ -921,6 +953,8 @@ public:
         lineImagePosY->setText(QApplication::translate("QtGuiApplicationClass", "10", nullptr));
         label_7->setText(QApplication::translate("QtGuiApplicationClass", "Z Coordinate", nullptr));
         lineImagePosZ->setText(QApplication::translate("QtGuiApplicationClass", "250", nullptr));
+        label_24->setText(QApplication::translate("QtGuiApplicationClass", "Image Brightness", nullptr));
+        lineImageBrightness->setText(QApplication::translate("QtGuiApplicationClass", "1.0", nullptr));
         groupBox_8->setTitle(QApplication::translate("QtGuiApplicationClass", "Size Of Image", nullptr));
         label_11->setText(QApplication::translate("QtGuiApplicationClass", "Horizontal Size", nullptr));
         lineImageHorzSize->setText(QApplication::translate("QtGuiApplicationClass", "30", nullptr));
@@ -950,6 +984,15 @@ public:
         radioList->setText(QApplication::translate("QtGuiApplicationClass", "Load From Point List", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(tabInput), QApplication::translate("QtGuiApplicationClass", "Input", nullptr));
         groupBox_4->setTitle(QApplication::translate("QtGuiApplicationClass", "Wavelength:", nullptr));
+        groupBox_7->setTitle(QApplication::translate("QtGuiApplicationClass", "Image Surface", nullptr));
+        label_16->setText(QApplication::translate("QtGuiApplicationClass", "Max Angular Extend (Deg)", nullptr));
+        lineImageDiam->setText(QApplication::translate("QtGuiApplicationClass", "40.0", nullptr));
+        label_14->setText(QApplication::translate("QtGuiApplicationClass", "Curvature Radius", nullptr));
+        lineAngularResol->setText(QApplication::translate("QtGuiApplicationClass", "0.16", nullptr));
+        lineAngularExtend->setText(QApplication::translate("QtGuiApplicationClass", "90.0", nullptr));
+        label_13->setText(QApplication::translate("QtGuiApplicationClass", "Diameter", nullptr));
+        label_15->setText(QApplication::translate("QtGuiApplicationClass", "Angular Resolution (Deg)", nullptr));
+        lineImageRadius->setText(QApplication::translate("QtGuiApplicationClass", "-60.0", nullptr));
         groupBox_6->setTitle(QApplication::translate("QtGuiApplicationClass", "Optical Surfaces At Selected Wavelength:", nullptr));
         pushAddSurface->setText(QApplication::translate("QtGuiApplicationClass", "Add Surface", nullptr));
         pushModifySurface->setText(QApplication::translate("QtGuiApplicationClass", "Modify Surface", nullptr));
@@ -968,17 +1011,9 @@ public:
         ___qtablewidgetitem9->setText(QApplication::translate("QtGuiApplicationClass", "Apodization", nullptr));
         pushAcceptConfig->setText(QApplication::translate("QtGuiApplicationClass", "Accept", nullptr));
         pushClearConfig->setText(QApplication::translate("QtGuiApplicationClass", "Clear", nullptr));
+        pushCloneConfig->setText(QApplication::translate("QtGuiApplicationClass", "Clone...", nullptr));
+        pushSaveConfig->setText(QApplication::translate("QtGuiApplicationClass", "Save...", nullptr));
         pushLoadConfig->setText(QApplication::translate("QtGuiApplicationClass", "Load...", nullptr));
-        pushCloneConfig->setText(QApplication::translate("QtGuiApplicationClass", "Clone", nullptr));
-        groupBox_7->setTitle(QApplication::translate("QtGuiApplicationClass", "Image Surface", nullptr));
-        label_13->setText(QApplication::translate("QtGuiApplicationClass", "Diameter", nullptr));
-        lineImageDiam->setText(QApplication::translate("QtGuiApplicationClass", "40.0", nullptr));
-        label_14->setText(QApplication::translate("QtGuiApplicationClass", "Curvature Radius", nullptr));
-        lineImageRadius->setText(QApplication::translate("QtGuiApplicationClass", "-60.0", nullptr));
-        label_15->setText(QApplication::translate("QtGuiApplicationClass", "Angular Resolution (Deg)", nullptr));
-        lineAngularResol->setText(QApplication::translate("QtGuiApplicationClass", "0.16", nullptr));
-        label_16->setText(QApplication::translate("QtGuiApplicationClass", "Max Angular Extend (Deg)", nullptr));
-        lineAngularExtend->setText(QApplication::translate("QtGuiApplicationClass", "90.0", nullptr));
         tabWidget->setTabText(tabWidget->indexOf(tabConfig), QApplication::translate("QtGuiApplicationClass", "Configuration", nullptr));
         groupBox_5->setTitle(QApplication::translate("QtGuiApplicationClass", "Processing", nullptr));
         pushCheckData->setText(QApplication::translate("QtGuiApplicationClass", "Data Check-in", nullptr));

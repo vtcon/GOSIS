@@ -117,7 +117,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	int ID = (blockIdx.x*blockDim.x) + threadIdx.x;
 	if (ID >= kernelLaunchParams.otherparams[0]) return;
 #ifdef _MYDEBUGMODE
-	int debugID = 1;
+	int debugID = 719;
 #endif
 	//ID = debugID;
 	//triangle vertices, in real program should translate world coor to retina local coor

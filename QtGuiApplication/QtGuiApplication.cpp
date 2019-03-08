@@ -2,7 +2,7 @@
 
 #include "AddPointDialog.h"
 #include "AddSurfaceDialog.h"
-
+#include "CloneConfigDialog.h"
 
 #include <qobject.h>
 
@@ -217,6 +217,11 @@ void QtGuiApplication::on_pushAddSurface_clicked()
 	}
 }
 
+void QtGuiApplication::on_pushModifySurface_clicked()
+{
+	tableConfigCompanion::modifySurfaceAtCurrentRow();
+}
+
 void QtGuiApplication::on_pushRemoveSurface_clicked()
 {
 	tableConfigCompanion::deleteSurfaceAtCurrentRow();
@@ -235,6 +240,39 @@ void QtGuiApplication::on_pushClearConfig_clicked()
 {
 	tableConfigCompanion::clearCurrentConfig();
 	stateReset();
+}
+
+void QtGuiApplication::on_pushCloneConfig_clicked()
+{
+	tableConfigCompanion::cloneToCurrentConfig();
+}
+
+void QtGuiApplication::on_pushSaveConfig_clicked()
+{
+	QString fileName = QFileDialog::getSaveFileName(this,
+		tr("Save Optical Configuration"),
+		"",
+		tr("Optical Configuration Binaries (*.ocb)"));
+
+	if (fileName.isEmpty())
+	{
+		return;
+	}
+
+	tableConfigCompanion::saveCurrentConfig(fileName);
+}
+
+void QtGuiApplication::on_pushLoadConfig_clicked()
+{
+	QString fileName = QFileDialog::getOpenFileName(this,
+		tr("Load Optical Configuration"),
+		"",
+		tr("Optical Configuration Binaries (*.ocb)"));
+
+	if (fileName.isEmpty())
+		return;
+
+	tableConfigCompanion::loadToCurrentConfig(fileName);
 }
 
 void QtGuiApplication::on_listConfig_currentItemChanged()
@@ -294,6 +332,7 @@ void QtGuiApplication::on_pushCheckData_clicked()
 			QByteArray fileName_ba = fileName.toLatin1();
 			const char *c_strFileName = fileName_ba.data();
 
+			float brightness = ui.lineImageBrightness->text().toFloat();
 			float posX = ui.lineImagePosX->text().toFloat();
 			float posY = ui.lineImagePosY->text().toFloat();
 			float posZ = ui.lineImagePosZ->text().toFloat();
@@ -309,7 +348,7 @@ void QtGuiApplication::on_pushCheckData_clicked()
 			//data check has been done when add image path, no need to add again
 
 			//calling API
-			tracer::PI_Message message = tracer::importImage(c_strFileName, posX, posY, posZ, horzSize, vertSize, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB);
+			tracer::PI_Message message = tracer::importImage(c_strFileName, posX, posY, posZ, horzSize, vertSize, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB, brightness);
 			if (message.code != PI_OK)
 			{
 				std::cout << "[GUI] Could not import image!\n";
@@ -736,7 +775,7 @@ void QtGuiApplication::on_pushSaveRGB_clicked()
 	QString fileName = QFileDialog::getSaveFileName(this,
 		tr("Save RGB Image"),
 		"",
-		tr("Image Files (*.png *.jpg)"));
+		tr("Image Files (*.jpg *.png )"));
 
 	if (fileName.isEmpty())
 	{
@@ -779,6 +818,7 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 {
 	//first check the image parameters
 
+	float brightness = ui.lineImageBrightness->text().toFloat();
 	float posZ = ui.lineImagePosZ->text().toFloat();
 	float horzSize = ui.lineImageHorzSize->text().toFloat();
 	float vertSize = ui.lineImageVertSize->text().toFloat();
@@ -796,6 +836,11 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 	
 	{
 		QString errorstr;
+
+		if (brightness <= 0)
+		{
+			errorstr.append("Image must have positive brightness value!\n");
+		}
 
 		if (posZ <= 0)
 		{
@@ -849,6 +894,7 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 	ui.lineImagePath->setText(fileName);
 
 	//make all edits read only, because i don't want to re-perform the data check at the on_pushDataCheckin_clicked()
+	ui.lineImageBrightness->setReadOnly(true);
 	ui.lineImagePosX->setReadOnly(true);
 	ui.lineImagePosY->setReadOnly(true);
 	ui.lineImagePosZ->setReadOnly(true);
@@ -878,6 +924,7 @@ void QtGuiApplication::on_pushClearImage_clicked()
 	listConfigCompanion::removeWavelength(wavelengthG);
 	listConfigCompanion::removeWavelength(wavelengthB);
 
+	ui.lineImageBrightness->setReadOnly(false);
 	ui.lineImagePosX->setReadOnly(false);
 	ui.lineImagePosY->setReadOnly(false);
 	ui.lineImagePosZ->setReadOnly(false);
@@ -902,14 +949,14 @@ void tableConfigCompanion::checkOutWavelength(float wavelength)
 			wavelengthAndConfig newitem;
 			newitem.wavelength = wavelength;
 			configs.push_back(newitem);
-
+			/*
 			QMessageBox msgBox;
 			msgBox.setWindowTitle("Info");
 			msgBox.setText(QObject::tr("New config created at %1 nm!").arg(wavelength));
 			msgBox.setStandardButtons(QMessageBox::Ok);
 			msgBox.setDefaultButton(QMessageBox::Ok);
 			msgBox.exec();
-
+			*/
 			token = std::find_if(configs.begin(), configs.end(), [wavelength](wavelengthAndConfig& holder) {return holder.wavelength == wavelength; });
 
 		}
@@ -940,8 +987,18 @@ void tableConfigCompanion::checkOutWavelength(float wavelength)
 			p_table->setItem(i, 2, new QTableWidgetItem(QObject::tr("%1").arg(surface.radius)));
 			p_table->setItem(i, 3, new QTableWidgetItem(QObject::tr("%1").arg(surface.refractiveIndex)));
 			p_table->setItem(i, 4, new QTableWidgetItem(QObject::tr("%1").arg(surface.asphericity)));
-			//p_table->setItem(i, 5, new QTableWidgetItem(QObject::tr("%1").arg(surface.apodization)));
-			p_table->setItem(i, 5, new QTableWidgetItem(QObject::tr("Uniform")));
+			QString apoName;
+			switch (surface.apodization)
+			{
+			case 1:
+				apoName = "Bartlett";
+				break;
+			case 0:
+			default:
+				apoName = "Uniform";
+				break;
+			}
+			p_table->setItem(i, 5, new QTableWidgetItem(apoName));
 
 			i++;
 		}
@@ -1038,6 +1095,110 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 	return true;
 }
 
+bool tableConfigCompanion::modifySurfaceAtCurrentRow()
+{
+	//preliminary check
+	int rowCount = p_table->rowCount();
+	if (rowCount == 0)
+	{
+		return false;
+	}
+
+	//get the surface at current row
+	int currentRow = 0;
+	currentRow = p_table->currentRow();
+
+	auto token = currentConfig.begin();
+	for (int i = 0; i < currentRow; i++)
+	{
+		token++;
+		if (token == currentConfig.end())
+		{
+			QMessageBox msgBox;
+			msgBox.setWindowTitle("Error");
+			msgBox.setText("Count mismatch between tableConfig and its companion!\n");
+			msgBox.setStandardButtons(QMessageBox::Ok);
+			msgBox.setDefaultButton(QMessageBox::Ok);
+			msgBox.exec();
+			return false;
+		}
+	}
+
+	//create dialog
+	AddSurfaceDialog dialog;
+	
+	// and put its data to the dialog
+	dialog.lineX->setText(QString::number(token->x));
+	dialog.lineY->setText(QString::number(token->y));
+	dialog.lineZ->setText(QString::number(token->z));
+	dialog.lineDiam->setText(QString::number(token->diameter));
+	dialog.lineRadius->setText(QString::number(token->radius));
+	dialog.lineRefracI->setText(QString::number(token->refractiveIndex));
+	dialog.lineAsph->setText(QString::number(token->asphericity));
+	dialog.comboBox->setCurrentIndex(token->apodization);
+
+	if (dialog.exec() == QDialog::Accepted)
+	{
+		float X = dialog.lineX->text().toFloat();
+		float Y = dialog.lineY->text().toFloat();
+		float Z = dialog.lineZ->text().toFloat();
+		float diam = dialog.lineDiam->text().toFloat();
+		float R = dialog.lineRadius->text().toFloat();
+		float refracI = dialog.lineRefracI->text().toFloat();
+		float asph = dialog.lineAsph->text().toFloat();
+		int apo = dialog.comboBox->currentIndex();
+
+		//if the modified value stays the same, return
+		if (token->x == X &&
+			token->y == Y &&
+			token->z == Z &&
+			token->diameter == diam &&
+			token->radius == R &&
+			token->refractiveIndex == refracI &&
+			token->asphericity == asph &&
+			token->apodization == apo)
+		{
+			return true;
+		}
+
+		//scan for duplication, except at the current surface
+		for (auto token2 = currentConfig.begin(); token2 != currentConfig.end(); token2++)
+		{
+			if (token2 == token)
+			{
+				continue;
+			}
+			auto eachsurface = *token2;
+			if (eachsurface.x == X &&
+				eachsurface.y == Y &&
+				eachsurface.z == Z &&
+				eachsurface.radius == R &&
+				eachsurface.asphericity == asph)
+			{
+				QMessageBox msgBox;
+				msgBox.setWindowTitle("Input error");
+				msgBox.setText("Surface cannot have the same geometry and position as existing surface!\n");
+				msgBox.setStandardButtons(QMessageBox::Ok);
+				msgBox.setDefaultButton(QMessageBox::Ok);
+				msgBox.exec();
+				return false;
+			}
+		}
+		
+		//if there is no duplication, then the ADD call should be running OK, and it's safe to delete the current surface
+		tableConfigCompanion::deleteSurfaceAtCurrentRow();
+
+		//call add
+		tableConfigCompanion::addSurface(X, Y, Z, diam, R, refracI, asph, apo);
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 bool tableConfigCompanion::deleteSurfaceAtCurrentRow()
 {
 	int rowCount = p_table->rowCount();
@@ -1129,6 +1290,172 @@ bool tableConfigCompanion::clearCurrentConfig()
 
 	p_table->clearContents();
 	p_table->setRowCount(0);
+
+	return true;
+}
+
+bool tableConfigCompanion::cloneToCurrentConfig()
+{
+	CloneConfigDialog dialog;
+
+	std::vector<float> wavelengthsToShow;
+
+	for (auto eachconfig : configs)
+	{
+		wavelengthsToShow.push_back(eachconfig.wavelength);
+		dialog.comboCloneWavelength->addItem(QString::number(eachconfig.wavelength).append(" nm"));
+	}
+
+	float selectedWavelength;
+
+	if (dialog.exec() == QDialog::Accepted)
+	{
+		int selectedInt = dialog.comboCloneWavelength->currentIndex();
+		if (selectedInt >= 0 && selectedInt <= wavelengthsToShow.size())
+		{
+			selectedWavelength = wavelengthsToShow[selectedInt];
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	//clear and clone
+	currentConfig.clear();
+	auto token = std::find_if(configs.begin(), configs.end(), [selectedWavelength](wavelengthAndConfig& holder) {return holder.wavelength == selectedWavelength; });
+	if (token == configs.end())
+	{
+		return false;
+	}
+	currentConfig = token->surfaces;
+
+	//populate the table
+	p_table->clearContents();
+	p_table->setRowCount(currentConfig.size());
+
+	if (currentConfig.empty() == false)
+	{
+		int i = 0;
+		for (auto token2 = currentConfig.begin(); token2 != currentConfig.end(); token2++)
+		{
+			tracer::PI_Surface& surface = (*token2);
+			p_table->setItem(i, 0, new QTableWidgetItem(QObject::tr("(%1, %2, %3)").arg(surface.x).arg(surface.y).arg(surface.z)));
+			p_table->setItem(i, 1, new QTableWidgetItem(QObject::tr("%1").arg(surface.diameter)));
+			p_table->setItem(i, 2, new QTableWidgetItem(QObject::tr("%1").arg(surface.radius)));
+			p_table->setItem(i, 3, new QTableWidgetItem(QObject::tr("%1").arg(surface.refractiveIndex)));
+			p_table->setItem(i, 4, new QTableWidgetItem(QObject::tr("%1").arg(surface.asphericity)));
+			QString apoName;
+			switch (surface.apodization)
+			{
+			case 1:
+				apoName = "Bartlett";
+				break;
+			case 0:
+			default:
+				apoName = "Uniform";
+				break;
+			}
+			p_table->setItem(i, 5, new QTableWidgetItem(apoName));
+
+			i++;
+		}
+	}
+
+	return false;
+}
+
+bool tableConfigCompanion::saveCurrentConfig(QString path)
+{
+	if (currentConfig.size() == 0)
+	{
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Info");
+		msgBox.setText("Current configuration is empty, there is nothing to save!\n");
+		msgBox.setStandardButtons(QMessageBox::Ok);
+		msgBox.setDefaultButton(QMessageBox::Ok);
+		msgBox.exec();
+		return false;
+	}
+
+	QFile file(path);
+	if (!file.open(QIODevice::WriteOnly))
+	{
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Error");
+		msgBox.setText(QObject::tr("Cannot save to file %1 \n").arg(path));
+		msgBox.setStandardButtons(QMessageBox::Ok);
+		msgBox.setDefaultButton(QMessageBox::Ok);
+		msgBox.exec();
+		return false;
+	}
+	QDataStream out(&file);
+	
+	out << currentWavelength;
+	out << (int)currentConfig.size();
+	for (auto eachsurface : currentConfig)
+	{
+		out << eachsurface.x;
+		out << eachsurface.y;
+		out << eachsurface.z;
+		out << eachsurface.diameter;
+		out << eachsurface.radius;
+		out << eachsurface.refractiveIndex;
+		out << eachsurface.asphericity;
+		out << eachsurface.apodization;
+	}
+	file.close();
+	return true;
+}
+
+bool tableConfigCompanion::loadToCurrentConfig(QString path)
+{
+	QFile file(path);
+	if (!file.open(QIODevice::ReadOnly))
+	{
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Error");
+		msgBox.setText(QObject::tr("Cannot open file %1 \n").arg(path));
+		msgBox.setStandardButtons(QMessageBox::Ok);
+		msgBox.setDefaultButton(QMessageBox::Ok);
+		msgBox.exec();
+		return false;
+	}
+	QDataStream in(&file);
+
+	float fileWavelength;
+	in >> fileWavelength;
+
+	if (fileWavelength != currentWavelength)
+	{
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Warning");
+		msgBox.setText("The wavelength in file is not the same as the current wavelength!\nDo you want to continue?");
+		msgBox.setStandardButtons(QMessageBox::Yes| QMessageBox::No);
+		msgBox.setDefaultButton(QMessageBox::No);
+		if (msgBox.exec() == QMessageBox::No)
+			return false;
+	}
+
+	currentConfig.clear();
+	p_table->clearContents();
+	p_table->setRowCount(0);
+
+	int count = 0;
+	in >> count;
+	for (int i = 0; i < count; i++)
+	{
+		tracer::PI_Surface newsurface;
+		in >> newsurface.x;
+		in >> newsurface.y;
+		in >> newsurface.z;
+		in >> newsurface.diameter;
+		in >> newsurface.radius;
+		in >> newsurface.refractiveIndex;
+		in >> newsurface.asphericity;
+		in >> newsurface.apodization;
+		addSurface(newsurface.x, newsurface.y, newsurface.z, newsurface.diameter, newsurface.radius, newsurface.refractiveIndex, newsurface.asphericity, newsurface.apodization);
+	}
 
 	return true;
 }

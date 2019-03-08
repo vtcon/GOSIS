@@ -48,6 +48,9 @@
     <ClCompile Include="ConsoleOut.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CloneConfigDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="AddPointDialog.h">
@@ -65,6 +68,9 @@
     <QtMoc Include="ConsoleOut.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="CloneConfigDialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="QtGuiApplication.ui">
@@ -77,6 +83,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="ConsoleOut.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="CloneConfigDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

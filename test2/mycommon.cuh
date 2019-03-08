@@ -26,7 +26,7 @@
 
 #define NULLVECTOR vec3<MYFLOATTYPE>(0,0,0)
 
-static const int bundlesize = 32;
+//static const int bundlesize = 32;
 
 //#define _MYDEBUGMODE
 

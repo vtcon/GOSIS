@@ -29,4 +29,4 @@ void quickDisplayv2(T* rawData, int rows, int columns, void* map_x, void* map_y,
 template<typename T>
 void generateProjectionMap(void*& mapX, void*& mapY, int rows, int columns, unsigned int projection = IF_PROJECTION_NONE, int argc = 0, T* argv = nullptr);
 
-bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB);
+bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB, float brightness);
