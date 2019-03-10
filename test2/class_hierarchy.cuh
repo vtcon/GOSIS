@@ -692,7 +692,11 @@ public:
 
 		MYFLOATTYPE nyf = asin(worldCoor.y / m_R0) / m_thetaR;
 		MYFLOATTYPE Rp = m_R0 * cos(nyf*m_thetaR);
-		MYFLOATTYPE nxf = asin(worldCoor.x / Rp) / m_thetaR;
+		//
+		//old version: this could be soooo wrong, should definitely check again
+		//MYFLOATTYPE nxf = asin(worldCoor.x / Rp) / m_thetaR;
+		//new version
+		MYFLOATTYPE nxf = asin(worldCoor.x / Rp) * Rp / (m_thetaR * m_R0);
 		pixelCoor = { static_cast<int>(floor(nxf)) ,static_cast<int>(floor(nyf)) };
 
 		bool returnVal = checkArrayBound(pixelCoor);

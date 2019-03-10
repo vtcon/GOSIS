@@ -130,6 +130,9 @@ void QtGuiApplication::on_pushAddPoint_clicked()
 		ui.tableInput->setItem(currentRow, 1, new QTableWidgetItem(tr("%1").arg(point.wavelength)));
 		ui.tableInput->setItem(currentRow, 2, new QTableWidgetItem(tr("%1").arg(point.intensity)));
 		ui.tableInput->setItem(currentRow, 3, new QTableWidgetItem(tr("%1").arg(uniqueID)));
+
+		//increase point count for the wavelength
+		listConfigCompanion::addPoint(point.wavelength);
 	}
 
 	stateReset();
@@ -169,7 +172,9 @@ void QtGuiApplication::on_pushRemovePoint_clicked()
 		msgBox.exec();
 	}
 
+	//decrease point count for the wavelength
 	listConfigCompanion::removePoint(wavelength);
+
 	ui.tableInput->removeRow(currentRow);
 
 	stateReset();

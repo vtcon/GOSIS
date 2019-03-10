@@ -28,9 +28,9 @@ public:
 
 	bool saveRaw(std::string path);
 
-	bool saveRGB(std::string path);
+	bool saveRGB(std::string path, void* mapX = nullptr, void* mapY = nullptr);
 
-	void displayRGB(int rows = -1, int columns = -1, int offsetX = 0, int offsetY = 0, float scaling = 1.0);
+	void displayRGB(int rows = -1, int columns = -1, void* mapX = nullptr, void* mapY = nullptr, int offsetX = 0, int offsetY = 0, float scaling = 1.0);
 	//if value of rows or column == -1, the function will display all pixels from offset until end of image
 
 

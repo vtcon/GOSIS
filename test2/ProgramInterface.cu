@@ -32,6 +32,8 @@ unsigned int PI_rgbStandard = IF_ADOBERGB;
 int PI_traceJobSize = 3;
 int PI_renderJobSize = 3;
 unsigned short int PI_rawFormat = OIC_XYZ;
+unsigned int PI_projectionMethod = IF_PROJECTION_PLATE_CARREE;
+int PI_displayWindowSize = 800;
 
 //these variables serves the progress count
 float PI_traceProgress; //from 0.0 to 1.0
@@ -42,6 +44,7 @@ long toRenderCount = 0;
 long renderedCount = 0;
 void updateProgressTrace();
 void updateProgressRender();
+
 
 //function definitions
 bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
@@ -478,10 +481,10 @@ PI_Message tracer::showRaw(float* wavelengths, int count)
 
 			MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
 			generateProjectionMap(mapX, mapY, thisOpticalConfig->p_rawChannel->m_dimension.y,
-				thisOpticalConfig->p_rawChannel->m_dimension.x, IF_PROJECTION_ALONGZ, 4, scalingargs);
+				thisOpticalConfig->p_rawChannel->m_dimension.x, PI_projectionMethod, 4, scalingargs);
 
 			quickDisplayv2(thisOpticalConfig->p_rawChannel->hp_raw, thisOpticalConfig->p_rawChannel->m_dimension.y,
-				thisOpticalConfig->p_rawChannel->m_dimension.x, mapX, mapY, 700);
+				thisOpticalConfig->p_rawChannel->m_dimension.x, mapX, mapY, PI_displayWindowSize);
 		}
 	}
 	else
@@ -503,7 +506,26 @@ PI_Message tracer::showRGB(int uniqueID)
 	}
 	else
 	{
-		outputImages[uniqueID].displayRGB();
+		//just take a random optical config, cause they're all have the same retina descriptor, FOR NOW
+		OpticalConfig* thisOpticalConfig = nullptr;
+		bool b_getConfig = mainStorageManager.infoCheckOut(thisOpticalConfig, activeWavelength);
+		if (!b_getConfig)
+		{
+			std::cout << "Cannot get optical config for wavelength at " << activeWavelength << " nm \n";
+			return { PI_UNKNOWN_ERROR, "Cannot get optical config for this wavelength\n" };
+		}
+
+		//obtain the projection maps
+		//display data with scaling
+		void* mapX = nullptr;
+		void* mapY = nullptr;
+		SimpleRetinaDescriptor* tempDescriptor = dynamic_cast<SimpleRetinaDescriptor*>(thisOpticalConfig->p_retinaDescriptor);
+
+		MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
+		generateProjectionMap(mapX, mapY, thisOpticalConfig->p_rawChannel->m_dimension.y,
+			thisOpticalConfig->p_rawChannel->m_dimension.x, PI_projectionMethod, 4, scalingargs);
+
+		outputImages[uniqueID].displayRGB(-1,-1,mapX, mapY);
 		return { PI_OK, "Successful!\n" };
 	}
 }

@@ -11,6 +11,7 @@
 
 //external variables
 extern unsigned int PI_rgbStandard;
+extern int PI_displayWindowSize;
 
 //external functions
 extern void XYZtoBGR(cv::Mat& XYZmat, cv::Mat& BGRmat, unsigned int RGBoption);
@@ -190,10 +191,19 @@ bool OutputImage::saveRaw(std::string path)
 	return true;
 }
 
-bool OutputImage::saveRGB(std::string path)
+bool OutputImage::saveRGB(std::string path, void* mapX, void* mapY)
 {
+	cv::Mat imgRemapped = pimpl->CVoutputImage;
+	if (mapX != nullptr || mapY != nullptr)
+	{
+		cv::Mat* p_map_x = static_cast<cv::Mat*>(mapX);
+		cv::Mat* p_map_y = static_cast<cv::Mat*>(mapY);
+
+		cv::remap(pimpl->CVoutputImage, imgRemapped, *p_map_x, *p_map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+	}
+
 	cv::Mat toSave = cv::Mat::zeros(pimpl->CVoutputImage.size(), CV_8UC3);
-	XYZtoBGR(pimpl->CVoutputImage, toSave, PI_rgbStandard);
+	XYZtoBGR(imgRemapped, toSave, PI_rgbStandard);
 
 	if (path.empty())
 	{
@@ -210,13 +220,21 @@ bool OutputImage::saveRGB(std::string path)
 	return true;
 }
 
-void OutputImage::displayRGB(int rows, int columns, int offsetX, int offsetY, float scaling)
+void OutputImage::displayRGB(int rows, int columns, void* mapX , void* mapY, int offsetX, int offsetY, float scaling)
 {
 	//TEMPORARY VERSION: ignoring input parameters
+	cv::Mat imgRemapped = pimpl->CVoutputImage;
+	if (mapX != nullptr || mapY != nullptr)
+	{
+		cv::Mat* p_map_x = static_cast<cv::Mat*>(mapX);
+		cv::Mat* p_map_y = static_cast<cv::Mat*>(mapY);
+
+		cv::remap(pimpl->CVoutputImage, imgRemapped, *p_map_x, *p_map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+	}
 
 	cv::Mat toDisplay = cv::Mat::zeros(pimpl->CVoutputImage.size(), CV_8UC3);
-	XYZtoBGR(pimpl->CVoutputImage, toDisplay, PI_rgbStandard);
-	cv::resize(toDisplay, toDisplay, cv::Size(), 500.0 / cv::max(toDisplay.rows, toDisplay.cols), 500.0 / cv::max(toDisplay.rows, toDisplay.cols), cv::INTER_NEAREST);
+	XYZtoBGR(imgRemapped, toDisplay, PI_rgbStandard);
+	cv::resize(toDisplay, toDisplay, cv::Size(), (float)PI_displayWindowSize / cv::max(toDisplay.rows, toDisplay.cols), (float)PI_displayWindowSize / cv::max(toDisplay.rows, toDisplay.cols), cv::INTER_NEAREST);
 	showOnWindow("test", toDisplay);
 }
 

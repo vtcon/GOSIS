@@ -330,6 +330,7 @@ void update_map_projection_alongz(Mat& map_x, Mat& map_y, int rows, int columns,
 	{
 		for (int i = 0; i < columns; i++)
 		{
+			//normalized, centered coordinates
 			float nxp = (2.0 * i - columns) / columns;
 			float nyp = (2.0 * j - rows) / rows;
 			if (nxp * nxp + nyp * nyp >= 1)
@@ -345,12 +346,33 @@ void update_map_projection_alongz(Mat& map_x, Mat& map_y, int rows, int columns,
 
 				float nyf = asin(worldcoorY / R0) / thetaR;
 				float Rp = R0 * cos(nyf*thetaR);
-				float nxf = asin(worldcoorX / Rp) / thetaR;
+				//float nxf = asin(worldcoorX / Rp) / thetaR;
+				float nxf = asin(worldcoorX / Rp) * Rp / (thetaR * R0);
 
 				//printf("Map [%d, %d] to [%f, %f]\n", i, j, nxf + columns / 2, nyf + rows / 2);
 				map_x.at<float>(j, i) = nxf + columns / 2;
 				map_y.at<float>(j, i) = -nyf + rows / 2;
 			}
+		}
+	}
+}
+
+void update_map_projection_plate_carree(Mat& map_x, Mat& map_y, int rows, int columns, float thetaR, float R0, float maxTheta, float maxPhi)
+{
+	for (int j = 0; j < rows; j++)
+	{
+		for (int i = 0; i < columns; i++)
+		{
+			//centered coordinates
+			float nxp = (i - columns/2.0);
+			float nyp = (j - rows / 2.0);
+
+			float nxf = nxp * cos(nyp*thetaR);
+
+			//printf("Map [%d, %d] to [%f, %f]\n", i, j, nxf + columns / 2, nyf + rows / 2);
+			map_x.at<float>(j, i) = nxf + columns / 2;
+			map_y.at<float>(j, i) = rows - j; //simply invert
+			
 		}
 	}
 }
@@ -468,8 +490,8 @@ void generateProjectionMap(void *& mapX, void *& mapY, int rows, int columns, un
 	case IF_PROJECTION_ALONGZ:
 		update_map_projection_alongz(*p_mapX, *p_mapY, rows, columns, (float)(argv[0]), (float)(argv[1]), (float)(argv[2]), (float)(argv[3]));
 		break;
-	case IF_PROJECTION_MECATOR:
-		std::cout << "projection unimplemented\n";
+	case IF_PROJECTION_PLATE_CARREE:
+		update_map_projection_plate_carree(*p_mapX, *p_mapY, rows, columns, (float)(argv[0]), (float)(argv[1]), (float)(argv[2]), (float)(argv[3]));
 		break;
 	default:
 		std::cout << "projection not found\n";
@@ -485,6 +507,30 @@ void generateProjectionMap<float>(void *& mapX, void *& mapY, int rows, int colu
 
 template
 void generateProjectionMap<double>(void *& mapX, void *& mapY, int rows, int columns, unsigned int projection, int argc, double* argv);
+
+void clearProjectionMap(void *& mapX, void *& mapY)
+{
+	Mat* p_mapX = static_cast<Mat*>(mapX);
+	Mat* p_mapY = static_cast<Mat*>(mapY);
+	
+	if (p_mapX != nullptr)
+	{
+		delete p_mapX;
+		p_mapX = nullptr;
+	}
+	
+	if (p_mapY != nullptr)
+	{
+		delete p_mapY;
+		p_mapY = nullptr;
+	}
+	
+	mapX = static_cast<void*>(p_mapX);
+	mapY = static_cast<void*>(p_mapY);
+	return;
+}
+
+
 
 //external variable needed to do inverse scale of rgb and xyz channels
 extern unsigned short int PI_rawFormat;
