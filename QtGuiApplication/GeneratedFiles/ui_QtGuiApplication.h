@@ -67,7 +67,7 @@ public:
     QPushButton *pushRemovePoint;
     QSpacerItem *verticalSpacer;
     QWidget *pagePicture;
-    QGridLayout *gridLayout_17;
+    QGridLayout *gridLayout_6;
     QGridLayout *gridLayout_14;
     QLabel *label_23;
     QLineEdit *lineImagePath;
@@ -99,14 +99,6 @@ public:
     QLabel *label_10;
     QLineEdit *lineImageRotZ;
     QLabel *label_22;
-    QGroupBox *groupBox_10;
-    QGridLayout *gridLayout_6;
-    QLabel *label_19;
-    QLineEdit *lineImageRedWavelength;
-    QLabel *label_20;
-    QLineEdit *lineImageGreenWavelength;
-    QLabel *label_21;
-    QLineEdit *lineImageBlueWavelength;
     QWidget *pageList;
     QGridLayout *gridLayout_7;
     QHBoxLayout *horizontalLayout_3;
@@ -279,10 +271,10 @@ public:
         stackedInput->addWidget(pageManual);
         pagePicture = new QWidget();
         pagePicture->setObjectName(QString::fromUtf8("pagePicture"));
-        gridLayout_17 = new QGridLayout(pagePicture);
-        gridLayout_17->setSpacing(6);
-        gridLayout_17->setContentsMargins(11, 11, 11, 11);
-        gridLayout_17->setObjectName(QString::fromUtf8("gridLayout_17"));
+        gridLayout_6 = new QGridLayout(pagePicture);
+        gridLayout_6->setSpacing(6);
+        gridLayout_6->setContentsMargins(11, 11, 11, 11);
+        gridLayout_6->setObjectName(QString::fromUtf8("gridLayout_6"));
         gridLayout_14 = new QGridLayout();
         gridLayout_14->setSpacing(6);
         gridLayout_14->setObjectName(QString::fromUtf8("gridLayout_14"));
@@ -308,7 +300,7 @@ public:
         gridLayout_14->addWidget(pushClearImage, 0, 3, 1, 1);
 
 
-        gridLayout_17->addLayout(gridLayout_14, 0, 0, 1, 2);
+        gridLayout_6->addLayout(gridLayout_14, 0, 0, 1, 2);
 
         groupBox_2 = new QGroupBox(pagePicture);
         groupBox_2->setObjectName(QString::fromUtf8("groupBox_2"));
@@ -347,7 +339,7 @@ public:
         gridLayout_3->addWidget(lineImagePosZ, 2, 1, 1, 1);
 
 
-        gridLayout_17->addWidget(groupBox_2, 1, 0, 2, 1);
+        gridLayout_6->addWidget(groupBox_2, 1, 0, 2, 1);
 
         gridLayout_15 = new QGridLayout();
         gridLayout_15->setSpacing(6);
@@ -363,7 +355,7 @@ public:
         gridLayout_15->addWidget(lineImageBrightness, 0, 1, 1, 1);
 
 
-        gridLayout_17->addLayout(gridLayout_15, 1, 1, 1, 1);
+        gridLayout_6->addLayout(gridLayout_15, 1, 1, 1, 1);
 
         groupBox_8 = new QGroupBox(pagePicture);
         groupBox_8->setObjectName(QString::fromUtf8("groupBox_8"));
@@ -392,7 +384,7 @@ public:
         gridLayout_5->addWidget(lineImageVertSize, 1, 1, 1, 1);
 
 
-        gridLayout_17->addWidget(groupBox_8, 2, 1, 2, 1);
+        gridLayout_6->addWidget(groupBox_8, 2, 1, 2, 1);
 
         groupBox_3 = new QGroupBox(pagePicture);
         groupBox_3->setObjectName(QString::fromUtf8("groupBox_3"));
@@ -436,46 +428,7 @@ public:
         gridLayout_4->addWidget(label_22, 3, 0, 1, 2);
 
 
-        gridLayout_17->addWidget(groupBox_3, 3, 0, 2, 1);
-
-        groupBox_10 = new QGroupBox(pagePicture);
-        groupBox_10->setObjectName(QString::fromUtf8("groupBox_10"));
-        gridLayout_6 = new QGridLayout(groupBox_10);
-        gridLayout_6->setSpacing(6);
-        gridLayout_6->setContentsMargins(11, 11, 11, 11);
-        gridLayout_6->setObjectName(QString::fromUtf8("gridLayout_6"));
-        label_19 = new QLabel(groupBox_10);
-        label_19->setObjectName(QString::fromUtf8("label_19"));
-
-        gridLayout_6->addWidget(label_19, 0, 0, 1, 1);
-
-        lineImageRedWavelength = new QLineEdit(groupBox_10);
-        lineImageRedWavelength->setObjectName(QString::fromUtf8("lineImageRedWavelength"));
-
-        gridLayout_6->addWidget(lineImageRedWavelength, 0, 1, 1, 1);
-
-        label_20 = new QLabel(groupBox_10);
-        label_20->setObjectName(QString::fromUtf8("label_20"));
-
-        gridLayout_6->addWidget(label_20, 1, 0, 1, 1);
-
-        lineImageGreenWavelength = new QLineEdit(groupBox_10);
-        lineImageGreenWavelength->setObjectName(QString::fromUtf8("lineImageGreenWavelength"));
-
-        gridLayout_6->addWidget(lineImageGreenWavelength, 1, 1, 1, 1);
-
-        label_21 = new QLabel(groupBox_10);
-        label_21->setObjectName(QString::fromUtf8("label_21"));
-
-        gridLayout_6->addWidget(label_21, 2, 0, 1, 1);
-
-        lineImageBlueWavelength = new QLineEdit(groupBox_10);
-        lineImageBlueWavelength->setObjectName(QString::fromUtf8("lineImageBlueWavelength"));
-
-        gridLayout_6->addWidget(lineImageBlueWavelength, 2, 1, 1, 1);
-
-
-        gridLayout_17->addWidget(groupBox_10, 4, 1, 1, 1);
+        gridLayout_6->addWidget(groupBox_3, 3, 0, 1, 1);
 
         stackedInput->addWidget(pagePicture);
         pageList = new QWidget();
@@ -968,13 +921,6 @@ public:
         label_10->setText(QApplication::translate("QtGuiApplicationClass", "Z Rotation", nullptr));
         lineImageRotZ->setText(QApplication::translate("QtGuiApplicationClass", "0.0", nullptr));
         label_22->setText(QApplication::translate("QtGuiApplicationClass", "Note: Rotation will be applied in the order Z -> Y -> X", nullptr));
-        groupBox_10->setTitle(QApplication::translate("QtGuiApplicationClass", "Wavelength Settings Of Channels", nullptr));
-        label_19->setText(QApplication::translate("QtGuiApplicationClass", "Red Wavelength", nullptr));
-        lineImageRedWavelength->setText(QApplication::translate("QtGuiApplicationClass", "700", nullptr));
-        label_20->setText(QApplication::translate("QtGuiApplicationClass", "Green Wavelength", nullptr));
-        lineImageGreenWavelength->setText(QApplication::translate("QtGuiApplicationClass", "555", nullptr));
-        label_21->setText(QApplication::translate("QtGuiApplicationClass", "Blue Wavelength", nullptr));
-        lineImageBlueWavelength->setText(QApplication::translate("QtGuiApplicationClass", "450", nullptr));
         pushButton_3->setText(QApplication::translate("QtGuiApplicationClass", "Select File:", nullptr));
         pushButton_4->setText(QApplication::translate("QtGuiApplicationClass", "Import From File", nullptr));
         label_12->setText(QApplication::translate("QtGuiApplicationClass", "Info", nullptr));

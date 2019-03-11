@@ -19,11 +19,12 @@
 
 using namespace tracer;
 
-//internal global variables
+//internal global variables, please think VERY carefully before modifying these lines
 std::list<StorageManager> repoList;
 StorageManager mainStorageManager;
 float activeWavelength = 555.0; //pls don't break this line
 std::unordered_map<int, OutputImage> outputImages;
+bool maximizeContrast = true; //should be set to true if inputs are points, and false if input is an image
 
 //external global variables
 int PI_ThreadsPerKernelLaunch = 16;
@@ -31,9 +32,12 @@ int PI_linearRayDensity = 30;//20 is ok
 unsigned int PI_rgbStandard = IF_ADOBERGB;
 int PI_traceJobSize = 3;
 int PI_renderJobSize = 3;
-unsigned short int PI_rawFormat = OIC_XYZ;
+unsigned short int PI_rawFormat = OIC_XYZ; //OIC_LMS
 unsigned int PI_projectionMethod = IF_PROJECTION_PLATE_CARREE;
 int PI_displayWindowSize = 800;
+float PI_primaryWavelengthR = 620;
+float PI_primaryWavelengthG = 530;
+float PI_primaryWavelengthB = 465;
 
 //these variables serves the progress count
 float PI_traceProgress; //from 0.0 to 1.0
@@ -55,9 +59,19 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 		return false;
 }
 
+extern bool runTestOpenCV;
 PI_Message tracer::test()
 {
-	//tracer::importImage("C:/testinput.bmp", 20, 20, 30, 25, 25, 45, 90, 45, 700, 550, 400, 1.0);
+	
+	if (runTestOpenCV)
+	{
+		maximizeContrast = false;
+		testopencv();
+		maximizeContrast = true;
+	}
+	else
+	{
+		//tracer::importImage("C:/testinput.bmp", 20, 20, 30, 25, 25, 45, 90, 45, 700, 550, 400, 1.0);
 	/*
 	int count = 0;
 	std::cout << "Please enter the number of surfaces\n";
@@ -96,138 +110,139 @@ PI_Message tracer::test()
 	}
 	*/
 
-	
-	{
-		int count = 2;
-		PI_Surface* surfaces = new PI_Surface[count];
-		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; 
-		surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = 0.95;
-		surfaces[0].apodization = PI_APD_CUSTOM; surfaces[0].customApoPath = "C:/testcustomapo.jpg";
 
-		surfaces[1].diameter = 40.0; surfaces[1].radius = -60.0;
-		float angularResol = 0.16;//0.16 is OK
+		{
+			int count = 2;
+			PI_Surface* surfaces = new PI_Surface[count];
+			surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0;
+			surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = 0.95;
+			surfaces[0].apodization = PI_APD_CUSTOM; surfaces[0].customApoPath = "C:/testcustomapo.jpg";
 
-		float angularExtend = 90.0;
+			surfaces[1].diameter = 40.0; surfaces[1].radius = -60.0;
+			float angularResol = 0.16;//0.16 is OK
 
-		addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
-		delete[] surfaces;
-	}
-	/*
-	{
-		int count = 4;
-		PI_Surface* surfaces = new PI_Surface[count];
-		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = -0.5;
-		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
-		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
-		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
-		float angularResol = 0.16;//0.16 is OK
+			float angularExtend = 90.0;
 
-		float angularExtend = 90.0;
-
-
-		addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
-		delete[] surfaces;
-	}
-	{
-		int count = 4;
-		PI_Surface* surfaces = new PI_Surface[count];
-		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
-		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
-		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
-		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
-		float angularResol = 0.16;//0.16 is OK
-
-		float angularExtend = 90.0;
-
-
-		addOpticalConfigAt(400.0, count, surfaces, angularResol, angularExtend);
-		delete[] surfaces;
-	}
-	{
-		int count = 4;
-		PI_Surface* surfaces = new PI_Surface[count];
-		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
-		surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
-		surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
-		surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
-		float angularResol = 0.16;//0.16 is OK
-
-		float angularExtend = 90.0;
-
-
-		addOpticalConfigAt(650.0, count, surfaces, angularResol, angularExtend);
-		delete[] surfaces;
-	}
-	*/
-	/*
-	std::cout << "Please enter the number of points\n";
-	int pcount = 0;
-	std::cin >> pcount;
-
-	for (int i = 0; i < pcount; i++)
-	{
-		PI_LuminousPoint point;
-		std::cout << "For point " << i + 1 << ":\n";
-		std::cout << "Please enter X\n";
-		std::cin >> point.x;
-		std::cout << "Please enter Y\n";
-		std::cin >> point.y;
-		std::cout << "Please enter Z\n";
-		std::cin >> point.z;
-		addPoint(point);
-	}
-	*/
-	
-	{
-		PI_LuminousPoint point;
-		point.x = 0;	point.y = 0;	point.z = 250;	point.wavelength = 555.0;
-		addPoint(point);
+			addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+			delete[] surfaces;
+		}
 		/*
-		point.x = -20;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = 30;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = -20;	point.y = -20;	point.z = 160;	point.wavelength = 555.0;
-		addPoint(point);
-		point.x = 0;	point.y = 0;	point.z = 160;	point.wavelength = 400.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = 20;	point.y = 0;	point.z = 200;	point.wavelength = 400.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = 0;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = -30;	point.y = 0;	point.z = 160;	point.wavelength = 650.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = 40;	point.y = 0;	point.z = 200;	point.wavelength = 650.0;	point.intensity = 5.0;
-		addPoint(point);
-		point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
-		addPoint(point);
-		*/
-	}
-	
-	/*
-	int rayDensity = 20;
-	std::cout << "Enter desired linear ray generation density: \n";
-	std::cin >> rayDensity;
-	*/
-	
-	std::cout << "Starting...\n";
+		{
+			int count = 4;
+			PI_Surface* surfaces = new PI_Surface[count];
+			surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = -0.5;
+			surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+			surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+			surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+			float angularResol = 0.16;//0.16 is OK
 
-	checkData();
-	trace();
-	render();
-	/*
-	{
-		float wavelengths[3] = { 400.0,555.0, 650.0 };
-		int imageID = 0;
-		createOutputImage(3, wavelengths, imageID);
+			float angularExtend = 90.0;
+
+
+			addOpticalConfigAt(555.0, count, surfaces, angularResol, angularExtend);
+			delete[] surfaces;
+		}
+		{
+			int count = 4;
+			PI_Surface* surfaces = new PI_Surface[count];
+			surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+			surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+			surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+			surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+			float angularResol = 0.16;//0.16 is OK
+
+			float angularExtend = 90.0;
+
+
+			addOpticalConfigAt(400.0, count, surfaces, angularResol, angularExtend);
+			delete[] surfaces;
+		}
+		{
+			int count = 4;
+			PI_Surface* surfaces = new PI_Surface[count];
+			surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168;
+			surfaces[1].z = 25.0; surfaces[1].diameter = 40.0; surfaces[1].radius = 40.0; surfaces[1].refractiveIndex = 1.7;
+			surfaces[2].z = 15.0; surfaces[2].diameter = 40.0; surfaces[2].radius = 40.0; surfaces[2].refractiveIndex = 2.0;
+			surfaces[3].diameter = 40.0; surfaces[3].radius = -60.0;
+			float angularResol = 0.16;//0.16 is OK
+
+			float angularExtend = 90.0;
+
+
+			addOpticalConfigAt(650.0, count, surfaces, angularResol, angularExtend);
+			delete[] surfaces;
+		}
+		*/
+		/*
+		std::cout << "Please enter the number of points\n";
+		int pcount = 0;
+		std::cin >> pcount;
+
+		for (int i = 0; i < pcount; i++)
+		{
+			PI_LuminousPoint point;
+			std::cout << "For point " << i + 1 << ":\n";
+			std::cout << "Please enter X\n";
+			std::cin >> point.x;
+			std::cout << "Please enter Y\n";
+			std::cin >> point.y;
+			std::cout << "Please enter Z\n";
+			std::cin >> point.z;
+			addPoint(point);
+		}
+		*/
+
+		{
+			PI_LuminousPoint point;
+			point.x = 0;	point.y = 0;	point.z = 250;	point.wavelength = 555.0;
+			addPoint(point);
+			/*
+			point.x = -20;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = 30;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = -20;	point.y = -20;	point.z = 160;	point.wavelength = 555.0;
+			addPoint(point);
+			point.x = 0;	point.y = 0;	point.z = 160;	point.wavelength = 400.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = 20;	point.y = 0;	point.z = 200;	point.wavelength = 400.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = 0;	point.y = -30;	point.z = 180;	point.wavelength = 400.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = -30;	point.y = 0;	point.z = 160;	point.wavelength = 650.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = 40;	point.y = 0;	point.z = 200;	point.wavelength = 650.0;	point.intensity = 5.0;
+			addPoint(point);
+			point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
+			addPoint(point);
+			*/
+		}
+
+		/*
+		int rayDensity = 20;
+		std::cout << "Enter desired linear ray generation density: \n";
+		std::cin >> rayDensity;
+		*/
+
+		std::cout << "Starting...\n";
+
+		checkData();
+		trace();
+		render();
+		/*
+		{
+			float wavelengths[3] = { 400.0,555.0, 650.0 };
+			int imageID = 0;
+			createOutputImage(3, wavelengths, imageID);
+		}
+		*/
+		{
+			float wavelengths[1] = { 555.0 };
+			int imageID = 0;
+			createOutputImage(1, wavelengths, imageID);
+		}
+		clearStorage();
 	}
-	*/
-	{
-		float wavelengths[1] = { 555.0 };
-		int imageID = 0;
-		createOutputImage(1, wavelengths, imageID);
-	}
-	clearStorage();
 	
 	return {PI_OK, "Test OK"};
 }
@@ -696,6 +711,9 @@ PI_Message tracer::clearStorage()
 	PI_traceProgress = 0;
 	PI_renderProgress = 0;
 
+	//restore old status
+	maximizeContrast = true;
+
 	//check for wavelength info from the main storage
 	float* wavelengthStorageList = nullptr;
 	int wavelengthStorageCount = 0;
@@ -764,11 +782,11 @@ PI_Message tracer::getProgress(float & traceProgress, float & renderProgress)
 	return { PI_OK, "Successful!\n" };
 }
 
-PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float wavelengthR, float wavelengthG, float wavelengthB, float brightness)
+PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness)
 {
 	//open CV is needed, so the main work is not done here
 	std::vector<tracer::PI_LuminousPoint> inputPoints;
-	bool result = importImageCV(inputPoints, path, posX, posY, posZ, sizeHorz, sizeVert, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB, brightness);
+	bool result = importImageCV(inputPoints, path, posX, posY, posZ, sizeHorz, sizeVert, rotX, rotY, rotZ, brightness);
 	if (result)
 	{
 		int newImagePoints = 0;
@@ -793,6 +811,10 @@ PI_Message tracer::importImage(const char * path, float posX, float posY, float 
 			}
 		}
 		std::cout << newImagePoints << " points have been added from the image\n";
+
+		//disable contrast maximization to conserve correct image brightness
+		maximizeContrast = false;
+
 		return { PI_OK, "Image import successfully!\n" };
 	}
 	else
@@ -800,4 +822,12 @@ PI_Message tracer::importImage(const char * path, float posX, float posY, float 
 		std::cout << "Cannot import image at " << path << " \n";
 		return { PI_INPUT_ERROR, "Cannot import image!\n" };
 	}
+}
+
+PI_Message tracer::getImagePrimaryWavelengths(float & wavelengthR, float & wavelengthG, float & wavelengthB)
+{
+	wavelengthR = PI_primaryWavelengthR;
+	wavelengthG = PI_primaryWavelengthG;
+	wavelengthB = PI_primaryWavelengthB;
+	return { PI_OK, "Successful!\n" };
 }

@@ -369,14 +369,11 @@ void QtGuiApplication::on_pushCheckData_clicked()
 			float rotZ = ui.lineImageRotZ->text().toFloat();
 			float horzSize = ui.lineImageHorzSize->text().toFloat();
 			float vertSize = ui.lineImageVertSize->text().toFloat();
-			float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
-			float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
-			float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
 
 			//data check has been done when add image path, no need to add again
 
 			//calling API
-			tracer::PI_Message message = tracer::importImage(c_strFileName, posX, posY, posZ, horzSize, vertSize, rotX, rotY, rotZ, wavelengthR, wavelengthG, wavelengthB, brightness);
+			tracer::PI_Message message = tracer::importImage(c_strFileName, posX, posY, posZ, horzSize, vertSize, rotX, rotY, rotZ, brightness);
 			if (message.code != PI_OK)
 			{
 				std::cout << "[GUI] Could not import image!\n";
@@ -850,24 +847,24 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 	float posZ = ui.lineImagePosZ->text().toFloat();
 	float horzSize = ui.lineImageHorzSize->text().toFloat();
 	float vertSize = ui.lineImageVertSize->text().toFloat();
-	float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
-	float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
-	float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
+	//float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
+	//float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
+	//float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
 
-	//rectify the wavelength number
-	float tempwavelengthR = ((float)round(10 * wavelengthR)) / 10.0;
-	ui.lineImageRedWavelength->setText(QString::number(tempwavelengthR));
-	float tempwavelengthG = ((float)round(10 * wavelengthG)) / 10.0;
-	ui.lineImageGreenWavelength->setText(QString::number(tempwavelengthG));
-	float tempwavelengthB = ((float)round(10 * wavelengthB)) / 10.0;
-	ui.lineImageBlueWavelength->setText(QString::number(tempwavelengthB));
+	////rectify the wavelength number
+	//float tempwavelengthR = ((float)round(10 * wavelengthR)) / 10.0;
+	//ui.lineImageRedWavelength->setText(QString::number(tempwavelengthR));
+	//float tempwavelengthG = ((float)round(10 * wavelengthG)) / 10.0;
+	//ui.lineImageGreenWavelength->setText(QString::number(tempwavelengthG));
+	//float tempwavelengthB = ((float)round(10 * wavelengthB)) / 10.0;
+	//ui.lineImageBlueWavelength->setText(QString::number(tempwavelengthB));
 	
 	{
 		QString errorstr;
 
-		if (brightness <= 0)
+		if (brightness <= 0.0 || brightness > 1.0)
 		{
-			errorstr.append("Image must have positive brightness value!\n");
+			errorstr.append("Image must have  brightness value between 0 and 1.0!\n");
 		}
 
 		if (posZ <= 0)
@@ -885,7 +882,7 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 			errorstr.append("Vertical size of image should be positive\n");
 		}
 
-		if (wavelengthR < 380.0 || wavelengthR > 830.0)
+		/*if (wavelengthR < 380.0 || wavelengthR > 830.0)
 		{
 			errorstr.append("Red wavelength outside visible range.\n");
 		}
@@ -898,7 +895,7 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 		if (wavelengthB < 380.0 || wavelengthB > 830.0)
 		{
 			errorstr.append("Blue wavelength outside visible range.\n");
-		}
+		}*/
 
 		if (errorstr.isEmpty() == false)
 		{
@@ -931,26 +928,24 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 	ui.lineImageRotZ->setReadOnly(true);
 	ui.lineImageHorzSize->setReadOnly(true);
 	ui.lineImageVertSize->setReadOnly(true);
-	ui.lineImageRedWavelength->setReadOnly(true);
-	ui.lineImageGreenWavelength->setReadOnly(true);
-	ui.lineImageBlueWavelength->setReadOnly(true);
 
-	listConfigCompanion::addWavelength(tempwavelengthR);
-	listConfigCompanion::addWavelength(tempwavelengthG);
-	listConfigCompanion::addWavelength(tempwavelengthB);
+	//get the primaries and add them to the wavelength list
+	float wavelengths[3];
+	tracer::getImagePrimaryWavelengths(wavelengths[0], wavelengths[1], wavelengths[2]);
+	listConfigCompanion::addWavelength(wavelengths[0]);
+	listConfigCompanion::addWavelength(wavelengths[1]);
+	listConfigCompanion::addWavelength(wavelengths[2]);
 }
 
 void QtGuiApplication::on_pushClearImage_clicked()
 {
 	ui.lineImagePath->clear();
 
-	float wavelengthR = ui.lineImageRedWavelength->text().toFloat();
-	float wavelengthG = ui.lineImageGreenWavelength->text().toFloat();
-	float wavelengthB = ui.lineImageBlueWavelength->text().toFloat();
-
-	listConfigCompanion::removeWavelength(wavelengthR);
-	listConfigCompanion::removeWavelength(wavelengthG);
-	listConfigCompanion::removeWavelength(wavelengthB);
+	float wavelengths[3];
+	tracer::getImagePrimaryWavelengths(wavelengths[0], wavelengths[1], wavelengths[2]);
+	listConfigCompanion::removeWavelength(wavelengths[0]);
+	listConfigCompanion::removeWavelength(wavelengths[1]);
+	listConfigCompanion::removeWavelength(wavelengths[2]);
 
 	ui.lineImageBrightness->setReadOnly(false);
 	ui.lineImagePosX->setReadOnly(false);
@@ -961,9 +956,6 @@ void QtGuiApplication::on_pushClearImage_clicked()
 	ui.lineImageRotZ->setReadOnly(false);
 	ui.lineImageHorzSize->setReadOnly(false);
 	ui.lineImageVertSize->setReadOnly(false);
-	ui.lineImageRedWavelength->setReadOnly(false);
-	ui.lineImageGreenWavelength->setReadOnly(false);
-	ui.lineImageBlueWavelength->setReadOnly(false);
 }
 
 void tableConfigCompanion::checkOutWavelength(float wavelength)
