@@ -288,7 +288,7 @@ public:
 
 	static void checkOutWavelength(float wavelength);
 
-	static bool addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo);
+	static bool addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo, const char* apoPath = "");
 
 	static bool modifySurfaceAtCurrentRow();
 
@@ -308,6 +308,10 @@ public:
 
 	static bool getConfigAt(float wavelength, std::list<tracer::PI_Surface>& output);
 
+	static void clearApoPathList();
+
+	static void clearAllData();
+
 private:
 	static QTableWidget* p_table;
 
@@ -321,4 +325,6 @@ private:
 	};
 
 	static std::list<wavelengthAndConfig> configs;
+
+	static std::list<QByteArray> apoPathList; //save the paths in Latin1 encoding
 };

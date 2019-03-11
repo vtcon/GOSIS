@@ -661,3 +661,36 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 
 	return true;
 }
+
+bool importCustomApo(double *& p_customApoData, int & customApoDataSize, std::string path)
+{
+	//just to be safe, or not...
+	if (p_customApoData != nullptr)
+	{
+		delete p_customApoData;
+	}
+	p_customApoData = nullptr;
+	customApoDataSize = 0;
+
+	//try open the image
+	if (path.empty()) return false;
+
+	Mat inputimg = imread(path, IMREAD_GRAYSCALE);
+	if (inputimg.empty()) return false;
+
+	//convert to  double, rescale from 0 to 1
+	Mat rescaledimg;
+	normalize(inputimg, rescaledimg, 1.0, 0.0, NORM_INF, CV_64FC1);
+
+	//allocate the pointer with new[], write the data (using memcpy is probably more safe)
+	int customApoDataCount = (rescaledimg.rows*rescaledimg.cols + 2);
+	customApoDataSize = customApoDataCount * sizeof(double);
+	p_customApoData = new double[customApoDataCount];
+
+	p_customApoData[0] = static_cast<double>(rescaledimg.rows);
+	p_customApoData[1] = static_cast<double>(rescaledimg.cols);
+
+	memcpy(&(p_customApoData[2]), rescaledimg.data, rescaledimg.rows*rescaledimg.cols * sizeof(double));
+
+	return true;
+}

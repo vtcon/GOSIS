@@ -27,12 +27,14 @@ QTableWidget* tableConfigCompanion::p_table = nullptr;
 float tableConfigCompanion::currentWavelength;
 std::list<tracer::PI_Surface> tableConfigCompanion::currentConfig;
 std::list<tableConfigCompanion::wavelengthAndConfig> tableConfigCompanion::configs;
+std::list<QByteArray> tableConfigCompanion::apoPathList;
 
 //global variables
 //std::vector<float> inputWavelengths;
 //listConfigCompanion wavelengthList;
 //tableConfigCompanion configTable;
 std::vector<int> outputImageIDs;
+
 
 QtGuiApplication::QtGuiApplication(QWidget *parent)
 	: QMainWindow(parent)
@@ -207,6 +209,8 @@ void QtGuiApplication::on_pushClearInput_clicked()
 void QtGuiApplication::on_pushAddSurface_clicked()
 {
 	AddSurfaceDialog dialog;
+	dialog.pushSelectApoPath->setEnabled(false);
+	dialog.lineApoPath->setEnabled(false);
 	if (dialog.exec() == QDialog::Accepted)
 	{
 		float X = dialog.lineX->text().toFloat();
@@ -217,8 +221,27 @@ void QtGuiApplication::on_pushAddSurface_clicked()
 		float refracI = dialog.lineRefracI->text().toFloat();
 		float asph = dialog.lineAsph->text().toFloat();
 		int apo = dialog.comboBox->currentIndex();
+		QString apoPath;
+		const char *c_strApoPath = "";
+		QByteArray fileName_ba;
+		if (apo == 2) //if custom apodization
+		{
+			apoPath = dialog.lineApoPath->text(); 
+			fileName_ba = apoPath.toLatin1();
+			c_strApoPath = fileName_ba.data();
+			
+			//sample code to convert c string back to qstring and std string
+			{
+				/*QByteArray testba;
+				testba.append(c_strApoPath);*/
 
-		tableConfigCompanion::addSurface(X, Y, Z, diam, R, refracI, asph, apo);
+				QByteArray testba(c_strApoPath);
+				QString outqstr = QString::fromLatin1(testba);
+				std::cout << outqstr.toStdString() << "\n";
+			}
+		}
+		
+		tableConfigCompanion::addSurface(X, Y, Z, diam, R, refracI, asph, apo, c_strApoPath);
 	}
 }
 
@@ -995,6 +1018,9 @@ void tableConfigCompanion::checkOutWavelength(float wavelength)
 			QString apoName;
 			switch (surface.apodization)
 			{
+			case 2:
+				apoName = "Custom";
+				break;
 			case 1:
 				apoName = "Bartlett";
 				break;
@@ -1010,7 +1036,7 @@ void tableConfigCompanion::checkOutWavelength(float wavelength)
 	}
 }
 
-bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo)
+bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, float R, float refracI, float asph, int apo, const char* apoPath)
 {
 	tracer::PI_Surface newsurface;
 	newsurface.x = X;
@@ -1020,10 +1046,29 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 	newsurface.radius = R;
 	newsurface.refractiveIndex = refracI;
 	newsurface.asphericity = asph;
+	newsurface.customApoPath = "";
+
 	//apodization translator
 	QString apoName;
+	QByteArray baToAdd;
 	switch (apo)
 	{
+	case 2:
+		apoName = "Custom";
+		newsurface.apodization = PI_APD_CUSTOM;
+		baToAdd.append(apoPath);
+		apoPathList.push_back(baToAdd);
+		{
+			auto newtoken = apoPathList.end();
+			newtoken--;
+			newsurface.customApoPath = newtoken->data();
+		}
+		/*{
+			QByteArray testba(newsurface.customApoPath);
+			QString outqstr = QString::fromLatin1(testba);
+			std::cout << outqstr.toStdString() << "\n";
+		}*/
+		break;
 	case 1:
 		apoName = "Bartlett";
 		newsurface.apodization = PI_APD_BARTLETT;
@@ -1053,6 +1098,10 @@ bool tableConfigCompanion::addSurface(float X, float Y, float Z, float diam, flo
 				msgBox.setStandardButtons(QMessageBox::Ok);
 				msgBox.setDefaultButton(QMessageBox::Ok);
 				msgBox.exec();
+
+				//save a bit space by throw away unused string
+				apoPathList.pop_back();
+
 				return false;
 			}
 		}
@@ -1131,7 +1180,9 @@ bool tableConfigCompanion::modifySurfaceAtCurrentRow()
 
 	//create dialog
 	AddSurfaceDialog dialog;
-	
+	dialog.pushSelectApoPath->setEnabled(false);
+	dialog.lineApoPath->setEnabled(false);
+
 	// and put its data to the dialog
 	dialog.lineX->setText(QString::number(token->x));
 	dialog.lineY->setText(QString::number(token->y));
@@ -1141,7 +1192,17 @@ bool tableConfigCompanion::modifySurfaceAtCurrentRow()
 	dialog.lineRefracI->setText(QString::number(token->refractiveIndex));
 	dialog.lineAsph->setText(QString::number(token->asphericity));
 	dialog.comboBox->setCurrentIndex(token->apodization);
-
+	if (token->apodization == PI_APD_CUSTOM)
+	{
+		dialog.pushSelectApoPath->setEnabled(true);
+		dialog.lineApoPath->setEnabled(true);
+		
+		QByteArray testba;
+		testba.append(token->customApoPath);
+		QString outqstr = QString::fromLatin1(testba);
+		dialog.lineApoPath->setText(outqstr);
+	}
+	
 	if (dialog.exec() == QDialog::Accepted)
 	{
 		float X = dialog.lineX->text().toFloat();
@@ -1152,6 +1213,14 @@ bool tableConfigCompanion::modifySurfaceAtCurrentRow()
 		float refracI = dialog.lineRefracI->text().toFloat();
 		float asph = dialog.lineAsph->text().toFloat();
 		int apo = dialog.comboBox->currentIndex();
+		const char* apoPath = "";
+		QByteArray fileName_ba;
+		if (apo == 2) //if custom apodization
+		{
+			QString qtApoPath = dialog.lineApoPath->text();
+			fileName_ba = qtApoPath.toLatin1();
+			apoPath = fileName_ba.data();
+		}
 
 		//if the modified value stays the same, return
 		if (token->x == X &&
@@ -1161,7 +1230,9 @@ bool tableConfigCompanion::modifySurfaceAtCurrentRow()
 			token->radius == R &&
 			token->refractiveIndex == refracI &&
 			token->asphericity == asph &&
-			token->apodization == apo)
+			token->apodization == apo &&
+			strcmp(token->customApoPath, apoPath) == 0
+			)
 		{
 			return true;
 		}
@@ -1194,7 +1265,7 @@ bool tableConfigCompanion::modifySurfaceAtCurrentRow()
 		tableConfigCompanion::deleteSurfaceAtCurrentRow();
 
 		//call add
-		tableConfigCompanion::addSurface(X, Y, Z, diam, R, refracI, asph, apo);
+		tableConfigCompanion::addSurface(X, Y, Z, diam, R, refracI, asph, apo, apoPath);
 
 		return true;
 	}
@@ -1353,6 +1424,9 @@ bool tableConfigCompanion::cloneToCurrentConfig()
 			QString apoName;
 			switch (surface.apodization)
 			{
+			case 2:
+				apoName = "Custom";
+				break;
 			case 1:
 				apoName = "Bartlett";
 				break;
@@ -1407,7 +1481,15 @@ bool tableConfigCompanion::saveCurrentConfig(QString path)
 		out << eachsurface.radius;
 		out << eachsurface.refractiveIndex;
 		out << eachsurface.asphericity;
-		out << eachsurface.apodization;
+		if (eachsurface.apodization != PI_APD_CUSTOM)
+		{
+			out << eachsurface.apodization;
+		}
+		else
+		{
+			out << PI_APD_UNIFORM;
+			// doesn't make sense to save the path to custom apodization file, because the file could get missing the next time the config gets loaded
+		}
 	}
 	file.close();
 	return true;
@@ -1508,6 +1590,18 @@ bool tableConfigCompanion::getConfigAt(float wavelength, std::list<tracer::PI_Su
 	}
 }
 
+void tableConfigCompanion::clearApoPathList()
+{
+	apoPathList.clear();
+}
+
+void tableConfigCompanion::clearAllData()
+{
+	currentConfig.clear();
+	configs.clear();
+	apoPathList.clear();
+}
+
 void listConfigCompanion::removeWavelength(float wavelength)
 {
 	auto token = std::find_if(wavelengths.begin(), wavelengths.end(), [wavelength](wavelengthAndStatus holder) {return holder.wavelength == wavelength; });
@@ -1536,4 +1630,6 @@ void listConfigCompanion::removeAllWavelengths()
 		tableConfigCompanion::clearConfigAt(eachwavelength.wavelength);
 	}
 	wavelengths.clear();
+
+	tableConfigCompanion::clearAllData();
 }

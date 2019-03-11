@@ -43,6 +43,8 @@ public:
     QLineEdit *lineAsph;
     QLabel *label_8;
     QComboBox *comboBox;
+    QPushButton *pushSelectApoPath;
+    QLineEdit *lineApoPath;
     QSpacerItem *verticalSpacer_2;
     QSpacerItem *horizontalSpacer_2;
     QPushButton *pushAddSurface;
@@ -72,7 +74,7 @@ public:
         lineZ = new QLineEdit(AddSurfaceDialog);
         lineZ->setObjectName(QString::fromUtf8("lineZ"));
 
-        gridLayout->addWidget(lineZ, 0, 1, 1, 2);
+        gridLayout->addWidget(lineZ, 0, 1, 1, 3);
 
         label_2 = new QLabel(AddSurfaceDialog);
         label_2->setObjectName(QString::fromUtf8("label_2"));
@@ -82,7 +84,7 @@ public:
         lineX = new QLineEdit(AddSurfaceDialog);
         lineX->setObjectName(QString::fromUtf8("lineX"));
 
-        gridLayout->addWidget(lineX, 1, 1, 1, 2);
+        gridLayout->addWidget(lineX, 1, 1, 1, 3);
 
         label_3 = new QLabel(AddSurfaceDialog);
         label_3->setObjectName(QString::fromUtf8("label_3"));
@@ -92,7 +94,7 @@ public:
         lineY = new QLineEdit(AddSurfaceDialog);
         lineY->setObjectName(QString::fromUtf8("lineY"));
 
-        gridLayout->addWidget(lineY, 2, 1, 1, 2);
+        gridLayout->addWidget(lineY, 2, 1, 1, 3);
 
         label_4 = new QLabel(AddSurfaceDialog);
         label_4->setObjectName(QString::fromUtf8("label_4"));
@@ -102,7 +104,7 @@ public:
         lineDiam = new QLineEdit(AddSurfaceDialog);
         lineDiam->setObjectName(QString::fromUtf8("lineDiam"));
 
-        gridLayout->addWidget(lineDiam, 3, 1, 1, 2);
+        gridLayout->addWidget(lineDiam, 3, 1, 1, 3);
 
         label_5 = new QLabel(AddSurfaceDialog);
         label_5->setObjectName(QString::fromUtf8("label_5"));
@@ -112,7 +114,7 @@ public:
         lineRadius = new QLineEdit(AddSurfaceDialog);
         lineRadius->setObjectName(QString::fromUtf8("lineRadius"));
 
-        gridLayout->addWidget(lineRadius, 4, 1, 1, 2);
+        gridLayout->addWidget(lineRadius, 4, 1, 1, 3);
 
         label_6 = new QLabel(AddSurfaceDialog);
         label_6->setObjectName(QString::fromUtf8("label_6"));
@@ -122,7 +124,7 @@ public:
         lineRefracI = new QLineEdit(AddSurfaceDialog);
         lineRefracI->setObjectName(QString::fromUtf8("lineRefracI"));
 
-        gridLayout->addWidget(lineRefracI, 5, 1, 1, 2);
+        gridLayout->addWidget(lineRefracI, 5, 1, 1, 3);
 
         label_7 = new QLabel(AddSurfaceDialog);
         label_7->setObjectName(QString::fromUtf8("label_7"));
@@ -132,7 +134,7 @@ public:
         lineAsph = new QLineEdit(AddSurfaceDialog);
         lineAsph->setObjectName(QString::fromUtf8("lineAsph"));
 
-        gridLayout->addWidget(lineAsph, 6, 1, 1, 2);
+        gridLayout->addWidget(lineAsph, 6, 1, 1, 3);
 
         label_8 = new QLabel(AddSurfaceDialog);
         label_8->setObjectName(QString::fromUtf8("label_8"));
@@ -142,9 +144,20 @@ public:
         comboBox = new QComboBox(AddSurfaceDialog);
         comboBox->addItem(QString());
         comboBox->addItem(QString());
+        comboBox->addItem(QString());
         comboBox->setObjectName(QString::fromUtf8("comboBox"));
 
         gridLayout->addWidget(comboBox, 7, 1, 1, 1);
+
+        pushSelectApoPath = new QPushButton(AddSurfaceDialog);
+        pushSelectApoPath->setObjectName(QString::fromUtf8("pushSelectApoPath"));
+
+        gridLayout->addWidget(pushSelectApoPath, 7, 2, 1, 1);
+
+        lineApoPath = new QLineEdit(AddSurfaceDialog);
+        lineApoPath->setObjectName(QString::fromUtf8("lineApoPath"));
+
+        gridLayout->addWidget(lineApoPath, 7, 3, 1, 1);
 
 
         gridLayout_2->addLayout(gridLayout, 1, 0, 1, 3);
@@ -194,7 +207,11 @@ public:
         label_8->setText(QApplication::translate("AddSurfaceDialog", "Apodization", nullptr));
         comboBox->setItemText(0, QApplication::translate("AddSurfaceDialog", "Uniform", nullptr));
         comboBox->setItemText(1, QApplication::translate("AddSurfaceDialog", "Bartlett", nullptr));
+        comboBox->setItemText(2, QApplication::translate("AddSurfaceDialog", "Custom Apodization", nullptr));
 
+        pushSelectApoPath->setText(QApplication::translate("AddSurfaceDialog", "Select File", nullptr));
+        lineApoPath->setText(QString());
+        lineApoPath->setPlaceholderText(QApplication::translate("AddSurfaceDialog", "Custom Apo File Path", nullptr));
         pushAddSurface->setText(QApplication::translate("AddSurfaceDialog", "Add", nullptr));
         pushButton_2->setText(QApplication::translate("AddSurfaceDialog", "Cancel", nullptr));
     } // retranslateUi

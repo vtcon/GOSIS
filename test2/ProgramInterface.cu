@@ -100,7 +100,10 @@ PI_Message tracer::test()
 	{
 		int count = 2;
 		PI_Surface* surfaces = new PI_Surface[count];
-		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = 0.95;
+		surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0; 
+		surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = 0.95;
+		surfaces[0].apodization = PI_APD_CUSTOM; surfaces[0].customApoPath = "C:/testcustomapo.jpg";
+
 		surfaces[1].diameter = 40.0; surfaces[1].radius = -60.0;
 		float angularResol = 0.16;//0.16 is OK
 
@@ -276,7 +279,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 
 		auto curveSign = (toAdd[i].radius > 0) ? MF_CONVEX : MF_CONCAVE;
 		toAdd[i].diameter = (abs(toAdd[i].diameter) < 2.0*abs(toAdd[i].radius)) ? abs(toAdd[i].diameter) : 2.0*abs(toAdd[i].radius);
-		bool output = constructSurface((newConfig->surfaces)[i], MF_REFRACTIVE, vec3<MYFLOATTYPE>(toAdd[i].x, toAdd[i].y, toAdd[i].z), abs(toAdd[i].radius), abs(toAdd[i].diameter), curveSign, previousN, toAdd[i].refractiveIndex, toAdd[i].asphericity, toAdd[i].apodization);
+		bool output = constructSurface((newConfig->surfaces)[i], MF_REFRACTIVE, vec3<MYFLOATTYPE>(toAdd[i].x, toAdd[i].y, toAdd[i].z), abs(toAdd[i].radius), abs(toAdd[i].diameter), curveSign, previousN, toAdd[i].refractiveIndex, toAdd[i].asphericity, toAdd[i].apodization, toAdd[i].customApoPath);
 		if (!output) return { PI_UNKNOWN_ERROR,"Error adding surface" };
 		previousN = toAdd[i].refractiveIndex;
 	}

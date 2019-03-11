@@ -49,6 +49,31 @@ __device__ double apdBartlett(double rho, double phi, int datasize = 0, char* p_
 		return 0.0;
 }
 
+__device__ double apdCustom(double rho, double phi, int datasize = 0, char* p_data = nullptr)
+{
+	if (rho > 1 || datasize == 0 || p_data == nullptr)
+	{
+		return 0.0;
+	}
+	else
+	{
+		double retVal = 0.0;
+		double *p_reader = reinterpret_cast<double*>(p_data);
+		int rowCount = static_cast<int>(p_reader[0]);
+		int colCount = static_cast<int>(p_reader[1]);
+		double dx = rho * cos(phi);
+		double dy = -rho * sin(phi); //the minus is due to the fact that openCV reads the y axis from TOP TO BOTTOM
+		int x = (dx + 1) / 2.0*colCount;
+		x = (x >= colCount) ? colCount - 1 : x;
+		x = (x < 0) ? 0 : x;
+		int y = (dy + 1) / 2.0*rowCount;
+		y = (y >= colCount) ? colCount - 1 : y;
+		y = (y < 0) ? 0 : y;
+		retVal = p_reader[y*colCount + x + 2];
+		return retVal;
+	}
+}
+
 __device__ apodizationFunction_t testApd = apdUniform;
 
 __device__ apodizationFunction_t apdFunctionLookUp(unsigned short int apdcode)
@@ -57,6 +82,8 @@ __device__ apodizationFunction_t apdFunctionLookUp(unsigned short int apdcode)
 	{
 	case APD_BARTLETT:
 		return apdBartlett;
+	case APD_CUSTOM:
+		return apdCustom;
 	case APD_UNIFORM:
 	default:
 		return apdUniform;

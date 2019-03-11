@@ -1,5 +1,7 @@
 #include "AddSurfaceDialog.h"
 #include "qmessagebox.h"
+#include <qfiledialog.h>
+
 
 AddSurfaceDialog::AddSurfaceDialog(QWidget *parent)
 	: QDialog(parent)
@@ -9,6 +11,33 @@ AddSurfaceDialog::AddSurfaceDialog(QWidget *parent)
 
 AddSurfaceDialog::~AddSurfaceDialog()
 {
+}
+
+void AddSurfaceDialog::on_comboBox_currentIndexChanged()
+{
+	if (comboBox->currentIndex() == 2)
+	{
+		pushSelectApoPath->setEnabled(true);
+		lineApoPath->setEnabled(true);
+	}
+	else
+	{
+		pushSelectApoPath->setEnabled(false);
+		lineApoPath->setEnabled(false);
+	}
+}
+
+void AddSurfaceDialog::on_pushSelectApoPath_clicked()
+{
+	QString fileName = QFileDialog::getOpenFileName(this,
+		tr("Load Custom Apodization Image"),
+		"",
+		tr("Image Files (*.jpg *.png *.bmp)"));
+
+	if (fileName.isEmpty())
+		return;
+
+	lineApoPath->setText(fileName);
 }
 
 void AddSurfaceDialog::on_pushAddSurface_clicked()
@@ -21,7 +50,7 @@ void AddSurfaceDialog::on_pushAddSurface_clicked()
 	float R = this->lineRadius->text().toFloat();
 	float refracI = this->lineRefracI->text().toFloat();
 	int apo = this->comboBox->currentIndex();
-
+	QString apoPath = lineApoPath->text();
 
 	if (Z <= 0)
 	{
@@ -41,6 +70,11 @@ void AddSurfaceDialog::on_pushAddSurface_clicked()
 	if (refracI < 1.0)
 	{
 		errorstr.append("Normal optical material should have refractive index not smaller than 1.\n");
+	}
+
+	if (apo == 2 && apoPath.isEmpty())
+	{
+		errorstr.append("Please select an image file for the custom apodization!\n");
 	}
 
 	/*

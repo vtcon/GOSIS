@@ -836,15 +836,13 @@ void testbenchGPU()
 	*/
 }
 
-bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int surfaceType, vec3<MYFLOATTYPE> vertexPos, MYFLOATTYPE R, MYFLOATTYPE diam, unsigned short int side, MYFLOATTYPE n1, MYFLOATTYPE n2, MYFLOATTYPE K, unsigned short int apodization, point2D<MYFLOATTYPE> tiptilt)
+bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int surfaceType, vec3<MYFLOATTYPE> vertexPos, MYFLOATTYPE R, MYFLOATTYPE diam, unsigned short int side, MYFLOATTYPE n1, MYFLOATTYPE n2, MYFLOATTYPE K, unsigned short int apodization, std::string customApoPath, point2D<MYFLOATTYPE> tiptilt)
 {
 	//NOTE: tip/tilt has not been taken into account
 	
 	R = abs(R);
 
 	vec3<MYFLOATTYPE> center(0, 0, 0);
-	
-	
 	
 	bool antiParallel = true;
 
@@ -868,10 +866,22 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 
 	//apodization translator, incase somebody mess things up
 	unsigned short int translatedApo = APD_UNIFORM;
+	double* p_customApoData = nullptr;
+	int customApoDataSize = 0;
 	switch (apodization)
 	{
 	case PI_APD_BARTLETT:
 		translatedApo = APD_BARTLETT;
+		break;
+	case PI_APD_CUSTOM:
+		if (importCustomApo(p_customApoData, customApoDataSize, customApoPath))
+		{
+			translatedApo = APD_CUSTOM;
+		}
+		else
+		{
+			translatedApo = APD_UNIFORM; //fall back to uniform when cannot import custom apo data
+		}
 		break;
 	case PI_APD_UNIFORM:
 	default:
@@ -911,6 +921,15 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 			quadricparam<MYFLOATTYPE>(ABC, ABC, ABC, 0, 0, 0, 0, 0, I, J), n1, n2, center, diam,
 			antiParallel, tiptilt);
 		p_surface->apodizationType = translatedApo;
+		if (p_surface->apodizationType == APD_CUSTOM)
+		{
+			p_surface->add_data(reinterpret_cast<char*>(p_customApoData), customApoDataSize);
+			if (p_customApoData != nullptr)
+			{
+				delete[] p_customApoData;
+				p_customApoData = nullptr;
+			}
+		}
 	}
 	else
 	{
@@ -936,6 +955,15 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 			quadricparam<MYFLOATTYPE>(1.0, 1.0, (1.0+K), 0, 0, 0, 0, 0, I, 0), n1, n2, center, diam,
 			antiParallel, tiptilt);
 		p_surface->apodizationType = translatedApo;
+		if (p_surface->apodizationType == APD_CUSTOM)
+		{
+			p_surface->add_data(reinterpret_cast<char*>(p_customApoData), customApoDataSize);
+			if (p_customApoData != nullptr)
+			{
+				delete[] p_customApoData;
+				p_customApoData = nullptr;
+			}
+		}
 	}
 	return true;
 }

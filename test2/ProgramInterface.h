@@ -16,6 +16,7 @@
 //definition of apodization options
 #define PI_APD_UNIFORM 0
 #define PI_APD_BARTLETT 1
+#define PI_APD_CUSTOM 2
 
 namespace tracer
 {
@@ -45,6 +46,7 @@ namespace tracer
 		float refractiveIndex = 1.0;
 		float asphericity = 1.0; //1.0 is default for spherical surfaces
 		unsigned short int apodization = PI_APD_UNIFORM;
+		const char* customApoPath = "";
 	};
 
 	struct EXPORT PI_Message

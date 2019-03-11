@@ -362,6 +362,7 @@ private:
 //implementations of the apo functions are in kernel.cu
 #define APD_UNIFORM 0
 #define APD_BARTLETT 1
+#define APD_CUSTOM 2
 
 template<typename T = float>
 class mysurface
