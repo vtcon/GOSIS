@@ -169,7 +169,7 @@ public:
     QLabel *label_2;
     QSpacerItem *horizontalSpacer;
     QLabel *label_3;
-    QLabel *label_4;
+    QLabel *labelResUsage;
     QMenuBar *menuBar;
     QMenu *menuSession;
     QMenu *menuHelp;
@@ -820,10 +820,12 @@ public:
 
         horizontalLayout->addWidget(label_3);
 
-        label_4 = new QLabel(centralWidget);
-        label_4->setObjectName(QString::fromUtf8("label_4"));
+        labelResUsage = new QLabel(centralWidget);
+        labelResUsage->setObjectName(QString::fromUtf8("labelResUsage"));
+        sizePolicy2.setHeightForWidth(labelResUsage->sizePolicy().hasHeightForWidth());
+        labelResUsage->setSizePolicy(sizePolicy2);
 
-        horizontalLayout->addWidget(label_4);
+        horizontalLayout->addWidget(labelResUsage);
 
 
         verticalLayout->addLayout(horizontalLayout);
@@ -976,7 +978,7 @@ public:
         label->setText(QApplication::translate("QtGuiApplicationClass", "Active Session:", nullptr));
         label_2->setText(QApplication::translate("QtGuiApplicationClass", "<Session name>", nullptr));
         label_3->setText(QApplication::translate("QtGuiApplicationClass", "Resource Usage:", nullptr));
-        label_4->setText(QApplication::translate("QtGuiApplicationClass", "<RAM and VRAM>", nullptr));
+        labelResUsage->setText(QApplication::translate("QtGuiApplicationClass", "<RAM and VRAM>", nullptr));
         menuSession->setTitle(QApplication::translate("QtGuiApplicationClass", "Session", nullptr));
         menuHelp->setTitle(QApplication::translate("QtGuiApplicationClass", "Help", nullptr));
     } // retranslateUi

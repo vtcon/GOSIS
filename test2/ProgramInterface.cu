@@ -283,6 +283,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 	float wavelength1 = wavelength;
 
 	//check out an opticalconfig as output
+	std::cout << "Checking out configuration at " << wavelength1 << " nm \n";
 	OpticalConfig* newConfig = nullptr;
 	mainStorageManager.jobCheckOut(newConfig, numofsurfaces, wavelength1);
 
@@ -703,6 +704,7 @@ PI_Message tracer::deleteOutputImage(int uniqueID)
 
 PI_Message tracer::clearStorage()
 {
+	std::cout << "Clearing storage! \n";
 	//clear the progress counter variables
 	toTraceCount = 0;
 	tracedCount = 0;
@@ -725,6 +727,7 @@ PI_Message tracer::clearStorage()
 
 	for (int i = 0; i < wavelengthStorageCount; i++)
 	{
+		std::cout << "Deleting configuration at " << wavelengthStorageList[i] << " nm \n";
 		mainStorageManager.pleaseDelete(wavelengthStorageList[i]);
 	}
 
@@ -782,6 +785,15 @@ PI_Message tracer::getProgress(float & traceProgress, float & renderProgress)
 	return { PI_OK, "Successful!\n" };
 }
 
+PI_Message tracer::getVRAMUsageInfo(long & total, long & free)
+{
+	size_t totalvram = 0, freevram = 0;
+	CUDARUN(cudaMemGetInfo(&freevram, &totalvram));
+	total = totalvram;
+	free = freevram;
+	return { PI_OK, "Successful!\n" };
+}
+
 PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness)
 {
 	//open CV is needed, so the main work is not done here
@@ -813,7 +825,7 @@ PI_Message tracer::importImage(const char * path, float posX, float posY, float 
 		std::cout << newImagePoints << " points have been added from the image\n";
 
 		//disable contrast maximization to conserve correct image brightness
-		maximizeContrast = false;
+		//maximizeContrast = false;
 
 		return { PI_OK, "Image import successfully!\n" };
 	}

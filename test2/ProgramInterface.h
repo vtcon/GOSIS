@@ -90,8 +90,8 @@ namespace tracer
 	PI_Message EXPORT clearStorage();
 
 	PI_Message EXPORT getProgress(float& traceProgress, float& renderProgress);
+	PI_Message EXPORT getVRAMUsageInfo(long& total, long& free);
 
-	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);
-	
+	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);	
 	PI_Message EXPORT getImagePrimaryWavelengths(float& wavelengthR, float& wavelengthG, float& wavelengthB);
 }

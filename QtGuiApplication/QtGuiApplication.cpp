@@ -17,6 +17,9 @@
 #include <vector>
 #include <thread>
 
+#include "windows.h"
+#include "psapi.h"
+
 //supporting structures
 #include "RenderProgressEmittor.h"
 
@@ -34,7 +37,6 @@ std::list<QByteArray> tableConfigCompanion::apoPathList;
 //listConfigCompanion wavelengthList;
 //tableConfigCompanion configTable;
 std::vector<int> outputImageIDs;
-
 
 QtGuiApplication::QtGuiApplication(QWidget *parent)
 	: QMainWindow(parent)
@@ -56,11 +58,36 @@ QtGuiApplication::QtGuiApplication(QWidget *parent)
 	state();
 
 	//test timer here
-	/*
-	QTimer *timer = new QTimer(this);
-	connect(timer, SIGNAL(timeout()), this, SLOT(timerTest()));
-	timer->start(500);
-	*/
+	
+	QTimer *resUsageTimer = new QTimer(this);
+	connect(resUsageTimer, SIGNAL(timeout()), this, SLOT(updateResUsage()));
+	resUsageTimer->start(1000);
+	
+	/*PROCESS_MEMORY_COUNTERS pmc;
+	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+	SIZE_T virtualMemUsedByMe = pmc.PagefileUsage;
+	SIZE_T physMemUsedByMe = pmc.WorkingSetSize;
+	QString resUsage = tr("%1 MB (%2 MB in pagefile)").arg(QString::number(physMemUsedByMe / 1048576.0)).arg(QString::number(virtualMemUsedByMe / 1048576.0));
+	ui.labelResUsage->setText(resUsage);*/
+	
+	//// Get the list of process identifiers.
+	//DWORD aProcesses[1024], cbNeeded, cProcesses;
+	//unsigned int i;
+
+	//if (!EnumProcesses(aProcesses, sizeof(aProcesses), &cbNeeded))
+	//{
+	//	std::cout << "Error getting process handle!\n";
+	//}
+
+	//// Calculate how many process identifiers were returned.
+	//cProcesses = cbNeeded / sizeof(DWORD);
+
+	//// Print the memory usage for each process
+	//for (i = 0; i < cProcesses; i++)
+	//{
+	//	PrintMemoryInfo(aProcesses[i]);
+	//}
+
 }
 
 void QtGuiApplication::updateRenderProgressBar(int newvalue)
@@ -89,7 +116,27 @@ void QtGuiApplication::updateRenderProgressDirectly()
 
 void QtGuiApplication::timerTest()
 {
-	std::cout << "Time Elapsed!\n";
+	std::cout << "Test timer elapsed!\n";
+}
+
+void QtGuiApplication::updateResUsage()
+{
+	PROCESS_MEMORY_COUNTERS pmc;
+	GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc));
+	SIZE_T virtualMemUsedByMe = pmc.PagefileUsage;
+	SIZE_T physMemUsedByMe = pmc.WorkingSetSize;
+
+	long freevram = 0, totalvram = 0;
+	tracer::getVRAMUsageInfo(totalvram, freevram);
+	long usedvram = totalvram - freevram;
+
+	QString resUsage = tr("RAM: %1 MB (%2 MB in pagefile), VRAM: %3 MB (%4 MB total)")
+		.arg(QString::number(physMemUsedByMe / 1048576.0))
+		.arg(QString::number(virtualMemUsedByMe / 1048576.0))
+		.arg(QString::number(usedvram / 1048576.0))
+		.arg(QString::number(totalvram / 1048576.0));
+
+	ui.labelResUsage->setText(resUsage);
 }
 
 void QtGuiApplication::on_radioPicture_clicked()

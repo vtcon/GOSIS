@@ -77,7 +77,8 @@ void StorageManager::pleaseDelete(OpticalConfig *& todelete)
 	//define a lambda
 	auto pred = [&todelete](const StorageHolder<OpticalConfig*>& thisholder)
 	{
-		return true;
+		bool cond1 = todelete->wavelength == thisholder.content->wavelength;
+		return cond1;
 	};
 
 	std::list<StorageHolder<OpticalConfig*>>::iterator token;
@@ -89,7 +90,17 @@ void StorageManager::pleaseDelete(OpticalConfig *& todelete)
 	if (token == opticalConfigLedger.end()) return; //if none is found
 
 	//performs the deletion
-	delete todelete;
+	try
+	{
+		if (todelete == nullptr)
+			std::cout << "todelete is null!\n";
+		delete todelete;
+		todelete = nullptr;
+	}
+	catch (const std::exception thisexception)
+	{
+		std::cout << "Exception at line " << __LINE__ << ", file " << __FILE__ << ": " << thisexception.what() << "\n";
+	}
 	todelete = nullptr;
 	{
 		std::lock_guard<std::mutex> lock(opticalConfigLedgerLock);

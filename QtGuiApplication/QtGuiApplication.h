@@ -105,6 +105,7 @@ public slots:
 	void updateRenderProgressBar(int newvalue);
 	void updateRenderProgressDirectly();
 	void timerTest();
+	void updateResUsage();
 
 private slots:
 

@@ -769,6 +769,7 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 		return false;
 	}
 	inputimg.convertTo(inputimg, CV_64FC3, (double)brightness);
+	
 	//Mat channelBGR[3]; //BGR is openCV's order
 	//split(inputimg, channelBGR);
 	

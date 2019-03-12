@@ -395,7 +395,10 @@ public:
 		if (d_sibling != nullptr)
 			freesibling();
 		if (p_data != nullptr)
+		{
+			data_size = 0;
 			delete[] p_data;
+		}
 		LOG1("surface destructor called")
 	}
 
