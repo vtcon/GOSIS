@@ -70,7 +70,7 @@ public:
 
 	typedef StorageHolder<RayBundleColumn*>::Status columnStatus;
 
-	QuadricTracerJob(int _wanted_job_size = 3) :wanted_job_size(_wanted_job_size)
+	QuadricTracerJob(int _wanted_job_size = PI_traceJobSize) :wanted_job_size(_wanted_job_size)
 	{
 		pcolumns = new RayBundleColumn*[wanted_job_size];
 
@@ -266,7 +266,7 @@ public:
 	RayBundleColumn** pcolumns = nullptr;
 	typedef StorageHolder<RayBundleColumn*>::Status columnStatus;
 
-	TriangleRendererJob(int _wanted_job_size = 3) :wanted_job_size(_wanted_job_size)
+	TriangleRendererJob(int _wanted_job_size = PI_renderJobSize) :wanted_job_size(_wanted_job_size)
 	{
 		pcolumns = new RayBundleColumn*[wanted_job_size];
 

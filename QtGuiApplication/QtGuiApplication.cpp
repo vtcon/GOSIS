@@ -3,6 +3,7 @@
 #include "AddPointDialog.h"
 #include "AddSurfaceDialog.h"
 #include "CloneConfigDialog.h"
+#include "PreferenceDialog.h"
 
 #include <qobject.h>
 
@@ -664,16 +665,16 @@ void QtGuiApplication::on_pushRender_clicked()
 	thread->start();
 	*/
 	
+	std::future<tracer::PI_Message> asyncresult = std::async(std::launch::async, &tracer::render);
 
 	QTimer *timer = new QTimer(this);
 	connect(timer, SIGNAL(timeout()), this, SLOT(timerTest()));
 	connect(timer, SIGNAL(timeout()), this, SLOT(updateRenderProgressDirectly()));
 	timer->start(200);
 
-	//std::future<tracer::PI_Message> asyncresult = std::async(std::launch::async, &tracer::render);
 	//auto rendermsg = tracer::render();
 	//std::thread rendererThread(tracer::render);
-	tracer::render();
+	//tracer::render();
 	if (false)
 	{
 		QMessageBox msgBox;
@@ -687,7 +688,7 @@ void QtGuiApplication::on_pushRender_clicked()
 		//std::cout << "[GUI] Renderer is running!\n";
 	}
 	
-	//auto rendermsg = asyncresult.get();
+	auto rendermsg = asyncresult.get();
 	/*
 	if (rendermsg.code != PI_OK)
 	{
@@ -884,6 +885,12 @@ void QtGuiApplication::on_actionConsoleOut_triggered()
 		delete w2;
 	w2 = new ConsoleOut();
 	w2->show();
+}
+
+void QtGuiApplication::on_actionPreferences_triggered()
+{
+	PreferenceDialog dialog;
+	dialog.exec();
 }
 
 void QtGuiApplication::on_pushSelectImage_clicked()

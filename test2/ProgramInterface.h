@@ -18,10 +18,20 @@
 #define PI_APD_BARTLETT 1
 #define PI_APD_CUSTOM 2
 
+//definition of rgb and raw options
+#define PI_SRGB 0
+#define PI_ADOBERGB 1
+#define PI_LMS 3
+#define PI_XYZ 4
+
+//definition of projection options
+#define PI_PROJECTION_NONE 0
+#define PI_PROJECTION_ALONGZ 1
+#define PI_PROJECTION_PLATE_CARREE 2
+
+
 namespace tracer
 {
-	
-
 	//Program classes for export
 	class EXPORT PI_LuminousPoint
 	{
@@ -53,6 +63,21 @@ namespace tracer
 	{
 		unsigned int code;
 		const char* detail;
+	};
+
+	struct EXPORT PI_Preferences
+	{
+		int ThreadsPerKernelLaunch = 16;
+		int linearRayDensity = 30;//20 is ok
+		unsigned int rgbStandard = PI_ADOBERGB;
+		int traceJobSize = 3;
+		int renderJobSize = 3;
+		unsigned short int rawFormat = PI_XYZ; //OIC_LMS
+		unsigned int projectionMethod = PI_PROJECTION_PLATE_CARREE;
+		int displayWindowSize = 800;
+		float primaryWavelengthR = 620;
+		float primaryWavelengthG = 530;
+		float primaryWavelengthB = 465;
 	};
 
 	//Program API functions
@@ -94,4 +119,8 @@ namespace tracer
 
 	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);	
 	PI_Message EXPORT getImagePrimaryWavelengths(float& wavelengthR, float& wavelengthG, float& wavelengthB);
+
+	PI_Message EXPORT getPreferences(PI_Preferences& prefs);
+	PI_Message EXPORT setPreferences(PI_Preferences& prefs);
+	PI_Message EXPORT defaultPreference();
 }

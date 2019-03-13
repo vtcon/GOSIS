@@ -752,7 +752,7 @@ void updateProgressTrace()
 		}
 		PI_traceProgress = (float)tracedCount / (float)toTraceCount;
 	}
-	std::cout << "Trace progress: " << PI_traceProgress * 100 << " %\n";
+	std::cout << "Estimated Trace Progress: " << PI_traceProgress * 100 << " %\n";
 }
 
 void updateProgressRender()
@@ -775,7 +775,7 @@ void updateProgressRender()
 		PI_renderProgress = (float)renderedCount / (float)toRenderCount;
 	}
 
-	std::cout << "Render progress: " << PI_renderProgress * 100 << " %\n";
+	std::cout << "Estimated Render Progress: " << PI_renderProgress * 100 << " %\n";
 }
 
 PI_Message tracer::getProgress(float & traceProgress, float & renderProgress)
@@ -841,5 +841,212 @@ PI_Message tracer::getImagePrimaryWavelengths(float & wavelengthR, float & wavel
 	wavelengthR = PI_primaryWavelengthR;
 	wavelengthG = PI_primaryWavelengthG;
 	wavelengthB = PI_primaryWavelengthB;
+	return { PI_OK, "Successful!\n" };
+}
+
+PI_Message tracer::getPreferences(PI_Preferences & prefs)
+{
+	prefs.ThreadsPerKernelLaunch = PI_ThreadsPerKernelLaunch;
+	prefs.linearRayDensity = PI_linearRayDensity;
+	switch (PI_rgbStandard)
+	{
+	case IF_SRGB:
+		prefs.rgbStandard = PI_SRGB;
+		break;
+	case IF_ADOBERGB:
+	default:
+		prefs.rgbStandard = PI_ADOBERGB;
+		break;
+	}
+	prefs.traceJobSize = PI_traceJobSize;
+	prefs.renderJobSize = PI_renderJobSize;
+	switch (PI_rawFormat)
+	{
+	case OIC_LMS:
+		prefs.rawFormat = PI_LMS; 
+		break;
+	case OIC_XYZ:
+	default:
+		prefs.rawFormat = PI_XYZ; 
+		break;
+	}
+	switch (PI_projectionMethod)
+	{
+	case PI_PROJECTION_PLATE_CARREE:
+		prefs.projectionMethod = PI_PROJECTION_PLATE_CARREE;
+		break;
+	case PI_PROJECTION_NONE:
+		prefs.projectionMethod = PI_PROJECTION_NONE;
+		break;
+	case PI_PROJECTION_ALONGZ:
+	default:
+		prefs.projectionMethod = PI_PROJECTION_ALONGZ;
+		break;
+	}
+	prefs.displayWindowSize = PI_displayWindowSize;
+	prefs.primaryWavelengthR = PI_primaryWavelengthR;
+	prefs.primaryWavelengthG = PI_primaryWavelengthG;
+	prefs.primaryWavelengthB = PI_primaryWavelengthB;
+
+	return { PI_OK, "Successfully!\n" };
+}
+
+PI_Message tracer::setPreferences(PI_Preferences & prefs)
+{
+	if (prefs.ThreadsPerKernelLaunch <= 8)
+	{
+		PI_ThreadsPerKernelLaunch = 8;
+	}
+	else if (prefs.ThreadsPerKernelLaunch >= 32)
+	{
+		PI_ThreadsPerKernelLaunch = 32;
+	}
+	else
+	{
+		PI_ThreadsPerKernelLaunch = 16;
+	}
+
+	if (prefs.linearRayDensity <= 1)
+	{
+		PI_linearRayDensity = 1;
+	}
+	else if (prefs.linearRayDensity >= 50)
+	{
+		PI_linearRayDensity = 50;
+	}
+	else
+	{
+		PI_linearRayDensity = prefs.linearRayDensity;
+	}
+	
+	switch (prefs.rgbStandard)
+	{
+	case PI_SRGB:
+		PI_rgbStandard = IF_SRGB;
+		break;
+	case PI_ADOBERGB:
+	default:
+		PI_rgbStandard = IF_ADOBERGB;
+		break;
+	}
+	if (prefs.traceJobSize <= 1)
+	{
+		PI_traceJobSize = 1;
+	}
+	else if (prefs.traceJobSize >= 10)
+	{
+		PI_traceJobSize = 10;
+	}
+	else
+	{
+		PI_traceJobSize = prefs.traceJobSize;
+	}
+	
+	if (prefs.renderJobSize <= 1)
+	{
+		PI_renderJobSize = 1;
+	}
+	else if (prefs.renderJobSize >= 10)
+	{
+		PI_renderJobSize = 10;
+	}
+	else
+	{
+		PI_renderJobSize = prefs.renderJobSize;
+	}
+	
+	switch (prefs.rawFormat)
+	{
+	case PI_LMS:
+		PI_rawFormat = OIC_LMS;
+		break;
+	case PI_XYZ:
+	default:
+		PI_rawFormat = OIC_XYZ;
+		break;
+	}
+	switch (prefs.projectionMethod)
+	{
+	case PI_PROJECTION_PLATE_CARREE:
+		PI_projectionMethod = IF_PROJECTION_PLATE_CARREE;
+		break;
+	case PI_PROJECTION_NONE:
+		PI_projectionMethod = IF_PROJECTION_NONE;
+		break;
+	case PI_PROJECTION_ALONGZ:
+	default:
+		PI_projectionMethod = IF_PROJECTION_ALONGZ;
+		break;
+	}
+	if (prefs.displayWindowSize <= 50)
+	{
+		PI_displayWindowSize = 50;
+	}
+	else if (prefs.displayWindowSize >= 2048)
+	{
+		PI_displayWindowSize = 2048;
+	}
+	else
+	{
+		PI_displayWindowSize = prefs.displayWindowSize;
+	}
+	
+	if (prefs.primaryWavelengthR <= 610)
+	{
+		PI_primaryWavelengthR = 610;
+	}
+	else if (prefs.primaryWavelengthR >= 630)
+	{
+		PI_primaryWavelengthR = 630;
+	}
+	else
+	{
+		PI_primaryWavelengthR = prefs.primaryWavelengthR;
+	}
+	
+	if (prefs.primaryWavelengthG <= 520)
+	{
+		PI_primaryWavelengthG = 520;
+	}
+	else if (prefs.primaryWavelengthG >= 540)
+	{
+		PI_primaryWavelengthG = 540;
+	}
+	else
+	{
+		PI_primaryWavelengthG = prefs.primaryWavelengthG;
+	}
+	
+	if (prefs.primaryWavelengthB <= 460)
+	{
+		PI_primaryWavelengthB = 460;
+	}
+	else if (prefs.primaryWavelengthB >= 475)
+	{
+		PI_primaryWavelengthB = 475;
+	}
+	else
+	{
+		PI_primaryWavelengthB = prefs.primaryWavelengthB;
+	}
+	
+
+	return { PI_OK, "Successfully!\n" };
+}
+
+PI_Message tracer::defaultPreference()
+{
+	PI_ThreadsPerKernelLaunch = 16;
+	PI_linearRayDensity = 30;
+	PI_rgbStandard = IF_ADOBERGB;
+	PI_traceJobSize = 3;
+	PI_renderJobSize = 3;
+	PI_rawFormat = OIC_XYZ;
+	PI_projectionMethod = IF_PROJECTION_PLATE_CARREE;
+	PI_displayWindowSize = 800;
+	PI_primaryWavelengthR = 620;
+	PI_primaryWavelengthG = 530;
+	PI_primaryWavelengthB = 465;
+
 	return { PI_OK, "Successful!\n" };
 }
