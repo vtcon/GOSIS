@@ -65,6 +65,7 @@
       <AdditionalCompilerOptions>
       </AdditionalCompilerOptions>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
+      <GenerateLineInfo>true</GenerateLineInfo>
     </CudaCompile>
     <CudaLink>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

@@ -417,6 +417,84 @@ private:
 	PerKernelRenderingInput* hp_triangles = nullptr;
 	PerKernelRenderingInput* dp_triangles = nullptr;
 
+	class PointSearcher //basically a hash table implementation to speed up the search
+	{
+	public:
+		PointSearcher(point2D<int>* p_points, int bundleSize) :mppoints(p_points),totalCount(bundleSize)
+		{
+			if (mppoints == nullptr)
+				return;
+
+			//build up hash structure here
+
+			//1st pass
+			for (int i = 0; i < totalCount; i++)
+			{
+				int value = mppoints[i].u;
+				offsetLower = (value < offsetLower) ? value : offsetLower;
+				offsetUpper = (value > offsetUpper) ? value : offsetUpper;
+			}
+
+			stageOneCount = offsetUpper - offsetLower + 1;
+
+			mtable = new std::vector<pointIndex>[stageOneCount];
+
+			//2nd pass
+			for (int i = 0; i < totalCount; i++)
+			{
+				int value = hash(mppoints[i]);
+				mtable[value].push_back({ mppoints[i],i });
+			}
+		}
+
+		~PointSearcher()
+		{
+			//clean up resources
+			delete[] mtable;
+		}
+
+		int find(const point2D<int>& tofind) const
+		{
+			if (mppoints == nullptr)
+				return -1;
+
+			//do the search here
+			int value = hash(tofind);
+
+			if (value < 0 || value >= stageOneCount)
+				return -1;
+
+			for (int i = 0; i < mtable[value].size(); i++)
+			{
+				if (tofind == mtable[value][i].point)
+					return  mtable[value][i].index;
+			}
+
+			return -1;
+		}
+
+
+	private:
+		point2D<int>* mppoints = nullptr;
+		int totalCount = 0;
+		int offsetLower = 0;
+		int offsetUpper = 0;
+		int stageOneCount = 0;
+
+		struct pointIndex
+		{
+			point2D<int> point;
+			int index;
+		};
+
+		std::vector<pointIndex>* mtable;
+
+		inline int hash(const point2D<int>& tohash) const
+		{
+			return tohash.u - offsetLower;
+		}
+	};
+
 	int RenderingTrianglesCreator(const raybundle<MYFLOATTYPE>& thisbundle) //build up vector containing the mesh
 	{
 		std::cout << "Tesselating...\n";
@@ -425,16 +503,28 @@ private:
 		point2D<int>* inputArray = thisbundle.samplinggrid;
 
 
-		//lambda for searching
+		////lambda for searching
+		//auto searchForPoint = [&](const point2D<int>& p) -> int {
+		//	for (int i = 0; i < arraySize; i++)
+		//	{
+		//		if (p == inputArray[i])
+		//		{
+		//			//only finished rays should be rendered
+		//			if ((thisbundle.prays)[i].status == raysegment<MYFLOATTYPE>::Status::finished)
+		//			return i;
+		//		}
+		//	}
+		//	return -1;
+		//};
+
+		//new search version
+		PointSearcher searcher(inputArray, arraySize);
 		auto searchForPoint = [&](const point2D<int>& p) -> int {
-			for (int i = 0; i < arraySize; i++)
+			int ret = searcher.find(p);
+			if (ret != -1)
 			{
-				if (p == inputArray[i])
-				{
-					//only finished rays should be rendered
-					if ((thisbundle.prays)[i].status == raysegment<MYFLOATTYPE>::Status::finished)
-					return i;
-				}
+				if ((thisbundle.prays)[ret].status == raysegment<MYFLOATTYPE>::Status::finished)
+				return ret;
 			}
 			return -1;
 		};
@@ -760,7 +850,7 @@ int ColumnCreator2(vec3<MYFLOATTYPE> point)
 	//call initializer of the first bundle in column
 	//(*job)[0].init_2D_dualpolar(point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
 	//init_2D_dualpolar(&((*job)[0]), point, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, -3.0 / 180 * MYPI, 3.0 / 180 * MYPI, 0.7 / 180 * MYPI);
-	init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, 0.1 / 180 * MYPI); //0.1 for release, 2.0 for debug
+	init_2D_dualpolar_v2(&((*job)[0]), thisOpticalConfig, point, (MYFLOATTYPE)0.1 / (MYFLOATTYPE)180 * (MYFLOATTYPE)MYPI); //0.1 for release, 2.0 for debug
 
 	//mark the column as initialized after initializing it
 	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);

@@ -691,8 +691,9 @@ public:
 
 	__host__  __device__ bool cartesian2Array(const vec3<MYFLOATTYPE>& worldCoor, point2D<int>& pixelCoor) const override
 	{
-		if (abs((worldCoor.x*worldCoor.x + worldCoor.y*worldCoor.y + worldCoor.z*worldCoor.z) - (m_R0*m_R0)) > MYEPSILONBIG) //numerical inaccuracies...
-			return false;
+		//may be drop this test altogether?!
+		//if (abs((worldCoor.x*worldCoor.x + worldCoor.y*worldCoor.y + worldCoor.z*worldCoor.z) - (m_R0*m_R0)) > MYEPSILONBIG) //numerical inaccuracies...
+		//	return false;
 
 		MYFLOATTYPE nyf = asin(worldCoor.y / m_R0) / m_thetaR;
 		MYFLOATTYPE Rp = m_R0 * cos(nyf*m_thetaR);
@@ -939,7 +940,7 @@ public:
 	}
 
 private:
-
+#if _PRECISION_MODE == _DOUBLE_PRECISION
 	//CUDA doesn't have native double-precision atomicAdd
 	__device__ double atomicAdd(double* address, double val)
 	{
@@ -954,6 +955,7 @@ private:
 		} while (assumed != old);
 		return __longlong_as_double(old);
 	}
+#endif
 };
 
 class OpticalConfig

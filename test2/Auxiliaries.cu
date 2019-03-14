@@ -105,7 +105,7 @@ bool narrowingSweep(OpticalConfig* thisOpticalConfig, MYFLOATTYPE z_position, MY
 	//initialize the bundles
 	int stepCount = 32;
 	//bundles[0].init_1D_fan(z_position, startTheta, endTheta, 0.0, stepCount);
-	init_1D_fan(&bundles[0], z_position, startTheta, endTheta, 0.0, stepCount);
+	init_1D_fan(&bundles[0], z_position, startTheta, endTheta, (MYFLOATTYPE)0.0, stepCount);
 	for (int i = 1; i < numofsurfaces + 1; i++)
 	{
 		bundles[i] = bundles[0];

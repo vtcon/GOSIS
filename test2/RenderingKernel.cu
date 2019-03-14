@@ -117,7 +117,8 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	int ID = (blockIdx.x*blockDim.x) + threadIdx.x;
 	if (ID >= kernelLaunchParams.otherparams[0]) return;
 #ifdef _MYDEBUGMODE
-	int debugID = 719;
+	int debugID = 247;
+	if (ID != debugID) return;
 #endif
 	//ID = debugID;
 	//triangle vertices, in real program should translate world coor to retina local coor
@@ -130,13 +131,13 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	vec3<MYFLOATTYPE> pdir1 = kernelLaunchParams.dp_triangles[ID].dir1;
 	vec3<MYFLOATTYPE> pdir2 = kernelLaunchParams.dp_triangles[ID].dir2;
 	vec3<MYFLOATTYPE> pdir3 = kernelLaunchParams.dp_triangles[ID].dir3;
-	vec3<MYFLOATTYPE> pdir = (pdir1 + pdir2 + pdir3) / 3.0;
+	vec3<MYFLOATTYPE> pdir = (pdir1 + pdir2 + pdir3) / (MYFLOATTYPE)3.0;
 
 	//intensity of the triangle is the average intensity of three rays
 	MYFLOATTYPE intensity1 = kernelLaunchParams.dp_triangles[ID].intensity1;
 	MYFLOATTYPE intensity2 = kernelLaunchParams.dp_triangles[ID].intensity2;
 	MYFLOATTYPE intensity3 = kernelLaunchParams.dp_triangles[ID].intensity3;
-	MYFLOATTYPE triangleIntensity = (intensity1 + intensity2 + intensity3) / 3.0;
+	MYFLOATTYPE triangleIntensity = (intensity1 + intensity2 + intensity3) / (MYFLOATTYPE)3.0;
 
 	RetinaImageChannel* dp_rawChannel = kernelLaunchParams.dp_rawChannel;
 	//MYFLOATTYPE thetaR = retinaDescriptor.m_thetaR;
@@ -187,7 +188,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 		//extend until found a point inside
 		int searchRadius = 0; // save a bit memory
 
-		while (outputSearch < MYEPSILONMEDIUM && searchRadius < 2) //numerical inaccuracy, again
+		while (outputSearch < MYEPSILONSMALL && searchRadius < 2) //numerical inaccuracy, again
 		{
 			for (int j = -searchRadius; j <= searchRadius; j++)
 			{
@@ -219,7 +220,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	//if found no point, quit
 	if (outputSearch == 0)
 	{
-		printf("ID %d output search unsuccessful!\n", ID);
+		printf("ID %d output search unsuccessful!, x,y position: %f, %f\n", ID, vtxCenter.x, vtxCenter.y);
 		return;
 	}
 		
@@ -415,17 +416,17 @@ __device__ int maptotriangle(
 	MYFLOATTYPE A1, A2, A3, B1, B2, B3;
 
 	//if the triangle is colinear
-	if (norm(cross(p2 - p1, p3 - p1)) < MYEPSILONMEDIUM)
+	if (norm(cross(p2 - p1, p3 - p1)) < MYEPSILONSMALL)
 		return -1;
 
 	//if pdir and triangle coplanar
 	//printf("dot(cross(p2 - p1, p3 - p1), pdir) = %f\n", dot(cross(p2 - p1, p3 - p1), pdir));
-	if (abs(dot(cross(p2 - p1, p3 - p1), pdir)) < MYEPSILONMEDIUM)
+	if (abs(dot(cross(p2 - p1, p3 - p1), pdir)) < MYEPSILONSMALL)
 		return -1;
 
 
 	//if px and triangle coplanar
-	if (abs(dot(cross(p2 - p1, p3 - p1), px - p1)) < MYEPSILONMEDIUM)
+	if (abs(dot(cross(p2 - p1, p3 - p1), px - p1)) < MYEPSILONSMALL)
 	{
 		pdir = { 0, 0, 1 };
 	}

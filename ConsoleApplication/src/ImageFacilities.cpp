@@ -14,7 +14,7 @@
 #endif // ! MYPI
 
 //define global variable that will be used externally
-bool runTestOpenCV = true;
+bool runTestOpenCV = false;
 
 //define external global variable
 extern bool maximizeContrast;

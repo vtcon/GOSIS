@@ -10,6 +10,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <cstdlib> //for the "rand" function
+#include <chrono>
 
 //for the console:
 #include <stdio.h>
@@ -60,6 +61,8 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 }
 
 extern bool runTestOpenCV;
+extern bool runTestOpenGL;
+extern void GLtest();
 PI_Message tracer::test()
 {
 	
@@ -68,6 +71,10 @@ PI_Message tracer::test()
 		maximizeContrast = false;
 		testopencv();
 		maximizeContrast = true;
+	}
+	if (runTestOpenGL)
+	{
+		GLtest();
 	}
 	else
 	{
@@ -376,6 +383,8 @@ PI_Message tracer::checkData()
 
 PI_Message tracer::trace()
 {
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
 	float* currentwavelength = nullptr;
 	int runCounts = 0;
 	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::initialized); runCounts++)
@@ -392,17 +401,24 @@ PI_Message tracer::trace()
 		mainStorageManager.jobCheckIn(currentwavelength, StorageHolder<float>::Status::completed1);
 	}
 	
+	std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+	
 	if (runCounts == 0)
 	{
 		std::cout << "No wavelength is available for tracing\n";
 		return { PI_UNKNOWN_ERROR, "No wavelength is available for tracing\n" };
 	}
 
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+	std::cout << "Tracing completed after " << duration << " ms\n";
+
 	return { PI_OK, "Trace successful!\n" };
 }
 
 PI_Message tracer::render()
 {
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
 	float* currentwavelength = nullptr;
 	int runCount = 0;
 	for (; mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::completed1); runCount++)
@@ -472,6 +488,10 @@ PI_Message tracer::render()
 	image1.createOutputImage(OIC_XYZ);
 	image1.displayRGB();
 	*/
+
+	std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+	std::cout << "Rendering completed after " << duration << " ms\n";
 
 	return { PI_OK, "Rendering completed!\n" };
 }
