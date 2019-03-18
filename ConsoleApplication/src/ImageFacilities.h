@@ -34,3 +34,10 @@ void clearProjectionMap(void *& mapX, void *& mapY);
 bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);
 
 bool importCustomApo(double*& p_customApoData, int& customApoDataSize, std::string path);
+
+
+bool generateGLDrawTexture(unsigned char*& output, double* input, int& rows, int& cols);
+//this function will maintain its own texture cache, after use, please call the clear function below
+void clearGLDrawTexture();
+
+bool generateGLDrawTextureImage(unsigned char*& output, char* input, int& rows, int& cols, void* map_x, void* map_y);

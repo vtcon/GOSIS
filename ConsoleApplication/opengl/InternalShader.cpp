@@ -22,6 +22,21 @@ InternalShader::~InternalShader()
 	GLCall(glDeleteProgram(m_rendererID));
 }
 
+void InternalShader::initialize(const std::string & shadersource)
+{
+	if (m_rendererID != 0)
+	{
+		GLCall(glDeleteProgram(m_rendererID));
+	}
+
+	ShaderProgramSource source = parseShader(shadersource);
+	std::cout << "Vertex shader source: \n" << source.vertexSource << std::endl;
+	std::cout << "Fragment shader source: \n" << source.fragmentSource << std::endl;
+
+	m_rendererID = createShader(source.vertexSource, source.fragmentSource);
+	bind();
+}
+
 void InternalShader::bind() const
 {
 	GLCall(glUseProgram(m_rendererID));

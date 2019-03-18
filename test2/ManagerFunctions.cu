@@ -979,33 +979,54 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 		break;
 	}
 
-	if (K == 1.0 || side == MF_FLAT) //spherical or flat surface
-	{
-		MYFLOATTYPE ABC = 1;
-		MYFLOATTYPE I = 0;
-		MYFLOATTYPE J = -R * R;
-		vec3<MYFLOATTYPE> primaryGeoAxis(0, 0, R);
+	//if (K == 1.0 || side == MF_FLAT) //spherical or flat surface
+	//{
+	//	MYFLOATTYPE ABC = 1;
+	//	MYFLOATTYPE I = 0;
+	//	MYFLOATTYPE J = -R * R;
+	//	vec3<MYFLOATTYPE> primaryGeoAxis(0, 0, R);
 
-		switch (side)
-		{
-		case MF_CONVEX:
-			center = vertexPos - primaryGeoAxis;
-			antiParallel = true;
-			break;
-		case MF_CONCAVE:
-			center = vertexPos + primaryGeoAxis;
-			antiParallel = false;
-			break;
-		case MF_FLAT:
-			center = vertexPos;
-			ABC = 0;
-			I = 1; 
-			J = 0;
-			break;
-		default:
-			return false;
-			break;
-		}
+	//	switch (side)
+	//	{
+	//	case MF_CONVEX:
+	//		center = vertexPos - primaryGeoAxis;
+	//		antiParallel = true;
+	//		break;
+	//	case MF_CONCAVE:
+	//		center = vertexPos + primaryGeoAxis;
+	//		antiParallel = false;
+	//		break;
+	//	case MF_FLAT:
+	//		center = vertexPos;
+	//		ABC = 0;
+	//		I = 1; 
+	//		J = 0;
+	//		break;
+	//	default:
+	//		return false;
+	//		break;
+	//	}
+
+	//	p_surface = new quadricsurface<MYFLOATTYPE>(type,
+	//		quadricparam<MYFLOATTYPE>(ABC, ABC, ABC, 0, 0, 0, 0, 0, I, J), n1, n2, center, diam,
+	//		antiParallel, tiptilt);
+	//	p_surface->apodizationType = translatedApo;
+	//	if (p_surface->apodizationType == APD_CUSTOM)
+	//	{
+	//		p_surface->add_data(reinterpret_cast<char*>(p_customApoData), customApoDataSize);
+	//		if (p_customApoData != nullptr)
+	//		{
+	//			delete[] p_customApoData;
+	//			p_customApoData = nullptr;
+	//		}
+	//	}
+	//}
+	if (side == MF_FLAT) // flat surface
+	{
+		MYFLOATTYPE ABC = 0;
+		MYFLOATTYPE I = 1;
+		MYFLOATTYPE J = 0;
+		center = vertexPos;
 
 		p_surface = new quadricsurface<MYFLOATTYPE>(type,
 			quadricparam<MYFLOATTYPE>(ABC, ABC, ABC, 0, 0, 0, 0, 0, I, J), n1, n2, center, diam,

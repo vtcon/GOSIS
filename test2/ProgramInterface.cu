@@ -4,6 +4,7 @@
 #include "Auxiliaries.cuh"
 #include "../ConsoleApplication/src/ImageFacilities.h"
 #include "../ConsoleApplication/src/OutputImage.h"
+#include "../ConsoleApplication/src/GLDrawFacilities.h"
 
 #include <list>
 #include <string>
@@ -39,6 +40,13 @@ int PI_displayWindowSize = 800;
 float PI_primaryWavelengthR = 620;
 float PI_primaryWavelengthG = 530;
 float PI_primaryWavelengthB = 465;
+int PI_maxTextureDimension = 2048;
+
+//internally used global variables, but still should be put on preferences
+int PI_refractiveSurfaceArms = 20;
+int PI_refractiveSurfaceRings = 20;
+int PI_imageSurfaceArms = 60;
+int PI_imageSurfaceRings = 60;
 
 //these variables serves the progress count
 float PI_traceProgress; //from 0.0 to 1.0
@@ -62,7 +70,14 @@ bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
 
 extern bool runTestOpenCV;
 extern bool runTestOpenGL;
+extern bool runTestGLDrawFacilities;
 extern void GLtest();
+PI_Message tracer::initialization()
+{
+	//do necessary program initialization here
+	return PI_Message();
+}
+
 PI_Message tracer::test()
 {
 	
@@ -75,6 +90,10 @@ PI_Message tracer::test()
 	if (runTestOpenGL)
 	{
 		GLtest();
+	}
+	if (runTestGLDrawFacilities)
+	{
+		testGLDrawFacilities();
 	}
 	else
 	{
@@ -313,7 +332,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 	//for the final image surface
 	//todo: data integrity check here
 	toAdd[numofsurfaces - 1].diameter = (abs(toAdd[numofsurfaces - 1].diameter) < 2.0*abs(toAdd[numofsurfaces - 1].radius)) ? abs(toAdd[numofsurfaces - 1].diameter) : 2.0*abs(toAdd[numofsurfaces - 1].radius);
-	bool output = constructSurface((newConfig->surfaces)[numofsurfaces-1], MF_IMAGE, vec3<MYFLOATTYPE>(toAdd[count-1].x, toAdd[count - 1].y, toAdd[count - 1].z), -abs(toAdd[count - 1].radius), toAdd[count - 1].diameter, MF_CONCAVE, 1.0, FP_INFINITE, toAdd[count-1].asphericity);
+	bool output = constructSurface((newConfig->surfaces)[numofsurfaces-1], MF_IMAGE, vec3<MYFLOATTYPE>(toAdd[count-1].x, toAdd[count - 1].y, toAdd[count - 1].z), -abs(toAdd[count - 1].radius), toAdd[count - 1].diameter, MF_CONCAVE, 0.0, FP_INFINITE, toAdd[count-1].asphericity);
 
 	//copy to sibling surfaces on GPU side
 	LOG1("[main]create sibling surfaces\n");
@@ -331,8 +350,10 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 	}
 	else //if it is not flat
 	{
-		MYFLOATTYPE Rsqr = abs(dynamic_cast<quadricsurface<MYFLOATTYPE>*>(newConfig->surfaces[numofsurfaces - 1])->param.J);
-		R = sqrt(Rsqr);
+		//obsolete
+		//MYFLOATTYPE Rsqr = abs(dynamic_cast<quadricsurface<MYFLOATTYPE>*>(newConfig->surfaces[numofsurfaces - 1])->param.J);
+		R = abs(dynamic_cast<quadricsurface<MYFLOATTYPE>*>(newConfig->surfaces[numofsurfaces - 1])->param.I)/(MYFLOATTYPE)2.0;
+		//R = sqrt(Rsqr);
 	}
 
 	//angular extend actually depends on diameter and curvature radius!
@@ -597,7 +618,27 @@ PI_Message tracer::saveRGB(const char * path, int uniqueID)
 	else
 	{
 		std::cout << "Saving RGB...\n";
-		outputImages[uniqueID].saveRGB(path);
+
+		//just take a random optical config, cause they're all have the same retina descriptor, FOR NOW
+		OpticalConfig* thisOpticalConfig = nullptr;
+		bool b_getConfig = mainStorageManager.infoCheckOut(thisOpticalConfig, activeWavelength);
+		if (!b_getConfig)
+		{
+			std::cout << "Cannot get optical config for wavelength at " << activeWavelength << " nm \n";
+			return { PI_UNKNOWN_ERROR, "Cannot get optical config for this wavelength\n" };
+		}
+
+		//obtain the projection maps
+		//display data with scaling
+		void* mapX = nullptr;
+		void* mapY = nullptr;
+		SimpleRetinaDescriptor* tempDescriptor = dynamic_cast<SimpleRetinaDescriptor*>(thisOpticalConfig->p_retinaDescriptor);
+
+		MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
+		generateProjectionMap(mapX, mapY, thisOpticalConfig->p_rawChannel->m_dimension.y,
+			thisOpticalConfig->p_rawChannel->m_dimension.x, PI_projectionMethod, 4, scalingargs);
+
+		outputImages[uniqueID].saveRGB(path, mapX, mapY);
 		std::cout << "Saved to " << path << " \n";
 		return { PI_OK, "Successful!\n" };
 	}
@@ -1069,4 +1110,201 @@ PI_Message tracer::defaultPreference()
 	PI_primaryWavelengthB = 465;
 
 	return { PI_OK, "Successful!\n" };
+}
+
+PI_Message tracer::drawOpticalConfig(float wavelength, bool suppressRefractiveSurfaceTexture, bool suppressImageTexture)
+{
+	//load the optical config at wavelength
+	OpticalConfig* thisOpticalConfig = nullptr;
+	bool b_getConfig = mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength);
+	if (!b_getConfig)
+	{
+		std::cout << "Cannot get optical config for wavelength at " << wavelength << " nm \n";
+		return { PI_UNKNOWN_ERROR, "Cannot get optical config for this wavelength\n" };
+	}
+
+	//parse the config and create draw data for surfaces
+	std::vector<SurfaceDrawInfo> surfaceInfos(thisOpticalConfig->numofsurfaces);
+	for (int i = 0; i < surfaceInfos.size(); i++)
+	{
+		SurfaceDrawInfo& currentsurface = surfaceInfos[i];
+		auto p_surfacedata = dynamic_cast<quadricsurface<MYFLOATTYPE>*>(thisOpticalConfig->surfaces[i]);
+		currentsurface.posX = p_surfacedata->pos.x;
+		currentsurface.posY = p_surfacedata->pos.y;
+		currentsurface.posZ = p_surfacedata->pos.z;
+		currentsurface.asphericity = p_surfacedata->param.C - 1.0f;
+		currentsurface.radius = abs(p_surfacedata->param.I) / 2.0f;
+		currentsurface.radiusSign = (p_surfacedata->param.I < 0) ? true : false;
+		currentsurface.isFlat = (p_surfacedata->param.I == 0.0) ? true : false;
+		currentsurface.diameter = p_surfacedata->diameter;
+		currentsurface.rings = (i == (surfaceInfos.size() - 1)) ? PI_imageSurfaceRings : PI_refractiveSurfaceRings;
+		currentsurface.arms = (i == (surfaceInfos.size() - 1)) ? PI_imageSurfaceArms : PI_refractiveSurfaceArms;
+
+	}
+
+	//load texture
+	std::vector<unsigned char*> textureDirectory(thisOpticalConfig->numofsurfaces);
+	for (int i = 0; i < surfaceInfos.size() - 1; i++)//not including image surface
+	{
+		SurfaceDrawInfo& currentsurface = surfaceInfos[i];
+		auto p_surfacedata = dynamic_cast<quadricsurface<MYFLOATTYPE>*>(thisOpticalConfig->surfaces[i]);
+
+		if (p_surfacedata->data_size != 0 && p_surfacedata->p_data != nullptr && suppressRefractiveSurfaceTexture == false)
+		{
+			//read and parse data from mysurface class
+			double* p_datareader = reinterpret_cast<double*>(p_surfacedata->p_data);
+			int rows = static_cast<int>(p_datareader[0]);
+			int cols = static_cast<int>(p_datareader[1]);
+			double* p_datastart = &(p_datareader[2]);
+
+			//create draw data for texture
+			unsigned char* p_tempOutput = nullptr;
+			bool output = generateGLDrawTexture(p_tempOutput, p_datastart, rows, cols);
+			if (!output)
+			{
+				textureDirectory.push_back(nullptr);
+			}
+			else
+			{
+				//assign data to current surface
+				currentsurface.texChannels = 1;
+				currentsurface.texRows = rows;
+				currentsurface.texCols = cols;
+				currentsurface.p_tex = p_tempOutput;
+
+				//save pointer to texturecache
+				textureDirectory.push_back(p_tempOutput);
+			}
+		}
+		else
+		{
+			textureDirectory.push_back(nullptr);
+		}
+	}
+
+	//load texture for the image surface
+	{
+		SurfaceDrawInfo& currentsurface = surfaceInfos[surfaceInfos.size() - 1];
+		if (!suppressImageTexture)
+		{
+			//obtain the projection maps
+			//display data with scaling
+			void* mapX = nullptr;
+			void* mapY = nullptr;
+			SimpleRetinaDescriptor* tempDescriptor = dynamic_cast<SimpleRetinaDescriptor*>(thisOpticalConfig->p_retinaDescriptor);
+
+			MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
+			generateProjectionMap(mapX, mapY, thisOpticalConfig->p_rawChannel->m_dimension.y,
+				thisOpticalConfig->p_rawChannel->m_dimension.x, IF_PROJECTION_ALONGZ, 4, scalingargs);
+
+			
+			unsigned char* p_tempOutput = nullptr;
+			int rows = thisOpticalConfig->p_rawChannel->m_dimension.y;
+			int cols = thisOpticalConfig->p_rawChannel->m_dimension.x;
+			bool output = generateGLDrawTextureImage(p_tempOutput, reinterpret_cast<char*>(thisOpticalConfig->p_rawChannel->hp_raw),
+				rows,cols, mapX, mapY);
+			if (!output)
+			{
+				textureDirectory.push_back(nullptr);
+			}
+			else
+			{
+				//assign data to current surface
+				currentsurface.texChannels = 1;
+				currentsurface.texRows = rows;
+				currentsurface.texCols = cols;
+				currentsurface.p_tex = p_tempOutput;
+
+				//save pointer to texturecache
+				textureDirectory.push_back(p_tempOutput);
+			}
+		}
+		else
+		{
+			textureDirectory.push_back(nullptr);
+		}
+	}
+	
+	//draw call
+	drawSurfaces(surfaceInfos, suppressRefractiveSurfaceTexture, suppressImageTexture);
+
+	//clean up the data
+	clearGLDrawTexture();
+	surfaceInfos.clear();
+	textureDirectory.clear();
+
+	return { PI_OK, "Successful!\n" };
+}
+
+PI_Message tracer::drawImage(int uniqueID)
+{
+	std::unordered_map<int, OutputImage>::iterator token = outputImages.find(uniqueID);
+
+	if (token == outputImages.end())
+	{
+		std::cout << "Image at ID " << uniqueID << " does not exist!\n";
+		return { PI_INPUT_ERROR, "Image ID does not exist!\n" };
+	}
+	else
+	{
+		//load the optical config at wavelength
+		OpticalConfig* thisOpticalConfig = nullptr;
+		bool b_getConfig = mainStorageManager.infoCheckOut(thisOpticalConfig, activeWavelength);
+		if (!b_getConfig)
+		{
+			std::cout << "Cannot get optical config for wavelength at " << activeWavelength << " nm \n";
+			return { PI_UNKNOWN_ERROR, "Cannot get optical config for this wavelength\n" };
+		}
+
+		//parse the config and create draw data for surfaces
+		std::vector<SurfaceDrawInfo> surfaceInfos(1);
+		SurfaceDrawInfo& currentsurface = surfaceInfos[0];
+		auto p_surfacedata = dynamic_cast<quadricsurface<MYFLOATTYPE>*>(thisOpticalConfig->surfaces[thisOpticalConfig->numofsurfaces - 1]);
+		currentsurface.posX = p_surfacedata->pos.x;
+		currentsurface.posY = p_surfacedata->pos.y;
+		currentsurface.posZ = p_surfacedata->pos.z;
+		currentsurface.asphericity = p_surfacedata->param.C - 1.0f;
+		currentsurface.radius = abs(p_surfacedata->param.I) / 2.0f;
+		currentsurface.radiusSign = (p_surfacedata->param.I < 0) ? true : false;
+		currentsurface.isFlat = (p_surfacedata->param.I == 0.0) ? true : false;
+		currentsurface.diameter = p_surfacedata->diameter;
+		currentsurface.rings = PI_imageSurfaceRings;
+		currentsurface.arms = PI_imageSurfaceArms;
+
+		//load texture
+		OutputImage& currentImage = outputImages[uniqueID];
+		void* mapX = nullptr;
+		void* mapY = nullptr;
+		SimpleRetinaDescriptor* tempDescriptor = dynamic_cast<SimpleRetinaDescriptor*>(thisOpticalConfig->p_retinaDescriptor);
+
+		MYFLOATTYPE scalingargs[4] = { tempDescriptor->m_thetaR, tempDescriptor->m_R0, tempDescriptor->m_maxTheta, tempDescriptor->m_maxPhi };
+		generateProjectionMap(mapX, mapY, thisOpticalConfig->p_rawChannel->m_dimension.y,
+			thisOpticalConfig->p_rawChannel->m_dimension.x, IF_PROJECTION_ALONGZ, 4, scalingargs);
+
+		unsigned char* p_tempOutput = nullptr;
+		int rows = thisOpticalConfig->p_rawChannel->m_dimension.y;
+		int cols = thisOpticalConfig->p_rawChannel->m_dimension.x;
+		bool output = currentImage.generateGLDrawTexture(p_tempOutput ,rows, cols, mapX, mapY);
+		if (!output)
+		{
+			return { PI_UNKNOWN_ERROR, "Error generating texture from output image\n" };
+		}
+		else
+		{
+			//assign data to current surface
+			currentsurface.texChannels = 1;
+			currentsurface.texRows = rows;
+			currentsurface.texCols = cols;
+			currentsurface.p_tex = p_tempOutput;
+		}
+
+		//draw call
+		drawSurfaces(surfaceInfos, false, false);
+
+		//clean up the data
+		currentImage.clearGLDrawTextureCache();
+		surfaceInfos.clear();
+
+		return { PI_OK, "Successful!\n" };
+	}
 }

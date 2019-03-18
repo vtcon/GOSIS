@@ -90,6 +90,12 @@
     <ClInclude Include="opengl\InternalShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\GLDrawFacilities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\InternalTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ConsoleApplication.cpp">
@@ -159,6 +165,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="opengl\InternalShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GLDrawFacilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opengl\GLDrawer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="opengl\InternalTexture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

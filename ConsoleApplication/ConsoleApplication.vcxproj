@@ -88,7 +88,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions), MAKEDLL;%(PreprocessorDefinitions); _WINDLL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>DEBUG;_DEBUG;_CONSOLE;%(PreprocessorDefinitions), MAKEDLL;%(PreprocessorDefinitions);_WINDLL</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)external\opencv\include;$(SolutionDir)test2;$(ProjectDir)opengl\glew\include\GL;$(ProjectDir)opengl\glfw;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -159,6 +159,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="opengl\InternalTexture.h" />
+    <ClInclude Include="src\GLDrawFacilities.h" />
     <ClInclude Include="opengl\Camera.h" />
     <ClInclude Include="opengl\imgui\imconfig.h" />
     <ClInclude Include="opengl\imgui\imgui.h" />
@@ -186,6 +188,9 @@
     <ClInclude Include="src\ThreadObject.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="opengl\InternalTexture.cpp" />
+    <ClCompile Include="opengl\GLDrawer.cpp" />
+    <ClCompile Include="src\GLDrawFacilities.cpp" />
     <ClCompile Include="opengl\Application.cpp" />
     <ClCompile Include="opengl\Camera.cpp" />
     <ClCompile Include="opengl\imgui\imgui.cpp" />

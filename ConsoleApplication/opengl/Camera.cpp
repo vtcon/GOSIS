@@ -1,7 +1,7 @@
 #include "Camera.h"
 
-Camera::Camera(glm::vec3 position, glm::vec3 front, glm::vec3 up)
-	:m_position(position), m_front(front), m_up(up)
+Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
+	:m_position(position), m_up(up), m_yaw(yaw), m_pitch(pitch)
 {
 	m_worldUp = m_up;
 	update();
@@ -19,7 +19,7 @@ void Camera::reset()
 	m_worldUp = m_up;
 	m_zoom = 45.0f;
 	
-	m_yaw = -90.0f;
+	m_yaw = 0.0f;
 	m_pitch = 0.0f;
 
 	update();
@@ -68,7 +68,7 @@ void Camera::cursorDrag(float xoffset, float yoffset, GLboolean constrainPitch)
 	}
 }
 
-void Camera::scroll(double yoffset)
+void Camera::scroll(float yoffset)
 {
 	if (m_zoom >= 1.0f && m_zoom <= 45.0f)
 		m_zoom -= yoffset;

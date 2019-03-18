@@ -12,10 +12,14 @@
 //external variables
 extern unsigned int PI_rgbStandard;
 extern int PI_displayWindowSize;
+extern int PI_maxTextureDimension;
 
 //external functions
 extern void XYZtoBGR(cv::Mat& XYZmat, cv::Mat& BGRmat, unsigned int RGBoption);
 extern void showOnWindow(std::string windowName, cv::Mat image);
+
+//texture cache for drawing in OpenGL, please handle with care!
+static std::list<cv::Mat> textureCache;
 
 class OutputImageChannel
 {
@@ -193,7 +197,7 @@ bool OutputImage::saveRaw(std::string path)
 
 bool OutputImage::saveRGB(std::string path, void* mapX, void* mapY)
 {
-	cv::Mat imgRemapped = pimpl->CVoutputImage;
+	cv::Mat imgRemapped = pimpl->CVoutputImage.clone();
 	if (mapX != nullptr || mapY != nullptr)
 	{
 		cv::Mat* p_map_x = static_cast<cv::Mat*>(mapX);
@@ -223,7 +227,7 @@ bool OutputImage::saveRGB(std::string path, void* mapX, void* mapY)
 void OutputImage::displayRGB(int rows, int columns, void* mapX , void* mapY, int offsetX, int offsetY, float scaling)
 {
 	//TEMPORARY VERSION: ignoring input parameters
-	cv::Mat imgRemapped = pimpl->CVoutputImage;
+	cv::Mat imgRemapped = pimpl->CVoutputImage.clone();
 	if (mapX != nullptr || mapY != nullptr)
 	{
 		cv::Mat* p_map_x = static_cast<cv::Mat*>(mapX);
@@ -272,4 +276,50 @@ void OutputImage::pushNewChannel<float>(float * data, float wavelength,int rows,
 	topush.scaling = scaling;
 	topush.dataType = OIC_FLOAT;
 	allChannels.push_back(topush);
+}
+
+bool OutputImage::generateGLDrawTexture(unsigned char *& output, int & rows, int & cols, void * map_x, void * map_y)
+{
+	if (pimpl->CVoutputImage.data == nullptr 
+		|| pimpl->CVoutputImage.rows <= 0 
+		|| pimpl->CVoutputImage.cols <= 0
+		|| rows <= 0 || cols <=0)
+	{
+		return false;
+	}
+
+	cv::Mat tempMat = pimpl->CVoutputImage.clone();
+
+	if (rows != pimpl->CVoutputImage.rows || cols != pimpl->CVoutputImage.cols)
+	{
+		cv::resize(tempMat, tempMat, cv::Size(), (float)rows / pimpl->CVoutputImage.rows, (float)cols / pimpl->CVoutputImage.cols, cv::INTER_NEAREST);
+	}
+
+	textureCache.emplace_back(rows, cols, CV_8UC3, cv::Scalar(0));
+	cv::Mat& currentTexture = textureCache.back(); //refers to the newly emplaced cv::Mat
+
+	//remapping
+	cv::Mat* p_map_x = static_cast<cv::Mat*>(map_x);
+	cv::Mat* p_map_y = static_cast<cv::Mat*>(map_y);
+
+	remap(tempMat, tempMat, *p_map_x, *p_map_y, cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+
+	cv::normalize(tempMat, currentTexture, 255, 0, cv::NORM_INF, CV_8UC3);
+
+	if (currentTexture.rows > PI_maxTextureDimension || currentTexture.cols > PI_maxTextureDimension)
+	{
+		float scaleFactor = (float)PI_maxTextureDimension / cv::max(currentTexture.rows, currentTexture.cols);
+		resize(currentTexture, currentTexture, cv::Size(), scaleFactor, scaleFactor, cv::INTER_NEAREST);
+	}
+
+	output = currentTexture.data;
+	rows = currentTexture.rows;
+	cols = currentTexture.cols;
+
+	return true;
+}
+
+void OutputImage::clearGLDrawTextureCache()
+{
+	textureCache.clear();
 }

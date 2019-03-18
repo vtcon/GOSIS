@@ -30,11 +30,11 @@ static bool lbutton_down = false;
 static double lastCursorPos_x = 0;
 static double lastCursorPos_y = 0;
 
-void mouseScrollCallback(GLFWwindow * window, double xoffset, double yoffset);
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
-void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos);
-void processInput(GLFWwindow *window, float deltaTime);
+static void mouseScrollCallback(GLFWwindow * window, double xoffset, double yoffset);
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+static void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos);
+static void processInput(GLFWwindow *window, float deltaTime);
 
 static int m_windowWidth = 1280;
 static int m_windowHeight = 720;
@@ -42,7 +42,7 @@ static int m_windowDepth = 720;
 
 /************************Shader Sources*************************************/
 
-std::string BasicShader = "#shader vertex\n\
+static std::string BasicShader = "#shader vertex\n\
 #version 330 core\n\
 \
 layout(location = 0) in vec4 position;\n\
@@ -76,7 +76,6 @@ void main()\n\
 }; ";
 
 /*************************End of Shader Sources*****************************/
-
 
 
 int GLmain(void)
@@ -380,12 +379,12 @@ int GLmain(void)
 	return 0;
 }
 
-void mouseScrollCallback(GLFWwindow * window, double xoffset, double yoffset) 
+static void mouseScrollCallback(GLFWwindow * window, double xoffset, double yoffset) 
 {
 	camera.scroll(yoffset);
 }
 
-void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
 	if (button == GLFW_MOUSE_BUTTON_LEFT) 
 	{
@@ -399,7 +398,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 	}
 }
 
-void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
+static void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (lbutton_down)
 	{
@@ -413,13 +412,13 @@ void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
 	}
 }
 
-void processInput(GLFWwindow *window, float deltaTime)
+static void processInput(GLFWwindow *window, float deltaTime)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	// make sure the viewport matches the new window dimensions; note that width and 
 	// height will be significantly larger than specified on retina displays.
@@ -428,8 +427,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	m_windowHeight = height;
 }
 
-bool runTestOpenGL = true;
+bool runTestOpenGL = false;
 void GLtest()
 {
 	GLmain();
 }
+

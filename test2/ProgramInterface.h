@@ -54,7 +54,7 @@ namespace tracer
 		float diameter = 0.0;
 		float radius = 1.0;
 		float refractiveIndex = 1.0;
-		float asphericity = 1.0; //1.0 is default for spherical surfaces
+		float asphericity = 0.0; //0.0 is default for spherical surfaces
 		unsigned short int apodization = PI_APD_UNIFORM;
 		const char* customApoPath = "";
 	};
@@ -81,6 +81,7 @@ namespace tracer
 	};
 
 	//Program API functions
+	PI_Message EXPORT initialization();
 	PI_Message EXPORT test();
 
 	PI_Message EXPORT newSession();
@@ -95,7 +96,6 @@ namespace tracer
 	//PI_Message EXPORT getOpticalConfigAt(float wavelength, int& count, PI_Surface*& output, float& angularResolution, float& angularExtend);
 	PI_Message EXPORT addOpticalConfigAt(float wavelength, int count, PI_Surface*& toAdd, float angularResolution, float angularExtend);
 	//PI_Message EXPORT modifyOpticalConfigAt(float wavelength, int count, PI_Surface*& toModify, float angularResolution, float angularExtend);
-
 
 	PI_Message EXPORT checkData();
 	PI_Message EXPORT trace();
@@ -123,4 +123,7 @@ namespace tracer
 	PI_Message EXPORT getPreferences(PI_Preferences& prefs);
 	PI_Message EXPORT setPreferences(PI_Preferences& prefs);
 	PI_Message EXPORT defaultPreference();
+
+	PI_Message EXPORT drawOpticalConfig(float wavelength, bool suppressRefractiveSurfaceTexture = false, bool suppressImageTexture = false);
+	PI_Message EXPORT drawImage(int uniqueID);
 }

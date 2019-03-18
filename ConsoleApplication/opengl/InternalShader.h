@@ -19,6 +19,8 @@ public:
 	InternalShader(const std::string& shadersource);
 	~InternalShader();
 
+	void initialize(const std::string& shadersource);
+
 	void bind() const;
 	void unbind() const;
 

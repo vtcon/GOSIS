@@ -8,6 +8,9 @@
 
 #include "OutputImage.h"
 
+#include "SolutionGlobalInclude.h"
+
+#include<list>
 
 #ifndef MYPI
 #define MYPI 3.14159265358979323846264338327950288419716939937510582097494 
@@ -23,6 +26,10 @@ extern float PI_primaryWavelengthR;
 extern float PI_primaryWavelengthG;
 extern float PI_primaryWavelengthB;
 extern unsigned int PI_rgbStandard;
+extern int PI_maxTextureDimension;
+
+//texture cache for drawing in OpenGL, please handle with care!
+static std::list<cv::Mat> textureCache;
 
 //only inside this file
 using namespace cv; 
@@ -938,6 +945,78 @@ bool importCustomApo(double *& p_customApoData, int & customApoDataSize, std::st
 	p_customApoData[1] = static_cast<double>(rescaledimg.cols);
 
 	memcpy(&(p_customApoData[2]), rescaledimg.data, rescaledimg.rows*rescaledimg.cols * sizeof(double));
+
+	return true;
+}
+
+bool generateGLDrawTexture(unsigned char *& output, double * input, int &rows, int &cols)
+{
+	if (input == nullptr || rows <= 0 || cols <= 0)
+	{
+		return false;
+	}
+
+	textureCache.emplace_back(rows, cols, CV_8UC3, Scalar(0));
+	Mat& currentTexture = textureCache.back(); //refers to the newly emplaced cv::Mat
+
+	Mat inputMat(rows, cols, CV_64FC1, input);
+	Mat tempMat;
+	normalize(inputMat, tempMat, 255, 0, NORM_INF, CV_8UC1);
+	cvtColor(tempMat, currentTexture, COLOR_GRAY2BGR, 3);
+
+	if (currentTexture.rows > PI_maxTextureDimension || currentTexture.cols> PI_maxTextureDimension)
+	{
+		float scaleFactor = (float)PI_maxTextureDimension / max(currentTexture.rows, currentTexture.cols);
+		resize(currentTexture, currentTexture, Size(), scaleFactor, scaleFactor, INTER_NEAREST);
+	}
+
+	output = currentTexture.data;
+	rows = currentTexture.rows;
+	cols = currentTexture.cols;
+
+	return true;
+}
+
+void clearGLDrawTexture()
+{
+	textureCache.clear();
+}
+
+bool generateGLDrawTextureImage(unsigned char *& output, char* input, int & rows, int & cols, void * map_x, void * map_y)
+{
+	if (input == nullptr || rows <= 0 || cols <= 0)
+	{
+		return false;
+	}
+
+	textureCache.emplace_back(rows, cols, CV_8UC3, Scalar(0));
+	Mat& currentTexture = textureCache.back(); //refers to the newly emplaced cv::Mat
+
+#if _PRECISION_MODE == _SINGLE_PRECISION
+	Mat inputMat(rows, cols, CV_32FC1, input);
+#else
+	Mat inputMat(rows, cols, CV_64FC1, input);
+#endif 
+
+	//remapping
+	Mat tempMat(inputMat.size(), inputMat.type());
+	Mat* p_map_x = static_cast<Mat*>(map_x);
+	Mat* p_map_y = static_cast<Mat*>(map_y);
+
+	remap(inputMat, tempMat, *p_map_x, *p_map_y, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+
+	normalize(tempMat, tempMat, 255, 0, NORM_INF, CV_8UC1);
+	cvtColor(tempMat, currentTexture, COLOR_GRAY2BGR, 3);
+
+	if (currentTexture.rows > PI_maxTextureDimension || currentTexture.cols > PI_maxTextureDimension)
+	{
+		float scaleFactor = (float)PI_maxTextureDimension / max(currentTexture.rows, currentTexture.cols);
+		resize(currentTexture, currentTexture, Size(), scaleFactor, scaleFactor, INTER_NEAREST);
+	}
+
+	output = currentTexture.data;
+	rows = currentTexture.rows;
+	cols = currentTexture.cols;
 
 	return true;
 }

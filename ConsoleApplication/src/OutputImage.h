@@ -33,6 +33,9 @@ public:
 	void displayRGB(int rows = -1, int columns = -1, void* mapX = nullptr, void* mapY = nullptr, int offsetX = 0, int offsetY = 0, float scaling = 1.0);
 	//if value of rows or column == -1, the function will display all pixels from offset until end of image
 
+	bool generateGLDrawTexture(unsigned char *& output, int & rows, int & cols, void * map_x, void * map_y);
+
+	void clearGLDrawTextureCache();
 
 private:
 	class OutputImageImpl; //PIMPL design pattern to reduce compilation dependency

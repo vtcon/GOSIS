@@ -70,6 +70,9 @@ private:
 			ui.pushSaveRGB->setEnabled(false);
 			ui.progressTrace->setValue(0);
 			ui.progressRender->setValue(0);
+			ui.checkShowOpticalSurfaces->setEnabled(false);
+			ui.pushVisualizeRGB->setEnabled(false);
+			ui.pushVisualizeConfig->setEnabled(false);
 			break;
 		case 1:
 			ui.pushTrace->setEnabled(true);
@@ -78,6 +81,7 @@ private:
 			ui.pushDisplayRGB->setEnabled(false);
 			ui.pushSaveRaw->setEnabled(false);
 			ui.pushSaveRGB->setEnabled(false);
+			ui.pushVisualizeConfig->setEnabled(true);
 			break;
 		case 2:
 			ui.pushTrace->setEnabled(false);
@@ -94,6 +98,8 @@ private:
 			ui.pushDisplayRGB->setEnabled(true);
 			ui.pushSaveRaw->setEnabled(true);
 			ui.pushSaveRGB->setEnabled(true);
+			ui.checkShowOpticalSurfaces->setEnabled(true);
+			ui.pushVisualizeRGB->setEnabled(true);
 			break;
 		default:
 			//undefined behavior
@@ -125,6 +131,7 @@ private slots:
 
 	void on_pushAcceptConfig_clicked();
 	void on_pushClearConfig_clicked();
+	void on_pushVisualizeConfig_clicked();
 	void on_pushCloneConfig_clicked();
 	void on_pushSaveConfig_clicked();
 	void on_pushLoadConfig_clicked();
@@ -137,6 +144,7 @@ private slots:
 	void on_pushDisplayRGB_clicked();
 	void on_pushSaveRaw_clicked();
 	void on_pushSaveRGB_clicked();
+	void on_pushVisualizeRGB_clicked();
 
 	void on_actionTest_triggered();
 	void on_actionConsoleOut_triggered();
@@ -313,6 +321,8 @@ public:
 	static void clearApoPathList();
 
 	static void clearAllData();
+
+	static void drawCurrentConfig();
 
 private:
 	static QTableWidget* p_table;

@@ -318,6 +318,11 @@ void QtGuiApplication::on_pushClearConfig_clicked()
 	stateReset();
 }
 
+void QtGuiApplication::on_pushVisualizeConfig_clicked()
+{
+	tableConfigCompanion::drawCurrentConfig();
+}
+
 void QtGuiApplication::on_pushCloneConfig_clicked()
 {
 	tableConfigCompanion::cloneToCurrentConfig();
@@ -871,6 +876,32 @@ void QtGuiApplication::on_pushSaveRGB_clicked()
 		msgBox.setStandardButtons(QMessageBox::Ok);
 		msgBox.setDefaultButton(QMessageBox::Ok);
 		msgBox.exec();
+	}
+}
+
+void QtGuiApplication::on_pushVisualizeRGB_clicked()
+{
+	if (ui.checkShowOpticalSurfaces->checkState() == Qt::Checked)
+	{
+		if (ui.listOutputWavelength->currentItem() != nullptr)
+		{
+			float wavelength = ui.listOutputWavelength->currentItem()->text().toFloat();
+			int count = 1;
+			tracer::drawOpticalConfig(wavelength);
+		}
+		else
+		{
+			QMessageBox msgBox;
+			msgBox.setWindowTitle("Info");
+			msgBox.setText("Output list is empty!\n");
+			msgBox.setStandardButtons(QMessageBox::Ok);
+			msgBox.setDefaultButton(QMessageBox::Ok);
+			msgBox.exec();
+		}
+	}
+	else
+	{
+		tracer::drawImage(outputImageIDs[0]);
 	}
 }
 
@@ -1646,6 +1677,14 @@ void tableConfigCompanion::clearAllData()
 	currentConfig.clear();
 	configs.clear();
 	apoPathList.clear();
+}
+
+void tableConfigCompanion::drawCurrentConfig()
+{
+	//TODO later (non critical): should develop a new set of API for this...
+	//... so that draw data comes directly from the UI, not from the storage
+	//current workaround: only enable the button once the check_data has been called (draw from storage)
+	tracer::drawOpticalConfig(currentWavelength, false, true);
 }
 
 void listConfigCompanion::removeWavelength(float wavelength)
