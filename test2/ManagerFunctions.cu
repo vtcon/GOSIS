@@ -314,6 +314,8 @@ public:
 		
 		transferMeshToDevice();
 
+		cudaDeviceSynchronize();
+
 		//TODO: add these to the storage manager
 		//data setup
 		//p_retinaDescriptor = new SimpleRetinaDescriptor(2, 20);
@@ -713,6 +715,7 @@ int KernelLauncher(int argc, char** argv)//this is the non-Async variant
 	job->preLaunchPreparation();
 
 	//start timing 
+	CUDARUN(cudaDeviceSynchronize());
 	CUDARUN(cudaEventRecord(start, 0));
 
 	while (job->goAhead())
@@ -752,11 +755,12 @@ int KernelLauncher2(int argc, char** argv)
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
-
+	
 	job->preLaunchPreparation();
 
 	//start timing 
-	CUDARUN(cudaEventRecord(start, 0));
+	CUDARUN(cudaEventRecord(start));
+	CUDARUN(cudaEventSynchronize(start));
 
 	while (job->goAhead())
 	{
@@ -765,13 +769,14 @@ int KernelLauncher2(int argc, char** argv)
 	}
 
 	//kernel finished, stop timing, print out elapsed time: in gpu manager
-	CUDARUN(cudaEventRecord(stop, 0));
-	CUDARUN(cudaEventSynchronize(stop));
+	CUDARUN(cudaEventRecord(stop));
+	CUDARUN(cudaEventSynchronize(stop)); 
 	float elapsedtime;
 	CUDARUN(cudaEventElapsedTime(&elapsedtime, start, stop));
 	std::cout << "kernel run time: " << elapsedtime << " ms\n";
 	CUDARUN(cudaEventDestroy(start));
 	CUDARUN(cudaEventDestroy(stop));
+	CUDARUN(cudaDeviceSynchronize());
 
 	job->postLaunchCleanUp();
 

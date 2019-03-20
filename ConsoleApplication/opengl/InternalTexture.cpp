@@ -21,7 +21,7 @@ InternalTexture::InternalTexture(unsigned char* data, int rows, int cols) :m_wid
 	if (data != nullptr || rows <= 0 || cols <= 0)
 	{
 		GLCall(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, m_width, m_height, 0,
-			GL_BGR, GL_UNSIGNED_BYTE, data));
+			GL_RGB, GL_UNSIGNED_BYTE, data));
 		GLCall(glGenerateMipmap(GL_TEXTURE_2D));
 	}
 	else

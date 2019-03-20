@@ -1121,9 +1121,9 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 	{
 		PI_traceJobSize = 1;
 	}
-	else if (prefs.traceJobSize >= 10)
+	else if (prefs.traceJobSize >= 100)
 	{
-		PI_traceJobSize = 10;
+		PI_traceJobSize = 100;
 	}
 	else
 	{
@@ -1134,9 +1134,9 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 	{
 		PI_renderJobSize = 1;
 	}
-	else if (prefs.renderJobSize >= 10)
+	else if (prefs.renderJobSize >= 100)
 	{
-		PI_renderJobSize = 10;
+		PI_renderJobSize = 100;
 	}
 	else
 	{

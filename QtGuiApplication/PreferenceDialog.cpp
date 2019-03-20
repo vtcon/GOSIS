@@ -115,12 +115,12 @@ void PreferenceDialog::on_pushOK_clicked()
 	newPref.linearRayDensity = valRayGen;
 
 	int valTraceSize = lineTraceSize->text().toInt();
-	valTraceSize = ((valTraceSize <= 1) ? 1 : valTraceSize) >= 10 ? 10 : valTraceSize;
+	valTraceSize = ((valTraceSize <= 1) ? 1 : valTraceSize) >= 100 ? 100 : valTraceSize;
 	lineTraceSize->setText(QString::number(valTraceSize));
 	newPref.traceJobSize = valTraceSize;
 
 	int valRenderSize = lineRenderSize->text().toInt();
-	valRenderSize = ((valRenderSize <= 1) ? 1 : valRenderSize) >= 10 ? 10 : valRenderSize;
+	valRenderSize = ((valRenderSize <= 1) ? 1 : valRenderSize) >= 100 ? 100 : valRenderSize;
 	lineRenderSize->setText(QString::number(valRenderSize));
 	newPref.renderJobSize = valRenderSize;
 
