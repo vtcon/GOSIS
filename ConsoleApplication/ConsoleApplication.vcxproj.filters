@@ -96,6 +96,18 @@
     <ClInclude Include="opengl\InternalTexture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="opengl\glew\include\GL\eglew.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\glew\include\GL\glew.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\glew\include\GL\glxew.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\glew\include\GL\wglew.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ConsoleApplication.cpp">
@@ -181,6 +193,16 @@
     <None Include="opengl\imgui.ini" />
     <None Include="opengl\res\shaders\Basic.shader" />
     <None Include="opengl\res\shaders\SimpleLightSource.shader" />
+    <None Include="opengl\glew\doc\advanced.html" />
+    <None Include="opengl\glew\doc\basic.html" />
+    <None Include="opengl\glew\doc\build.html" />
+    <None Include="opengl\glew\doc\credits.html" />
+    <None Include="opengl\glew\doc\glew.html" />
+    <None Include="opengl\glew\doc\glxew.html" />
+    <None Include="opengl\glew\doc\index.html" />
+    <None Include="opengl\glew\doc\install.html" />
+    <None Include="opengl\glew\doc\log.html" />
+    <None Include="opengl\glew\doc\wglew.html" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="opengl\res\textures\awesomeface.png">
