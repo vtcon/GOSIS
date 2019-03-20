@@ -163,6 +163,8 @@
     <ClInclude Include="opengl\glew\include\GL\glew.h" />
     <ClInclude Include="opengl\glew\include\GL\glxew.h" />
     <ClInclude Include="opengl\glew\include\GL\wglew.h" />
+    <ClInclude Include="opengl\glfw\glfw3.h" />
+    <ClInclude Include="opengl\glfw\glfw3native.h" />
     <ClInclude Include="opengl\InternalTexture.h" />
     <ClInclude Include="src\GLDrawFacilities.h" />
     <ClInclude Include="opengl\Camera.h" />
@@ -235,6 +237,7 @@
     <None Include="opengl\glew\doc\install.html" />
     <None Include="opengl\glew\doc\log.html" />
     <None Include="opengl\glew\doc\wglew.html" />
+    <None Include="opengl\glfw\glfw3.dll" />
     <None Include="opengl\imgui.ini" />
     <None Include="opengl\res\shaders\Basic.shader" />
     <None Include="opengl\res\shaders\SimpleLightSource.shader" />
@@ -243,6 +246,10 @@
     <Image Include="opengl\res\textures\awesomeface.png" />
     <Image Include="opengl\res\textures\container.jpg" />
     <Image Include="opengl\res\textures\wall.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="opengl\glfw\glfw3.lib" />
+    <Library Include="opengl\glfw\glfw3dll.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -108,6 +108,12 @@
     <ClInclude Include="opengl\glew\include\GL\wglew.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="opengl\glfw\glfw3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opengl\glfw\glfw3native.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ConsoleApplication.cpp">
@@ -203,6 +209,7 @@
     <None Include="opengl\glew\doc\install.html" />
     <None Include="opengl\glew\doc\log.html" />
     <None Include="opengl\glew\doc\wglew.html" />
+    <None Include="opengl\glfw\glfw3.dll" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="opengl\res\textures\awesomeface.png">
@@ -214,5 +221,9 @@
     <Image Include="opengl\res\textures\wall.jpg">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="opengl\glfw\glfw3.lib" />
+    <Library Include="opengl\glfw\glfw3dll.lib" />
   </ItemGroup>
 </Project>
