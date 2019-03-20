@@ -28,7 +28,7 @@
 
 #include "../src/GLDrawFacilities.h"
 
-static Camera camera(glm::vec3(-100.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); //it must be a global variable, as function callbacks depends on it
+static Camera camera; //it must be a global variable, as function callbacks depends on it
 
 static bool lbutton_down = false;
 static double lastCursorPos_x = 0;
@@ -43,6 +43,8 @@ void processInput(GLFWwindow *window, float deltaTime);
 static int m_windowWidth = 1280;
 static int m_windowHeight = 720;
 static int m_windowDepth = 720;
+
+static int windowCounter = 0;
 
 /************************Shader Sources*************************************/
 
@@ -245,6 +247,51 @@ private:
 
 /*************************End of Shader Sources*****************************/
 
+int GLInfoPrint()
+{
+	GLFWwindow* window;
+
+	if (!glfwInit())
+	{
+		std::cout << "Cannot initialize OpenGL!\n";
+		return -1;
+	}
+		
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	/* Create a windowed mode window and its OpenGL context */
+	window = glfwCreateWindow(m_windowWidth, m_windowHeight, "Graphical Output", NULL, NULL);
+	if (!window)
+	{
+		glfwTerminate();
+		return -1;
+	}
+
+	/* Make the window's context current */
+	glfwMakeContextCurrent(window);
+
+	//set up callbacks
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	glfwSetScrollCallback(window, mouseScrollCallback);
+	glfwSetMouseButtonCallback(window, mouseButtonCallback);
+	glfwSetCursorPosCallback(window, mouseMoveCallback);
+
+	if (glewInit() != GLEW_OK)
+	{
+		std::cout << "Cannot initialize OpenGL!\n";
+		return -1;
+	}
+
+	std::cout << " Vendor: " << glGetString(GL_VENDOR) << std::endl;
+	std::cout << " Version: " << glGetString(GL_VERSION) << std::endl;
+	std::cout << " Renderer: " << glGetString(GL_RENDERER) << std::endl;
+
+	glfwTerminate();
+	return 0;
+}
 
 int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray, 
 			const std::vector<std::vector<float>>& vaoArray,
@@ -262,13 +309,19 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	/* Create a windowed mode window and its OpenGL context */
-	window = glfwCreateWindow(m_windowWidth, m_windowHeight, "Graphical Output", NULL, NULL);
+	if (windowCounter != 0)
+	{
+		std::cout << "Please first close the already opened graphical window!\n";
+		return -1;
+	}
+	windowCounter++;
+	std::string title = "Graphical Output" + std::to_string(windowCounter);
+	window = glfwCreateWindow(m_windowWidth, m_windowHeight, title.c_str(), NULL, NULL);
 	if (!window)
 	{
 		glfwTerminate();
 		return -1;
 	}
-
 
 	/* Make the window's context current */
 	glfwMakeContextCurrent(window);
@@ -285,7 +338,6 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 	if (glewInit() != GLEW_OK)
 		std::cerr << "Glew init error!" << std::endl;
 
-	std::cout << glGetString(GL_VERSION) << std::endl;
 	
 	//setup blending
 	GLCall(glEnable(GL_BLEND));
@@ -333,9 +385,15 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 			ivbArray.emplace_back(vaoArray[si].data(), vaoArray[si].size() * sizeof(float));
 			ivaArray.back().AddBuffer(ivbArray.back(), ivblArray.back());
 			iibArray.emplace_back(iboArray[si].data(), iboArray[si].size());
-			if (tiArray[si].hasTexture)
+			if (tiArray[si].hasTexture && si != surfaceCount -1)
 			{
 				shaderCodeArray.emplace_back(USE_SHADER_MIXED);
+				texArray.emplace_back(tiArray[si].p_tex, tiArray[si].rows, tiArray[si].cols);
+				texArray.back().bind((si <= 15) ? si : 0);
+			}
+			else if (tiArray[si].hasTexture && si == surfaceCount - 1)
+			{
+				shaderCodeArray.emplace_back(USE_SHADER_PURE_TEXTURE);
 				texArray.emplace_back(tiArray[si].p_tex, tiArray[si].rows, tiArray[si].cols);
 				texArray.back().bind((si <= 15) ? si : 0);
 			}
@@ -397,6 +455,10 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 		//create a renderer
 		Renderer renderer;
 
+		//setup the camera
+		camera.reset();
+		camera.useMouse(true);
+
 		//setup IMGUI context
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
@@ -405,7 +467,7 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 		ImGui_ImplOpenGL3_Init(glsl_version);
 
 		//setup IMGUI variables
-		ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.00f);
+		ImVec4 clear_color = ImVec4(0.2f, 0.2f, 0.2f, 1.00f);
 		ImVec4 gui_sourceColor = ImVec4(1.0f, 1.0f, 1.0f, 1.00f);
 		std::stringstream versionText;
 		versionText << "OpenGL version " << glGetString(GL_VERSION);
@@ -433,14 +495,16 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 			GLCall(glClear(GL_DEPTH_BUFFER_BIT));
 
 			//draw IMGUI frame
+			static bool discoMode = false; //have some changing color
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
+
 			{
 				static float f = 0.0f;
-				static bool useMouseState = false;
+				static bool useMouseState = true;
 				//window name
-				ImGui::Begin("Debug Window");
+				ImGui::Begin("Control Panel");
 				//version text
 				ImGui::Text(versionText.str().c_str());
 				//window size text
@@ -466,6 +530,13 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 				camera.useMouse(useMouseState);
 				ImGui::SameLine();
 				ImGui::Text(useMouseState ? "Yes" : "No");
+				// Buttons return true when clicked (most widgets return true when edited/activated)
+				if (ImGui::Button("Disco mode"))
+				{
+					discoMode = !discoMode;
+				}
+				ImGui::SameLine();
+				ImGui::Text(discoMode ? "On" : "Off");
 				//button for camera reset
 				if (ImGui::Button("Camera Reset"))
 					camera.reset();
@@ -538,26 +609,38 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 				GLCall(glCullFace(GL_FRONT));
 				shaderCaliber.useShader(*currentShaderCode);
 				shaderCaliber.setUniform("u_MVP", MVPmat);
-				shaderCaliber.setUniform("u_color", lightColor.x, lightColor.y, (lightColor.z - 10.0f*si > 0) ? lightColor.z - 10.0f*si : 0, 1.0f);
+				if (*currentShaderCode != USE_SHADER_PURE_TEXTURE)
+				{
+					if (!discoMode)
+					{
+						shaderCaliber.setUniform("u_color", sin(lightColor.y*(si + 1.0f)*3.3f + 1.0f), sin(lightColor.y*(si + 1.0f)*1.5f + 1.0f), sin(lightColor.z*(si + 1.0f)*2.7f + 1.0f), 1.0f);
+					}
+					else
+					{
+						shaderCaliber.setUniform("u_color", sin(lightColor.y*(si + 1.0f)*3.3f + thisFrameTime), sin(lightColor.y*(si + 1.0f)*1.5f + thisFrameTime), sin(lightColor.z*(si + 1.0f)*2.7f + thisFrameTime), 1.0f);
+					}
+				}
 				if (tiArray[si].hasTexture) shaderCaliber.setUniform("u_textureSlot0", currentTex->getBoundSlot());
 				renderer.draw(*currentVA, *currentIB, shaderCaliber.getCurrentShader());
 
 				GLCall(glCullFace(GL_BACK));
 				shaderCaliber.useShader(USE_SHADER_PURE_COLOR);
 				shaderCaliber.setUniform("u_MVP", MVPmat);
-				shaderCaliber.setUniform("u_color", 0.8f*lightColor.x, 0.8f*lightColor.y, (lightColor.z - 10.0f*si > 0) ? 0.8f*(lightColor.z - 10.0f*si) : 0, 1.0f);
+				shaderCaliber.setUniform("u_color", 0.8f*lightColor.x, 0.8f*lightColor.y, 0.8f*lightColor.z, 1.0f);
 				renderer.draw(*currentVA, *currentIB, shaderCaliber.getCurrentShader());
 			}
 //#endif
 			
-
+			
 			//draw GUI on top
 			ImGui::Render();
+			glfwMakeContextCurrent(window);
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			glfwMakeContextCurrent(window);
 
 			/* Swap front and back buffers */
 			glfwSwapBuffers(window);
-
+			
 			/* Poll for and process events */
 			glfwPollEvents();
 		}
@@ -567,6 +650,7 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 	glfwTerminate();
+	windowCounter--;
 	return 0;
 }
 

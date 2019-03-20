@@ -30,9 +30,10 @@ void InternalShader::initialize(const std::string & shadersource)
 	}
 
 	ShaderProgramSource source = parseShader(shadersource);
+#ifdef DEBUG
 	std::cout << "Vertex shader source: \n" << source.vertexSource << std::endl;
 	std::cout << "Fragment shader source: \n" << source.fragmentSource << std::endl;
-
+#endif
 	m_rendererID = createShader(source.vertexSource, source.fragmentSource);
 	bind();
 }

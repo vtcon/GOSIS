@@ -58,7 +58,7 @@ void drawSurfaces(const std::vector<SurfaceDrawInfo>& surfaceInfos, bool suppres
 				tiArray[si].p_tex = currentSurfaceInfo.p_tex;
 			}
 
-			float armStep = 2 * PI_F / currentSurfaceInfo.arms;
+			float armStep = 2.0f * PI_F / currentSurfaceInfo.arms;
 			float ringStep = ((float)currentSurfaceInfo.diameter / 2.0f) / currentSurfaceInfo.rings;
 
 			//vao and ibo for the central point
@@ -133,24 +133,29 @@ void drawSurfaces(const std::vector<SurfaceDrawInfo>& surfaceInfos, bool suppres
 				iboArray[si].push_back(base);
 			}
 
-			/*std::cout << "VAO for surface " << si << ":\n";
-			int lineBreakCount = (tiArray[si].hasTexture) ? 5 : 3;
-			for (int i = 0; i < vaoArray[si].size(); i++)
+#ifdef nothing
+			if (si == 0)
 			{
-				std::cout << vaoArray[si][i] << " ";
-				if ((i % lineBreakCount) == (lineBreakCount - 1))
-					std::cout << "\n";
-			}
-			std::cout << "\n";
+				std::cout << "VAO for surface " << si << ":\n";
+				int lineBreakCount = (tiArray[si].hasTexture) ? 5 : 3;
+				for (int i = 0; i < vaoArray[si].size(); i++)
+				{
+					std::cout << vaoArray[si][i] << " ";
+					if ((i % lineBreakCount) == (lineBreakCount - 1))
+						std::cout << "\n";
+				}
+				std::cout << "\n";
 
-			std::cout << "IBO for surface " << si << ":\n";
-			for (int i = 0; i < iboArray[si].size(); i++)
-			{
-				std::cout << iboArray[si][i] << " ";
-				if (i % 3 == 2)
-					std::cout << "\n";
+				std::cout << "IBO for surface " << si << ":\n";
+				for (int i = 0; i < iboArray[si].size(); i++)
+				{
+					std::cout << iboArray[si][i] << " ";
+					if (i % 3 == 2)
+						std::cout << "\n";
+				}
+				std::cout << "\n";
 			}
-			std::cout << "\n";*/
+#endif
 
 			si++;
 		}

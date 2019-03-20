@@ -4,6 +4,7 @@
 #include "AddSurfaceDialog.h"
 #include "CloneConfigDialog.h"
 #include "PreferenceDialog.h"
+#include "DocumentationDialog.h"
 
 #include <qobject.h>
 
@@ -89,6 +90,9 @@ QtGuiApplication::QtGuiApplication(QWidget *parent)
 	//	PrintMemoryInfo(aProcesses[i]);
 	//}
 
+	//API initialization call
+	tracer::initialization();
+
 }
 
 void QtGuiApplication::updateRenderProgressBar(int newvalue)
@@ -127,9 +131,9 @@ void QtGuiApplication::updateResUsage()
 	SIZE_T virtualMemUsedByMe = pmc.PagefileUsage;
 	SIZE_T physMemUsedByMe = pmc.WorkingSetSize;
 
-	long freevram = 0, totalvram = 0;
+	unsigned long freevram = 0, totalvram = 0;
 	tracer::getVRAMUsageInfo(totalvram, freevram);
-	long usedvram = totalvram - freevram;
+	unsigned long usedvram = totalvram - freevram;
 
 	QString resUsage = tr("RAM: %1 MB (%2 MB in pagefile), VRAM: %3 MB (%4 MB total)")
 		.arg(QString::number(physMemUsedByMe / 1048576.0))
@@ -921,6 +925,12 @@ void QtGuiApplication::on_actionConsoleOut_triggered()
 void QtGuiApplication::on_actionPreferences_triggered()
 {
 	PreferenceDialog dialog;
+	dialog.exec();
+}
+
+void QtGuiApplication::on_actionDocumentation_triggered()
+{
+	DocumentationDialog dialog;
 	dialog.exec();
 }
 

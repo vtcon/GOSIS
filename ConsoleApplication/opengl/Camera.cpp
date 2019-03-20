@@ -13,13 +13,13 @@ Camera::~Camera()
 
 void Camera::reset()
 {
-	m_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	m_front = glm::vec3(0.0f, 0.0f, -1.0f);
+	m_position = glm::vec3(200.0f, 0.0f, 0.0f);
+	m_front = glm::vec3(-1.0f, 0.0f, 0.0f);
 	m_up = glm::vec3(0.0f, 1.0f, 0.0f);
 	m_worldUp = m_up;
 	m_zoom = 45.0f;
 	
-	m_yaw = 0.0f;
+	m_yaw = -180.0f;
 	m_pitch = 0.0f;
 
 	update();

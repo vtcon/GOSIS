@@ -149,6 +149,7 @@ private slots:
 	void on_actionTest_triggered();
 	void on_actionConsoleOut_triggered();
 	void on_actionPreferences_triggered();
+	void on_actionDocumentation_triggered();
 
 	void on_pushSelectImage_clicked();
 	void on_pushClearImage_clicked();

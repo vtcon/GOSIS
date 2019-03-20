@@ -19,6 +19,11 @@
 #include <fcntl.h>
 #include <windows.h>
 
+//for the hardware info
+#include <windows.h>
+#include <stdio.h>
+#pragma comment(lib, "user32.lib")
+
 using namespace tracer;
 
 //internal global variables, please think VERY carefully before modifying these lines
@@ -72,10 +77,132 @@ extern bool runTestOpenCV;
 extern bool runTestOpenGL;
 extern bool runTestGLDrawFacilities;
 extern void GLtest();
+extern int GLInfoPrint();
 PI_Message tracer::initialization()
 {
 	//do necessary program initialization here
-	return PI_Message();
+
+
+	//checking system info, suppressed in debug mode
+#ifndef _DEBUG
+	SYSTEM_INFO siSysInfo;
+	GetSystemInfo(&siSysInfo);
+
+	printf("--- General hardware information: ---\n");
+	printf(" OEM ID: %u\n", siSysInfo.dwOemId);
+	printf(" Number of processors: %u\n",
+		siSysInfo.dwNumberOfProcessors);
+	printf(" Page size: %u\n", siSysInfo.dwPageSize);
+	printf(" Processor type: %u\n", siSysInfo.dwProcessorType);
+	printf(" Minimum application address: %lu\n",
+		siSysInfo.lpMinimumApplicationAddress);
+	printf(" Maximum application address: %lu\n",
+		siSysInfo.lpMaximumApplicationAddress);
+	printf(" Active processor mask: %u\n",
+		siSysInfo.dwActiveProcessorMask);
+
+	//checking ram info
+	MEMORYSTATUSEX memInfo;
+	memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+	GlobalMemoryStatusEx(&memInfo);
+	DWORDLONG totalVirtualMem = memInfo.ullTotalPageFile;
+	DWORDLONG totalPhysMem = memInfo.ullTotalPhys;
+	printf(" Total physical memory: %lu\n", totalPhysMem);
+	printf(" Total virtual memory: %lu\n\n", totalVirtualMem);
+	
+	//checking CUDA devices
+	printf("--- CUDA Device(s) information: ---\n");
+	int count = 0;
+	CUDARUN(cudaGetDeviceCount(&count));
+
+	if (count == 0)
+	{
+		printf("--- No CUDA device detected! ---\n");
+		return { PI_SYSTEM_REQUIREMENT_ERROR , "No CUDA device detected!\n" };
+	}
+
+	cudaDeviceProp* prop = new cudaDeviceProp[count];
+
+	for (int i = 0; i < count; i++) {
+		CUDARUN(cudaGetDeviceProperties(&prop[i], i));
+		printf("General Information for device %d\n", i);
+		printf("  Name: %s\n", prop[i].name);
+		printf("  Compute capability: %d.%d\n", prop[i].major, prop[i].minor);
+		printf("  Clock rate: %d\n", prop[i].clockRate);
+		printf("  Device copy overlap: ");
+		if (prop[i].deviceOverlap)
+			printf("Enabled\n");
+		else
+			printf("Disabled\n");
+		printf("  Kernel execution timeout : ");
+		if (prop[i].kernelExecTimeoutEnabled)
+			printf("Enabled\n");
+		else
+			printf("Disabled\n");
+		printf("Memory Information for device %d\n", i);
+		printf("  Total global mem: %lu\n", prop[i].totalGlobalMem);
+		printf("  Total constant Mem: %ld\n", prop[i].totalConstMem);
+		printf("  Max mem pitch: %ld\n", prop[i].memPitch);
+		printf("  Texture Alignment: %ld\n", prop[i].textureAlignment);
+		printf("MP Information for device %d\n", i);
+		printf("  Multiprocessor count: %d\n",
+			prop[i].multiProcessorCount);
+		printf("  Shared mem per mp: %ld\n", prop[i].sharedMemPerBlock);
+		printf("  Registers per mp: %d\n", prop[i].regsPerBlock);
+		printf("  Threads in warp: %d\n", prop[i].warpSize);
+		printf("  Max threads per block: %d\n",
+			prop[i].maxThreadsPerBlock);
+		printf("  Max thread dimensions: (%d, %d, %d)\n",
+			prop[i].maxThreadsDim[0], prop[i].maxThreadsDim[1],
+			prop[i].maxThreadsDim[2]);
+		printf("  Max grid dimensions: (%d, %d, %d)\n",
+			prop[i].maxGridSize[0], prop[i].maxGridSize[1],
+			prop[i].maxGridSize[2]);
+		printf("\n");
+	}
+
+	//choose cuda device with highest SM and CC
+	int min_major = 3;
+	int min_minor = 0;
+	bool exist = false;
+	for (int i = 0; i < count; i++)
+	{
+		if (prop[i].major >= min_major && prop[i].minor >= min_minor)
+		{
+			min_major = prop[i].major;
+			min_minor = prop[i].minor;
+			exist = true;
+		}
+	}
+	if (!exist)
+	{
+		printf("Error: CUDA device is required to have compute capabilities %d.%d or higher! \n", min_major, min_minor);
+		return { PI_SYSTEM_REQUIREMENT_ERROR , "No CUDA device matches the compute capabilities requirement!\n" };
+	}
+
+	cudaDeviceProp selectProp;
+	int selectDev;
+	memset(&selectProp, 0, sizeof(cudaDeviceProp));
+	selectProp.major = min_major;
+	selectProp.minor = min_minor;
+	CUDARUN(cudaChooseDevice(&selectDev, &selectProp));
+	CUDARUN(cudaSetDevice(selectDev));
+	printf("CUDA device with ID = %d and compute capabilities %d.%d was selected.\n", selectDev, selectProp.major, selectProp.minor);
+
+	delete[] prop;
+
+
+	printf("\n--- OpenGL information ---\n");
+	
+	int ret = GLInfoPrint();
+	if (ret != 0)
+	{
+		std::cout << "Cannot initialize OpenGL!\n";
+		return { PI_SYSTEM_REQUIREMENT_ERROR , "Cannot initialize OpenGL!\n" };
+	}
+#endif 
+
+	return { PI_OK, "Successful!" };
 }
 
 PI_Message tracer::test()
@@ -846,7 +973,7 @@ PI_Message tracer::getProgress(float & traceProgress, float & renderProgress)
 	return { PI_OK, "Successful!\n" };
 }
 
-PI_Message tracer::getVRAMUsageInfo(long & total, long & free)
+PI_Message tracer::getVRAMUsageInfo(unsigned long & total, unsigned long & free)
 {
 	size_t totalvram = 0, freevram = 0;
 	CUDARUN(cudaMemGetInfo(&freevram, &totalvram));

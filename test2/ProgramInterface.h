@@ -12,6 +12,7 @@
 #define PI_UNKNOWN_ERROR 404
 #define PI_INFO_RESPONSE 201
 #define PI_INPUT_ERROR 300
+#define PI_SYSTEM_REQUIREMENT_ERROR 105
 
 //definition of apodization options
 #define PI_APD_UNIFORM 0
@@ -115,7 +116,7 @@ namespace tracer
 	PI_Message EXPORT clearStorage();
 
 	PI_Message EXPORT getProgress(float& traceProgress, float& renderProgress);
-	PI_Message EXPORT getVRAMUsageInfo(long& total, long& free);
+	PI_Message EXPORT getVRAMUsageInfo(unsigned long & total, unsigned long & free);
 
 	PI_Message EXPORT importImage(const char* path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);	
 	PI_Message EXPORT getImagePrimaryWavelengths(float& wavelengthR, float& wavelengthG, float& wavelengthB);

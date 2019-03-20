@@ -22,9 +22,9 @@ public:
 	float m_zoomStep = 0.5;
 	bool m_useMouse = false;
 
-	Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f),
+	Camera(glm::vec3 position = glm::vec3(200.0f, 0.0f, 0.0f),
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
-		float yaw = 0.0f, float pitch = 0.0f);
+		float yaw = -180.0f, float pitch = 0.0f);
 	~Camera();
 	void reset();
 	void onUpdate(GLFWwindow *window, float deltaTime);

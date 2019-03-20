@@ -54,6 +54,9 @@
     <ClCompile Include="PreferenceDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DocumentationDialog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="AddPointDialog.h">
@@ -77,6 +80,9 @@
     <QtMoc Include="PreferenceDialog.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="DocumentationDialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="QtGuiApplication.ui">
@@ -97,6 +103,9 @@
     <QtUic Include="PreferenceDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="DocumentationDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="QtGuiApplication.qrc">
@@ -111,5 +120,7 @@
   <ItemGroup>
     <None Include="QtGuiApplication.pri" />
     <None Include="QtGuiApplication.pro" />
+    <None Include="..\x64\Release\help\Help.html" />
+    <None Include="Help.html" />
   </ItemGroup>
 </Project>

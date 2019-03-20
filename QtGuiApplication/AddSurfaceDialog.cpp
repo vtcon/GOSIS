@@ -50,6 +50,7 @@ void AddSurfaceDialog::on_pushAddSurface_clicked()
 	float R = this->lineRadius->text().toFloat();
 	float refracI = this->lineRefracI->text().toFloat();
 	int apo = this->comboBox->currentIndex();
+	float asph = this->lineAsph->text().toFloat();
 	QString apoPath = lineApoPath->text();
 
 	if (Z <= 0)
@@ -75,6 +76,11 @@ void AddSurfaceDialog::on_pushAddSurface_clicked()
 	if (apo == 2 && apoPath.isEmpty())
 	{
 		errorstr.append("Please select an image file for the custom apodization!\n");
+	}
+
+	if (R*R - (asph + 1.0f)*diam*diam / 4.0f < 0)
+	{
+		errorstr.append("This combination of curvature, asphericity and diameter is not geometrically feasible!\n");
 	}
 
 	/*

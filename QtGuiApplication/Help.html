@@ -1,0 +1,16 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <h2><span style="color: #3366ff;">GPU-based Ray-tracing Optical Simulation and Image Synthesis (GROSIS)</span></h2>
+    <h3>&nbsp;</h3>
+    <h3><span style="color: #000080;">Introduction</span></h3>
+    <p>GROSIS renders the image of luminous points after the light has transmitted though a customized optical system.</p>
+    <p>The software is based on the principle of sequential ray tracing for the simulation of light transmission (i.e. ray is traced through surfaces in a predetermined order). The rendering principle is based on the intersection-over-area metric (i.e. how much the projected area of each pixel overlaps the "cone" of rays).</p>
+    <p>At its core, the software is centered around wavelengths. Among other parameters, luminous points need to specify their wavelengths. The user must supply the optical configurations corresponding to each wavelengths. Tracing and Rendering is carried out sequentially for each wavelength. At the end, when the final RGB image is created, the wavelength data are mapped to the RGB color spaces following the colorimetry principles.</p>
+</body>
+</html>

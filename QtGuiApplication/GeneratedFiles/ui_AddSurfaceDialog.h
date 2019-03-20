@@ -203,7 +203,7 @@ public:
         label_6->setText(QApplication::translate("AddSurfaceDialog", "Refractive Index", nullptr));
         lineRefracI->setText(QApplication::translate("AddSurfaceDialog", "1.5168", nullptr));
         label_7->setText(QApplication::translate("AddSurfaceDialog", "Asphericity", nullptr));
-        lineAsph->setText(QApplication::translate("AddSurfaceDialog", "1.0", nullptr));
+        lineAsph->setText(QApplication::translate("AddSurfaceDialog", "0.0", nullptr));
         label_8->setText(QApplication::translate("AddSurfaceDialog", "Apodization", nullptr));
         comboBox->setItemText(0, QApplication::translate("AddSurfaceDialog", "Uniform", nullptr));
         comboBox->setItemText(1, QApplication::translate("AddSurfaceDialog", "Bartlett", nullptr));
