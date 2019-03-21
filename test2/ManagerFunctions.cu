@@ -10,6 +10,7 @@
 #include <list>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 //global variables
 
@@ -515,7 +516,9 @@ private:
 
 	int RenderingTrianglesCreator(const raybundle<MYFLOATTYPE>& thisbundle) //build up vector containing the mesh
 	{
+#ifdef _MYDEBUGMODE
 		std::cout << "Tesselating...\n";
+#endif
 		//test data
 		int arraySize = thisbundle.size;
 		point2D<int>* inputArray = thisbundle.samplinggrid;

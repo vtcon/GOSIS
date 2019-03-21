@@ -18,6 +18,7 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <atomic>
 
 #include "windows.h"
 #include "psapi.h"
@@ -631,11 +632,31 @@ void QtGuiApplication::on_pushCheckData_clicked()
 
 void QtGuiApplication::on_pushTrace_clicked()
 {
-	if (tracer::trace().code != PI_OK)
+	std::atomic<bool> done(false);
+	tracer::PI_Message result;
+	using namespace std::chrono_literals;
+
+	std::thread thread([&]() { result = tracer::trace(); done = true; });
+
+	float traceProgress = 0;
+	float renderProgress = 0;
+
+	while (!done)
+	{
+		tracer::getProgress(traceProgress, renderProgress);
+		ui.progressTrace->setValue((int)100.0f*traceProgress);
+		QCoreApplication::processEvents();
+		std::this_thread::sleep_for(200ms);
+	}
+
+	thread.join();
+	
+	if (result.code != PI_OK)
 	{
 		QMessageBox msgBox;
 		msgBox.setWindowTitle("Core API error");
 		msgBox.setText("Trace API returned error!\n");
+		std::cout << std::string(result.detail) << "\n";
 		msgBox.setStandardButtons(QMessageBox::Ok);
 		msgBox.setDefaultButton(QMessageBox::Ok);
 		msgBox.exec();
@@ -643,77 +664,40 @@ void QtGuiApplication::on_pushTrace_clicked()
 		stateReset();
 		return;
 	}
+
+	ui.progressTrace->setValue(100);
+
 	stateNext();
 }
 
 void QtGuiApplication::on_pushRender_clicked()
 {
-	/*
-	RenderProgressEmittor emittor;
-	connect(&emittor, &RenderProgressEmittor::progressChanges, this, &QtGuiApplication::updateRenderProgressBar);
-	auto renderProgressUpdater = [](RenderProgressEmittor* handle) {
-		while (true)
-		{
-			handle->setProgress((int)(100.0*tracer::PI_renderProgress));
-			using namespace std::literals::chrono_literals;
-			std::this_thread::sleep_for(0.5s);
-		}
-		};
+	std::atomic<bool> done(false);
+	tracer::PI_Message result;
+	using namespace std::chrono_literals;
 
-	std::thread threadRenderProgress(renderProgressUpdater, &emittor);
-	*/
-	/*
-	QThread* thread = new QThread(this);
-	RenderProgressEmittor* worker = new RenderProgressEmittor; 
-	worker->moveToThread(thread);
+	std::thread thread([&]() { result = tracer::render(); done = true; });
 
-	connect(thread, SIGNAL(finished()), worker, SLOT(deleteLater()));
-	connect(thread, SIGNAL(started()), worker, SLOT(watchProgress()));
-	connect(worker, SIGNAL(progressChanges(int)), this, SLOT(updateRenderProgressBar(int)));
+	float traceProgress = 0;
+	float renderProgress = 0;
 
-	thread->start();
-	*/
-	
-	std::future<tracer::PI_Message> asyncresult = std::async(std::launch::async, &tracer::render);
-
-	QTimer *timer = new QTimer(this);
-	connect(timer, SIGNAL(timeout()), this, SLOT(timerTest()));
-	connect(timer, SIGNAL(timeout()), this, SLOT(updateRenderProgressDirectly()));
-	timer->start(200);
-
-	//auto rendermsg = tracer::render();
-	//std::thread rendererThread(tracer::render);
-	//tracer::render();
-	if (false)
+	while (!done)
 	{
-		QMessageBox msgBox;
-		msgBox.setWindowTitle("Rendering...");
-		msgBox.setText("Please be patient!\n");
-		msgBox.setStandardButtons(QMessageBox::Ok);
-		msgBox.setDefaultButton(QMessageBox::Ok);
-		msgBox.exec();
+		tracer::getProgress(traceProgress, renderProgress);
+		ui.progressRender->setValue((int)100.0f*renderProgress);
+		QCoreApplication::processEvents();
+		std::this_thread::sleep_for(200ms);
 	}
-	{
-		//std::cout << "[GUI] Renderer is running!\n";
-	}
-	
-	auto rendermsg = asyncresult.get();
-	/*
-	if (rendermsg.code != PI_OK)
-	{
-		
-		//if (threadRenderProgress.joinable())
-		//	threadRenderProgress.join();
-		
-		//thread->quit();
-		//thread->wait();
-		
-		ui.progressRender->setValue(0);
-		timer->stop();
 
+	thread.join();
+	
+	
+	if (result.code != PI_OK)
+	{
 		QMessageBox msgBox;
 		msgBox.setWindowTitle("Core API error");
 		msgBox.setText("Render API returned error!\n");
+		std::cout << std::string(result.detail) << "\n";
 		msgBox.setStandardButtons(QMessageBox::Ok);
 		msgBox.setDefaultButton(QMessageBox::Ok);
 		msgBox.exec();
@@ -721,25 +705,8 @@ void QtGuiApplication::on_pushRender_clicked()
 		stateReset();
 		return;
 	}
-	*/
-
-	//if (rendererThread.joinable()) rendererThread.join();
 
 	ui.progressRender->setValue(100);
-	timer->stop();
-
-	
-	/*
-	thread->quit();
-	thread->wait();
-	*/
-	/*
-	if (threadRenderProgress.joinable())
-		threadRenderProgress.join();
-
-	emittor.setProgress((int)(75));
-	*/
-	
 	
 	//create output image: these codes temporarily lies here
 	float* traceableWavelengths = nullptr;
@@ -774,11 +741,33 @@ void QtGuiApplication::on_pushRender_clicked()
 
 void QtGuiApplication::on_pushTraceAndRender_clicked()
 {
-	if (tracer::traceAndRender().code != PI_OK)
+	std::atomic<bool> done(false);
+	tracer::PI_Message result;
+	using namespace std::chrono_literals;
+
+	std::thread thread([&]() { result = tracer::traceAndRender(); done = true; });
+
+	float traceProgress = 0;
+	float renderProgress = 0;
+
+	while (!done)
+	{
+		tracer::getProgress(traceProgress, renderProgress);
+		ui.progressTrace->setValue((int)100.0f*renderProgress);
+		ui.progressRender->setValue((int)100.0f*renderProgress);
+		QCoreApplication::processEvents();
+		std::this_thread::sleep_for(200ms);
+	}
+
+	thread.join();
+	
+
+	if (result.code != PI_OK)
 	{
 		QMessageBox msgBox;
 		msgBox.setWindowTitle("Core API error");
 		msgBox.setText("Trace And Render API returned error!\n");
+		std::cout << std::string(result.detail) << "\n";
 		msgBox.setStandardButtons(QMessageBox::Ok);
 		msgBox.setDefaultButton(QMessageBox::Ok);
 		msgBox.exec();
@@ -786,6 +775,9 @@ void QtGuiApplication::on_pushTraceAndRender_clicked()
 		stateReset();
 		return;
 	}
+
+	ui.progressRender->setValue(100);
+	ui.progressTrace->setValue(100);
 
 	//create output image: these codes temporarily lies here
 	float* traceableWavelengths = nullptr;

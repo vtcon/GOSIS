@@ -60,19 +60,19 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CloneConfigDialog.cpp">
-      <Filter>Generated Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ConsoleOut.cpp">
-      <Filter>Generated Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DocumentationDialog.cpp">
-      <Filter>Generated Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PreferenceDialog.cpp">
-      <Filter>Generated Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RenderProgressEmittor.cpp">
-      <Filter>Generated Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -85,20 +85,20 @@
     <QtMoc Include="QtGuiApplication.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="ConsoleOut.h">
-      <Filter>Generated Files</Filter>
-    </QtMoc>
     <QtMoc Include="CloneConfigDialog.h">
-      <Filter>Generated Files</Filter>
-    </QtMoc>
-    <QtMoc Include="PreferenceDialog.h">
-      <Filter>Generated Files</Filter>
-    </QtMoc>
-    <QtMoc Include="DocumentationDialog.h">
-      <Filter>Generated Files</Filter>
+      <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="RenderProgressEmittor.h">
-      <Filter>Generated Files</Filter>
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="ConsoleOut.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="DocumentationDialog.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="PreferenceDialog.h">
+      <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
@@ -130,14 +130,14 @@
     </QtRcc>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="QDebugStream.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="..\x64\Release\help\Help.html" />
     <None Include="Help.html" />
     <None Include="QtGuiApplication.pri" />
     <None Include="QtGuiApplication.pro" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="QDebugStream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
