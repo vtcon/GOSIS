@@ -3,7 +3,7 @@
 # ------------------------------------------------------
 
 TEMPLATE = app
-TARGET = QtGuiApplication
+TARGET = GOSIS
 DESTDIR = ../x64/Release
 QT += core gui widgets
 CONFIG += release
@@ -16,4 +16,4 @@ MOC_DIR += ./GeneratedFiles/$(ConfigurationName)
 OBJECTS_DIR += release
 UI_DIR += ./GeneratedFiles
 RCC_DIR += ./GeneratedFiles
-include(QtGuiApplicationRelease.pri)
+include(QtGuiApplication.pri)

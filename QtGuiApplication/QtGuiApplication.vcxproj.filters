@@ -59,6 +59,21 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CloneConfigDialog.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConsoleOut.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DocumentationDialog.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PreferenceDialog.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderProgressEmittor.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="AddPointDialog.h">
@@ -70,30 +85,21 @@
     <QtMoc Include="QtGuiApplication.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="GeneratedFiles\moc_AddPointDialog.cpp">
+    <QtMoc Include="ConsoleOut.h">
       <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\moc_AddSurfaceDialog.cpp">
+    </QtMoc>
+    <QtMoc Include="CloneConfigDialog.h">
       <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\moc_QtGuiApplication.cpp">
+    </QtMoc>
+    <QtMoc Include="PreferenceDialog.h">
       <Filter>Generated Files</Filter>
-    </ClCompile>
-    <CustomBuild Include="GeneratedFiles\moc_predefs.h.cbt">
+    </QtMoc>
+    <QtMoc Include="DocumentationDialog.h">
       <Filter>Generated Files</Filter>
-    </CustomBuild>
-    
-    <ClInclude Include="GeneratedFiles\ui_AddPointDialog.h">
+    </QtMoc>
+    <QtMoc Include="RenderProgressEmittor.h">
       <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GeneratedFiles\ui_AddSurfaceDialog.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GeneratedFiles\ui_QtGuiApplication.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="AddPointDialog.ui">
@@ -105,10 +111,33 @@
     <QtUic Include="QtGuiApplication.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="CloneConfigDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="ConsoleOut.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="DocumentationDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="PreferenceDialog.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <QtRcc Include="QtGuiApplication.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="QDebugStream.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\x64\Release\help\Help.html" />
+    <None Include="Help.html" />
+    <None Include="QtGuiApplication.pri" />
+    <None Include="QtGuiApplication.pro" />
   </ItemGroup>
 </Project>

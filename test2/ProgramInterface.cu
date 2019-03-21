@@ -83,7 +83,7 @@ extern int GLInfoPrint();
 PI_Message tracer::initialization()
 {
 	//do necessary program initialization here
-
+	PI_maxParallelThread = std::thread::hardware_concurrency();
 
 	//checking system info, suppressed in debug mode
 #ifndef _DEBUG
@@ -164,8 +164,8 @@ PI_Message tracer::initialization()
 	}
 
 	//choose cuda device with highest SM and CC
-	int min_major = 3;
-	int min_minor = 0;
+	int min_major = CUDA_CC_MAJOR;
+	int min_minor = CUDA_CC_MINOR;
 	bool exist = false;
 	for (int i = 0; i < count; i++)
 	{
@@ -190,6 +190,7 @@ PI_Message tracer::initialization()
 	CUDARUN(cudaChooseDevice(&selectDev, &selectProp));
 	CUDARUN(cudaSetDevice(selectDev));
 	printf("CUDA device with ID = %d and compute capabilities %d.%d was selected.\n", selectDev, selectProp.major, selectProp.minor);
+	printf("Minimum required compute capabilities: %d.%d was selected.\n", CUDA_CC_MAJOR, CUDA_CC_MINOR);
 
 	delete[] prop;
 
@@ -1302,7 +1303,7 @@ PI_Message tracer::defaultPreference()
 	PI_primaryWavelengthR = 620;
 	PI_primaryWavelengthG = 530;
 	PI_primaryWavelengthB = 465;
-	PI_maxParallelThread = 10;
+	PI_maxParallelThread = std::thread::hardware_concurrency();
 
 	return { PI_OK, "Successful!\n" };
 }

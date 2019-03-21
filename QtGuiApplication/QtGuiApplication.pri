@@ -16,5 +16,9 @@ SOURCES += ./AddPointDialog.cpp \
     ./QtGuiApplication.cpp
 FORMS += ./AddPointDialog.ui \
     ./AddSurfaceDialog.ui \
+    ./CloneConfigDialog.ui \
+    ./ConsoleOut.ui \
+    ./DocumentationDialog.ui \
+    ./PreferenceDialog.ui \
     ./QtGuiApplication.ui
 RESOURCES += QtGuiApplication.qrc

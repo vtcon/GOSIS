@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <list>
 #include <thread>
+#include <mutex>
 
 //global variables
 
@@ -309,12 +310,23 @@ public:
 		}
 		*/
 
+		std::list<std::thread> list_thread;
+
+		//for (int i = 0; i < job_size; i++)
+		//{
+		//	auto lastindex = (pcolumns[i])->numofsurfaces; //two code lines, make it easier to debug
+		//	RenderingTrianglesCreator((*pcolumns[i])[lastindex]);
+		//}
+
 		for (int i = 0; i < job_size; i++)
 		{
 			auto lastindex = (pcolumns[i])->numofsurfaces; //two code lines, make it easier to debug
-			RenderingTrianglesCreator((*pcolumns[i])[lastindex]);
+			list_thread.emplace_back(&TriangleRendererJob::RenderingTrianglesCreator, this, std::ref((*pcolumns[i])[lastindex]));
+			//RenderingTrianglesCreator((*pcolumns[i])[lastindex]);
 		}
 		
+		std::for_each(list_thread.begin(), list_thread.end(), std::mem_fn(&std::thread::join));
+
 		transferMeshToDevice();
 
 		cudaDeviceSynchronize();
@@ -418,6 +430,7 @@ public:
 	}
 
 private:
+	std::mutex v_triangles_lock;
 	std::vector<PerKernelRenderingInput> v_triangles;
 	PerKernelRenderingInput* hp_triangles = nullptr;
 	PerKernelRenderingInput* dp_triangles = nullptr;
@@ -596,20 +609,24 @@ private:
 #endif	
 
 		//parse the built-up mesh and copy data in vector
-		for (IndexTriangle indextriangle : indexTriangles)
 		{
-			v_triangles.push_back({ 
-				(thisbundle.prays)[indextriangle.i1].pos,
-				(thisbundle.prays)[indextriangle.i2].pos,
-				(thisbundle.prays)[indextriangle.i3].pos,
-				(thisbundle.prays)[indextriangle.i1].dir,
-				(thisbundle.prays)[indextriangle.i2].dir,
-				(thisbundle.prays)[indextriangle.i3].dir,
-				(thisbundle.prays)[indextriangle.i1].intensity,
-				(thisbundle.prays)[indextriangle.i2].intensity,
-				(thisbundle.prays)[indextriangle.i3].intensity
-				});
+			std::lock_guard<std::mutex> lock(v_triangles_lock);
+			for (IndexTriangle indextriangle : indexTriangles)
+			{
+				v_triangles.push_back({
+					(thisbundle.prays)[indextriangle.i1].pos,
+					(thisbundle.prays)[indextriangle.i2].pos,
+					(thisbundle.prays)[indextriangle.i3].pos,
+					(thisbundle.prays)[indextriangle.i1].dir,
+					(thisbundle.prays)[indextriangle.i2].dir,
+					(thisbundle.prays)[indextriangle.i3].dir,
+					(thisbundle.prays)[indextriangle.i1].intensity,
+					(thisbundle.prays)[indextriangle.i2].intensity,
+					(thisbundle.prays)[indextriangle.i3].intensity
+					});
+			}
 		}
+		
 
 		return 0;
 	}
