@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'CloneConfigDialog.ui'
 **
-** Created by: Qt User Interface Compiler version 5.12.2
+** Created by: Qt User Interface Compiler version 5.12.0
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -96,6 +96,9 @@ public:
         retranslateUi(CloneConfigDialog);
         QObject::connect(pushButton_2, SIGNAL(clicked()), CloneConfigDialog, SLOT(reject()));
         QObject::connect(pushButton, SIGNAL(clicked()), CloneConfigDialog, SLOT(accept()));
+
+        pushButton->setDefault(true);
+
 
         QMetaObject::connectSlotsByName(CloneConfigDialog);
     } // setupUi

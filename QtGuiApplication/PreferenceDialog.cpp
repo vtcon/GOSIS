@@ -17,7 +17,8 @@ bool operator==(const tracer::PI_Preferences& lhs, const tracer::PI_Preferences&
 	bool cond9 = lhs.primaryWavelengthR == rhs.primaryWavelengthR;
 	bool cond10 = lhs.primaryWavelengthG == rhs.primaryWavelengthG;
 	bool cond11 = lhs.primaryWavelengthB == rhs.primaryWavelengthB;
-	return cond1 && cond2 && cond3 && cond4 && cond5 && cond6 && cond7 && cond8 && cond9 && cond10 && cond11;
+	bool cond12 = lhs.maxParallelThread == rhs.maxParallelThread;
+	return cond1 && cond2 && cond3 && cond4 && cond5 && cond6 && cond7 && cond8 && cond9 && cond10 && cond11 && cond12;
 }
 
 bool operator!=(const tracer::PI_Preferences& lhs, const tracer::PI_Preferences& rhs)
@@ -85,6 +86,7 @@ PreferenceDialog::PreferenceDialog(QWidget *parent)
 	lineWavelengthR->setText(QString::number(loadPref.primaryWavelengthR));
 	lineWavelengthG->setText(QString::number(loadPref.primaryWavelengthG));
 	lineWavelengthB->setText(QString::number(loadPref.primaryWavelengthB));
+	lineCPUThread->setText(QString::number(loadPref.maxParallelThread));
 }
 
 PreferenceDialog::~PreferenceDialog()
@@ -95,6 +97,12 @@ void PreferenceDialog::on_pushOK_clicked()
 {
 	tracer::PI_Preferences newPref;
 	//read in new pref and scan for error
+
+	int valCPUThread = lineCPUThread->text().toInt();
+	valCPUThread = ((valCPUThread <= 1) ? 1 : valCPUThread) >= 128 ? 128 : valCPUThread;
+	lineCPUThread->setText(QString::number(valCPUThread));
+	newPref.maxParallelThread = valCPUThread;
+
 	switch (comboThreadCount->currentIndex())
 	{
 	case 2:
@@ -250,4 +258,5 @@ void PreferenceDialog::on_pushDefault_clicked()
 	lineWavelengthR->setText(QString::number(loadPref.primaryWavelengthR));
 	lineWavelengthG->setText(QString::number(loadPref.primaryWavelengthG));
 	lineWavelengthB->setText(QString::number(loadPref.primaryWavelengthB));
+	lineCPUThread->setText(QString::number(loadPref.maxParallelThread));
 }

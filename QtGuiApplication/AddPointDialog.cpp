@@ -49,7 +49,7 @@ void AddPointDialog::on_pushButton_clicked()
 			msgBox.setText("The entered point has a new wavelength");
 			msgBox.setInformativeText("Do you want to add a new wavelength to the list?");
 			msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-			msgBox.setDefaultButton(QMessageBox::No);
+			msgBox.setDefaultButton(QMessageBox::Yes);
 			int ret = msgBox.exec();
 			switch (ret)
 			{

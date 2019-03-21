@@ -71,5 +71,6 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface,
 	point2D<MYFLOATTYPE> primaryAxisTiltThetaAndPhiInDegree = { 0,0 });
 
 int ColumnCreator3();
+int ColumnCreator4();
 int KernelLauncher(int argc, char** argv);
 int KernelLauncher2(int argc, char** argv);

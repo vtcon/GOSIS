@@ -7,6 +7,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <list>
+#include <thread>
 
 //global variables
 
@@ -17,6 +19,7 @@ extern float activeWavelength;
 extern int PI_ThreadsPerKernelLaunch;
 extern int PI_traceJobSize;
 extern int PI_renderJobSize;
+extern int PI_maxParallelThread;
 
 // external function definitions:
 extern __global__ void quadrictracer(QuadricTracerKernelLaunchParams kernelparams);
@@ -893,6 +896,60 @@ int ColumnCreator3()
 
 	//mark the column as initialized after initializing it
 	mainStorageManager.jobCheckIn(job, StorageHolder<RayBundleColumn*>::Status::initialized);
+
+	return 0;
+}
+
+int ColumnCreator4()
+{
+	float wavelength1 = activeWavelength;
+
+	//get the number of surfaces
+	OpticalConfig* thisOpticalConfig = nullptr;
+	if (!mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength1))
+	{
+		std::cout << "Cannot find optical config at " << wavelength1 << " nm\n";
+		return -2;
+	}
+	int numofsurfaces = thisOpticalConfig->numofsurfaces;
+
+	std::list<LuminousPoint*> list_p_point;
+	std::list<RayBundleColumn*> list_job;
+	std::list<std::thread> list_thread;
+
+	int runCount = 0;
+	for (int i = 0; i < PI_maxParallelThread; i++, runCount++)
+	{
+		LuminousPoint* temp_p_point = nullptr;
+		bool output = mainStorageManager.takeOne(temp_p_point, StorageHolder<LuminousPoint>::Status::uninitialized, wavelength1);
+		if (!output) //no jobs to do
+			break;
+		list_p_point.push_back(temp_p_point);
+
+		RayBundleColumn* temp_job = nullptr;
+		if (mainStorageManager.jobCheckOut(temp_job, numofsurfaces, wavelength1))
+			list_job.push_back(temp_job);
+
+		list_thread.emplace_back(init_2D_dualpolar_v3<MYFLOATTYPE>, &((*(list_job.back()))[0]), thisOpticalConfig, *(list_p_point.back()));
+	}
+
+	if (runCount == 0)
+	{
+		return -2;
+	}
+
+	std::for_each(list_thread.begin(), list_thread.end(), std::mem_fn(&std::thread::join));
+
+	for (auto each_p_point : list_p_point)
+	{
+		mainStorageManager.jobCheckIn(each_p_point, StorageHolder<LuminousPoint>::Status::initialized);
+	}
+
+	for (auto each_job : list_job)
+	{
+		//mark the column as initialized after initializing it
+		mainStorageManager.jobCheckIn(each_job, StorageHolder<RayBundleColumn*>::Status::initialized);
+	}
 
 	return 0;
 }

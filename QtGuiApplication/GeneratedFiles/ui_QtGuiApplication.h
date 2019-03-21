@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'QtGuiApplication.ui'
 **
-** Created by: Qt User Interface Compiler version 5.12.2
+** Created by: Qt User Interface Compiler version 5.12.0
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -152,12 +152,13 @@ public:
     QGroupBox *groupBox_5;
     QGridLayout *gridLayout_11;
     QPushButton *pushCheckData;
+    QPushButton *pushTraceAndRender;
+    QSpacerItem *horizontalSpacer_3;
     QPushButton *pushTrace;
     QProgressBar *progressTrace;
     QPushButton *pushRender;
     QProgressBar *progressRender;
     QTextEdit *textEditProcess;
-    QLabel *labelCheckData;
     QGroupBox *groupBox_9;
     QGridLayout *gridLayout_12;
     QLabel *label_17;
@@ -726,6 +727,15 @@ public:
 
         gridLayout_11->addWidget(pushCheckData, 0, 0, 1, 1);
 
+        pushTraceAndRender = new QPushButton(groupBox_5);
+        pushTraceAndRender->setObjectName(QString::fromUtf8("pushTraceAndRender"));
+
+        gridLayout_11->addWidget(pushTraceAndRender, 0, 1, 1, 1);
+
+        horizontalSpacer_3 = new QSpacerItem(378, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+        gridLayout_11->addItem(horizontalSpacer_3, 0, 2, 1, 1);
+
         pushTrace = new QPushButton(groupBox_5);
         pushTrace->setObjectName(QString::fromUtf8("pushTrace"));
 
@@ -735,7 +745,7 @@ public:
         progressTrace->setObjectName(QString::fromUtf8("progressTrace"));
         progressTrace->setValue(0);
 
-        gridLayout_11->addWidget(progressTrace, 1, 1, 1, 1);
+        gridLayout_11->addWidget(progressTrace, 1, 1, 1, 2);
 
         pushRender = new QPushButton(groupBox_5);
         pushRender->setObjectName(QString::fromUtf8("pushRender"));
@@ -746,17 +756,12 @@ public:
         progressRender->setObjectName(QString::fromUtf8("progressRender"));
         progressRender->setValue(0);
 
-        gridLayout_11->addWidget(progressRender, 2, 1, 1, 1);
+        gridLayout_11->addWidget(progressRender, 2, 1, 1, 2);
 
         textEditProcess = new QTextEdit(groupBox_5);
         textEditProcess->setObjectName(QString::fromUtf8("textEditProcess"));
 
-        gridLayout_11->addWidget(textEditProcess, 3, 0, 1, 2);
-
-        labelCheckData = new QLabel(groupBox_5);
-        labelCheckData->setObjectName(QString::fromUtf8("labelCheckData"));
-
-        gridLayout_11->addWidget(labelCheckData, 0, 1, 1, 1);
+        gridLayout_11->addWidget(textEditProcess, 3, 0, 1, 3);
 
 
         gridLayout_13->addWidget(groupBox_5, 0, 0, 1, 1);
@@ -908,6 +913,7 @@ public:
 
         tabWidget->setCurrentIndex(0);
         stackedInput->setCurrentIndex(0);
+        pushAcceptConfig->setDefault(true);
 
 
         QMetaObject::connectSlotsByName(QtGuiApplicationClass);
@@ -1006,9 +1012,9 @@ public:
         tabWidget->setTabText(tabWidget->indexOf(tabConfig), QApplication::translate("QtGuiApplicationClass", "Configuration", nullptr));
         groupBox_5->setTitle(QApplication::translate("QtGuiApplicationClass", "Processing", nullptr));
         pushCheckData->setText(QApplication::translate("QtGuiApplicationClass", "Data Check-in", nullptr));
+        pushTraceAndRender->setText(QApplication::translate("QtGuiApplicationClass", "Trace and Render", nullptr));
         pushTrace->setText(QApplication::translate("QtGuiApplicationClass", "Trace", nullptr));
         pushRender->setText(QApplication::translate("QtGuiApplicationClass", "Render", nullptr));
-        labelCheckData->setText(QApplication::translate("QtGuiApplicationClass", "TextLabel", nullptr));
         groupBox_9->setTitle(QApplication::translate("QtGuiApplicationClass", "Output", nullptr));
         label_17->setText(QApplication::translate("QtGuiApplicationClass", "Available Wavelengths", nullptr));
         pushShowWavelength->setText(QApplication::translate("QtGuiApplicationClass", "Show Wavelength", nullptr));

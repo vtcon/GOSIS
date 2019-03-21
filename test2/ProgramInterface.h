@@ -71,14 +71,15 @@ namespace tracer
 		int ThreadsPerKernelLaunch = 16;
 		int linearRayDensity = 30;//20 is ok
 		unsigned int rgbStandard = PI_ADOBERGB;
-		int traceJobSize = 3;
-		int renderJobSize = 3;
+		int traceJobSize = 10;
+		int renderJobSize = 10;
 		unsigned short int rawFormat = PI_XYZ; //OIC_LMS
 		unsigned int projectionMethod = PI_PROJECTION_PLATE_CARREE;
 		int displayWindowSize = 800;
 		float primaryWavelengthR = 620;
 		float primaryWavelengthG = 530;
 		float primaryWavelengthB = 465;
+		int maxParallelThread = 10;
 	};
 
 	//Program API functions
@@ -101,6 +102,7 @@ namespace tracer
 	PI_Message EXPORT checkData();
 	PI_Message EXPORT trace();
 	PI_Message EXPORT render();
+	PI_Message EXPORT traceAndRender();
 
 	PI_Message EXPORT showRaw(float* wavelengths, int count);
 	PI_Message EXPORT showRGB(int uniqueID);

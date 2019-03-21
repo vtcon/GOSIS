@@ -73,9 +73,11 @@ private:
 			ui.checkShowOpticalSurfaces->setEnabled(false);
 			ui.pushVisualizeRGB->setEnabled(false);
 			ui.pushVisualizeConfig->setEnabled(false);
+			ui.pushTraceAndRender->setEnabled(false);
 			break;
 		case 1:
 			ui.pushTrace->setEnabled(true);
+			ui.pushTraceAndRender->setEnabled(true);
 			ui.pushRender->setEnabled(false);
 			ui.pushShowWavelength->setEnabled(false);
 			ui.pushDisplayRGB->setEnabled(false);
@@ -85,6 +87,7 @@ private:
 			break;
 		case 2:
 			ui.pushTrace->setEnabled(false);
+			ui.pushTraceAndRender->setEnabled(false);
 			ui.pushRender->setEnabled(true);
 			ui.pushShowWavelength->setEnabled(false);
 			ui.pushDisplayRGB->setEnabled(false);
@@ -93,6 +96,7 @@ private:
 			break;
 		case 3:
 			ui.pushTrace->setEnabled(false);
+			ui.pushTraceAndRender->setEnabled(false);
 			ui.pushRender->setEnabled(false);
 			ui.pushShowWavelength->setEnabled(true);
 			ui.pushDisplayRGB->setEnabled(true);
@@ -139,7 +143,8 @@ private slots:
 	void on_pushCheckData_clicked();
 	void on_pushTrace_clicked();
 	void on_pushRender_clicked();
-
+	void on_pushTraceAndRender_clicked();
+		
 	void on_pushShowWavelength_clicked();
 	void on_pushDisplayRGB_clicked();
 	void on_pushSaveRaw_clicked();

@@ -4,17 +4,16 @@
 
 TEMPLATE = app
 TARGET = QtGuiApplication
-DESTDIR = ../x64/Debug
+DESTDIR = ../x64/Release
 QT += core gui widgets
-CONFIG += debug
-CONFIG += console
+CONFIG += release
 DEFINES += _UNICODE _ENABLE_EXTENDED_ALIGNED_STORAGE WIN64 QT_DLL QT_WIDGETS_LIB
 INCLUDEPATH += ./GeneratedFiles \
     . \
     ./GeneratedFiles/$(ConfigurationName)
 DEPENDPATH += .
 MOC_DIR += ./GeneratedFiles/$(ConfigurationName)
-OBJECTS_DIR += debug
+OBJECTS_DIR += release
 UI_DIR += ./GeneratedFiles
 RCC_DIR += ./GeneratedFiles
-include(QtGuiApplication.pri)
+include(QtGuiApplicationRelease.pri)

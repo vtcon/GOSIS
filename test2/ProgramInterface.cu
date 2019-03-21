@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <cstdlib> //for the "rand" function
 #include <chrono>
+#include <thread>
 
 //for the console:
 #include <stdio.h>
@@ -37,8 +38,8 @@ bool maximizeContrast = true; //should be set to true if inputs are points, and 
 int PI_ThreadsPerKernelLaunch = 16;
 int PI_linearRayDensity = 30;//20 is ok
 unsigned int PI_rgbStandard = IF_ADOBERGB;
-int PI_traceJobSize = 3;
-int PI_renderJobSize = 3;
+int PI_traceJobSize = 10;
+int PI_renderJobSize = 10;
 unsigned short int PI_rawFormat = OIC_XYZ; //OIC_LMS
 unsigned int PI_projectionMethod = IF_PROJECTION_PLATE_CARREE;
 int PI_displayWindowSize = 800;
@@ -46,6 +47,7 @@ float PI_primaryWavelengthR = 620;
 float PI_primaryWavelengthG = 530;
 float PI_primaryWavelengthB = 465;
 int PI_maxTextureDimension = 2048;
+int PI_maxParallelThread = 10;
 
 //internally used global variables, but still should be put on preferences
 int PI_refractiveSurfaceArms = 20;
@@ -516,7 +518,7 @@ PI_Message tracer::checkData()
 		}
 
 		//initialize all points
-		while (ColumnCreator3() != -2);
+		while (ColumnCreator4() != -2);
 		mainStorageManager.jobCheckIn(currentwavelength, StorageHolder<float>::Status::initialized);
 	}
 
@@ -637,6 +639,68 @@ PI_Message tracer::render()
 	image1.displayRGB();
 	*/
 
+	std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+	std::cout << "Rendering completed after " << duration << " ms\n";
+
+	return { PI_OK, "Rendering completed!\n" };
+}
+
+PI_Message tracer::traceAndRender()
+{
+	//start clock
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
+	float* currentwavelength = nullptr;
+	int runCounts = 0;
+
+	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::initialized); runCounts++)
+	{
+		//trace all points
+		activeWavelength = *currentwavelength;
+
+		//get the corresponding optical config
+		OpticalConfig* thisOpticalConfig = nullptr;
+		bool b_getConfig = mainStorageManager.infoCheckOut(thisOpticalConfig, activeWavelength);
+		if (!b_getConfig)
+		{
+			std::cout << "Cannot get optical config for this wavelength\n";
+			return { PI_UNKNOWN_ERROR, "Cannot get optical config for this wavelength\n" };
+		}
+
+		//create a (hopefully clear) image on device
+		thisOpticalConfig->p_rawChannel->createSibling();
+		std::cout << "Tracing and Rendering at wavelength = " << activeWavelength << "\n";
+
+		//run the tracer
+		while (KernelLauncher(0, nullptr) != -2)
+		{
+			//run the renderer
+			while (KernelLauncher2(0, nullptr) != -2)
+			{
+				renderedCount = renderedCount + PI_renderJobSize;
+				updateProgressRender();
+			}
+		}
+
+
+		//copy data out
+		thisOpticalConfig->p_rawChannel->copyFromSibling();
+
+		//performing clean up
+		thisOpticalConfig->p_rawChannel->deleteSibling();
+
+		//tell the storage manager that the job is done
+		mainStorageManager.jobCheckIn(currentwavelength, StorageHolder<float>::Status::completed2);
+	}
+
+	if (runCounts == 0)
+	{
+		std::cout << "No wavelength is available for tracing\n";
+		return { PI_UNKNOWN_ERROR, "No wavelength is available for tracing\n" };
+	}
+
+	//stop clock
 	std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 	std::cout << "Rendering completed after " << duration << " ms\n";
@@ -1075,6 +1139,7 @@ PI_Message tracer::getPreferences(PI_Preferences & prefs)
 	prefs.primaryWavelengthR = PI_primaryWavelengthR;
 	prefs.primaryWavelengthG = PI_primaryWavelengthG;
 	prefs.primaryWavelengthB = PI_primaryWavelengthB;
+	prefs.maxParallelThread = PI_maxParallelThread;
 
 	return { PI_OK, "Successfully!\n" };
 }
@@ -1218,6 +1283,8 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 		PI_primaryWavelengthB = prefs.primaryWavelengthB;
 	}
 	
+	int maxConcurency = std::thread::hardware_concurrency();
+	PI_maxParallelThread = (((prefs.maxParallelThread <= 0) ? 1 : prefs.maxParallelThread) >= maxConcurency) ? maxConcurency : prefs.maxParallelThread;
 
 	return { PI_OK, "Successfully!\n" };
 }
@@ -1235,6 +1302,7 @@ PI_Message tracer::defaultPreference()
 	PI_primaryWavelengthR = 620;
 	PI_primaryWavelengthG = 530;
 	PI_primaryWavelengthB = 465;
+	PI_maxParallelThread = 10;
 
 	return { PI_OK, "Successful!\n" };
 }

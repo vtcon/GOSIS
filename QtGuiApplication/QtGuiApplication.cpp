@@ -772,6 +772,53 @@ void QtGuiApplication::on_pushRender_clicked()
 	stateNext();
 }
 
+void QtGuiApplication::on_pushTraceAndRender_clicked()
+{
+	if (tracer::traceAndRender().code != PI_OK)
+	{
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Core API error");
+		msgBox.setText("Trace And Render API returned error!\n");
+		msgBox.setStandardButtons(QMessageBox::Ok);
+		msgBox.setDefaultButton(QMessageBox::Ok);
+		msgBox.exec();
+
+		stateReset();
+		return;
+	}
+
+	//create output image: these codes temporarily lies here
+	float* traceableWavelengths = nullptr;
+	int traceableCount = 0;
+	float* untraceableWavelengths = nullptr;
+	int untraceableCount = 0;
+	listConfigCompanion::getTraceableWavelengths(traceableWavelengths, traceableCount, untraceableWavelengths, untraceableCount);
+
+	for (auto oldID : outputImageIDs)
+	{
+		tracer::deleteOutputImage(oldID);
+	}
+	outputImageIDs.clear();
+
+	int newID = 0;
+	if (tracer::createOutputImage(traceableCount, traceableWavelengths, newID).code == PI_OK)
+	{
+		outputImageIDs.push_back(newID);
+	}
+	else
+	{
+		QMessageBox msgBox;
+		msgBox.setWindowTitle("Core API error");
+		msgBox.setText("Error at creating output image!\n");
+		msgBox.setStandardButtons(QMessageBox::Ok);
+		msgBox.setDefaultButton(QMessageBox::Ok);
+		msgBox.exec();
+	}
+
+	stateNext();
+	stateNext();
+}
+
 void QtGuiApplication::on_pushShowWavelength_clicked()
 {
 	if (ui.listOutputWavelength->currentItem() != nullptr)
