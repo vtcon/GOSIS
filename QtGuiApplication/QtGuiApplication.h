@@ -74,6 +74,7 @@ private:
 			ui.pushVisualizeRGB->setEnabled(false);
 			ui.pushVisualizeConfig->setEnabled(false);
 			ui.pushTraceAndRender->setEnabled(false);
+			ui.pushPause->setEnabled(false);
 			break;
 		case 1:
 			ui.pushTrace->setEnabled(true);
@@ -84,6 +85,7 @@ private:
 			ui.pushSaveRaw->setEnabled(false);
 			ui.pushSaveRGB->setEnabled(false);
 			ui.pushVisualizeConfig->setEnabled(true);
+			ui.pushPause->setEnabled(false);
 			break;
 		case 2:
 			ui.pushTrace->setEnabled(false);
@@ -93,6 +95,7 @@ private:
 			ui.pushDisplayRGB->setEnabled(false);
 			ui.pushSaveRaw->setEnabled(false);
 			ui.pushSaveRGB->setEnabled(false);
+			ui.pushPause->setEnabled(false);
 			break;
 		case 3:
 			ui.pushTrace->setEnabled(false);
@@ -104,12 +107,15 @@ private:
 			ui.pushSaveRGB->setEnabled(true);
 			ui.checkShowOpticalSurfaces->setEnabled(true);
 			ui.pushVisualizeRGB->setEnabled(true);
+			ui.pushPause->setEnabled(false);
 			break;
 		default:
 			//undefined behavior
 			break;
 		}
 	}
+
+	bool cancelFlag = false;
 
 public slots:
 	void updateRenderProgressBar(int newvalue);
@@ -144,7 +150,8 @@ private slots:
 	void on_pushTrace_clicked();
 	void on_pushRender_clicked();
 	void on_pushTraceAndRender_clicked();
-		
+	void on_pushPause_clicked();
+
 	void on_pushShowWavelength_clicked();
 	void on_pushDisplayRGB_clicked();
 	void on_pushSaveRaw_clicked();

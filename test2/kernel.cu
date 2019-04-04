@@ -229,6 +229,8 @@ __global__ void quadrictracer(
 			E*d1*p3 + E*d3*p1 + F*d2*p3 + F*d3*p2 + G*d1 + H*d2 + K*d3;
 		t1 = (delta >= 0.0) ? (beforedelta + sqrt(delta)) / deno : INFINITY;
 		t2 = (delta >= 0.0) ? (beforedelta - sqrt(delta)) / deno : INFINITY;
+		//what to do if delta <0
+		if (delta < 0) goto deactivate_ray;
 	}
 	else
 	{
@@ -295,8 +297,8 @@ __global__ void quadrictracer(
 
 			ddotn = dot(at.dir, surfnormal);
 
-			if ((pquad->antiParallel == true && ddotn > 0.0) ||
-				(pquad->antiParallel == false && ddotn < 0.0))
+			if ((pquad->antiParallel == true && ddotn >= 0.0) ||
+				(pquad->antiParallel == false && ddotn <= 0.0))
 			{
 				if (otherT == INFINITY)
 				{

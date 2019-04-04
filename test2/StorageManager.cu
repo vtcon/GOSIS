@@ -314,8 +314,8 @@ bool StorageManager::takeOne(float *& wavelength, StorageHolder<float>::Status r
 	if (token == wavelengthLedger.end()) return false; //if none is found
 
 	//return the found object, set its status to next status
-	if (token->status != StorageHolder<float>::Status::completed2) //won't advance further if status already at completed 2
-		token->status = StorageHolder<float>::nextStatus(requiredstatus);
+	//if (token->status != StorageHolder<float>::Status::completed2) //won't advance further if status already at completed 2
+	//	token->status = StorageHolder<float>::nextStatus(requiredstatus);
 	wavelength = &(token->content);
 
 	//std::cout << wavelengthLedger.size() << "\n";

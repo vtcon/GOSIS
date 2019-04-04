@@ -48,7 +48,7 @@ OpticalConfig::EntrancePupilLocation locateSimpleEntrancePupil(OpticalConfig* cu
 	for (int currentScanDepth = 0; currentScanDepth < scanDepth; currentScanDepth++)
 	{
 		ZThetaPair newPair;
-		newPair.z = startZ + 1.0 + currentScanDepth * scanPitch;
+		newPair.z = startZ + 100.0 + currentScanDepth * scanPitch;
 		newPair.theta = 0;
 		MYFLOATTYPE thetaEnd = 89;
 		lastStepSize = 89;//reset globals before using

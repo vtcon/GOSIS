@@ -65,6 +65,9 @@ long renderedCount = 0;
 void updateProgressTrace();
 void updateProgressRender();
 
+//these variables controls the execution
+bool PI_cancelTraceRender = false;
+bool PI_running = false;
 
 //function definitions
 bool PI_LuminousPoint::operator==(const PI_LuminousPoint & rhs) const
@@ -80,6 +83,7 @@ extern bool runTestOpenGL;
 extern bool runTestGLDrawFacilities;
 extern void GLtest();
 extern int GLInfoPrint();
+
 PI_Message tracer::initialization()
 {
 	//do necessary program initialization here
@@ -543,12 +547,19 @@ PI_Message tracer::trace()
 		//trace all points
 		activeWavelength = *currentwavelength;
 		std::cout << "Tracing at wavelength = " << activeWavelength << "\n";
+
+		PI_running = true;
 		while (KernelLauncher(0, nullptr) != -2)
 		{
 			tracedCount = tracedCount + PI_traceJobSize;
 			updateProgressTrace();
+			if (PI_cancelTraceRender)
+			{
+				PI_running = false;
+				return { PI_OK, "Trace cancelled!\n" };
+			}
 		}
-
+		PI_running = false;
 		mainStorageManager.jobCheckIn(currentwavelength, StorageHolder<float>::Status::completed1);
 	}
 	
@@ -590,12 +601,20 @@ PI_Message tracer::render()
 		thisOpticalConfig->p_rawChannel->createSibling();
 
 		//run the renderer
+		PI_running = true;
 		while (KernelLauncher2(0, nullptr) != -2)
 		{
 			renderedCount = renderedCount + PI_renderJobSize;
 			updateProgressRender();
+			if (PI_cancelTraceRender)
+			{
+				thisOpticalConfig->p_rawChannel->copyFromSibling();
+				thisOpticalConfig->p_rawChannel->deleteSibling();
+				PI_running = false;
+				return { PI_OK, "Render cancelled!\n" };
+			}
 		}
-
+		PI_running = false;
 		//deal with the output
 		//data copy out
 		thisOpticalConfig->p_rawChannel->copyFromSibling();
@@ -674,6 +693,7 @@ PI_Message tracer::traceAndRender()
 		std::cout << "Tracing and Rendering at wavelength = " << activeWavelength << "\n";
 
 		//run the tracer
+		PI_running = true;
 		while (KernelLauncher(0, nullptr) != -2)
 		{
 			//run the renderer
@@ -681,9 +701,16 @@ PI_Message tracer::traceAndRender()
 			{
 				renderedCount = renderedCount + PI_renderJobSize;
 				updateProgressRender();
+				if (PI_cancelTraceRender)
+				{
+					thisOpticalConfig->p_rawChannel->copyFromSibling();
+					thisOpticalConfig->p_rawChannel->deleteSibling();
+					PI_running = false;
+					return { PI_OK, "Operation cancelled!\n" };
+				}
 			}
 		}
-
+		PI_running = false;
 
 		//copy data out
 		thisOpticalConfig->p_rawChannel->copyFromSibling();
@@ -1503,4 +1530,23 @@ PI_Message tracer::drawImage(int uniqueID)
 
 		return { PI_OK, "Successful!\n" };
 	}
+}
+
+PI_Message tracer::pauseTraceRender()
+{
+	std::cout << "Cancelling...\n";
+	PI_cancelTraceRender = true;
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+	while (PI_running)
+	{
+		std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+		if (duration > 10000)//10s watchdog timer
+		{
+			PI_cancelTraceRender = false;
+			return { PI_UNKNOWN_ERROR, "API error: Cannot cancel operation!\n" };
+		}
+	}
+	PI_cancelTraceRender = false;
+	return { PI_OK, "Successful!\n" };
 }

@@ -129,4 +129,6 @@ namespace tracer
 
 	PI_Message EXPORT drawOpticalConfig(float wavelength, bool suppressRefractiveSurfaceTexture = false, bool suppressImageTexture = false);
 	PI_Message EXPORT drawImage(int uniqueID);
+
+	PI_Message EXPORT pauseTraceRender();
 }

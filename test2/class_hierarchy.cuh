@@ -886,7 +886,7 @@ public:
 		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyHostToDevice));
 		CUDARUN(cudaMalloc((void**)&dp_sibling, sizeof(RetinaImageChannel)));
 		CUDARUN(cudaMemcpy(dp_sibling, this, sizeof(RetinaImageChannel), cudaMemcpyHostToDevice));
-		clearSibling();
+		//clearSibling();
 	}
 
 	__host__ void deleteSibling()

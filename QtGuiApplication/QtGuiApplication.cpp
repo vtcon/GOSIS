@@ -636,21 +636,45 @@ void QtGuiApplication::on_pushTrace_clicked()
 	tracer::PI_Message result;
 	using namespace std::chrono_literals;
 
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point t2;
+	long long duration = 0;
+	long long timeRemaining = 0;
+
+	//std::cout << "Tracing completed after " << duration << " ms\n";
+
 	std::thread thread([&]() { result = tracer::trace(); done = true; });
 
+	ui.pushPause->setEnabled(true);
 	float traceProgress = 0;
 	float renderProgress = 0;
+	tracer::getProgress(traceProgress, renderProgress);
+	float originalProgress = traceProgress;
 
 	while (!done)
 	{
 		tracer::getProgress(traceProgress, renderProgress);
 		ui.progressTrace->setValue((int)100.0f*traceProgress);
+		t2 = std::chrono::high_resolution_clock::now();
+		duration = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+		timeRemaining = (1.0f - traceProgress) / (traceProgress - originalProgress + 0.00000001f)*duration;
+		ui.labelTime->setText(tr("Elapsed %1 s/ Remaining %2 s").arg(duration).arg(timeRemaining));
+
+
 		QCoreApplication::processEvents();
-		std::this_thread::sleep_for(200ms);
+		std::this_thread::sleep_for(500ms);
 	}
 
 	thread.join();
-	
+	ui.pushPause->setEnabled(false);
+	ui.labelTime->setText(tr(""));
+
+	if (cancelFlag)
+	{
+		cancelFlag = false;
+		return;
+	}
+
 	if (result.code != PI_OK)
 	{
 		QMessageBox msgBox;
@@ -674,23 +698,43 @@ void QtGuiApplication::on_pushRender_clicked()
 {
 	std::atomic<bool> done(false);
 	tracer::PI_Message result;
+
 	using namespace std::chrono_literals;
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point t2;
+	long long duration = 0;
+	long long timeRemaining = 0;
 
 	std::thread thread([&]() { result = tracer::render(); done = true; });
 
+	ui.pushPause->setEnabled(true);
 	float traceProgress = 0;
 	float renderProgress = 0;
+	tracer::getProgress(traceProgress, renderProgress);
+	float originalProgress = renderProgress;
 
 	while (!done)
 	{
 		tracer::getProgress(traceProgress, renderProgress);
 		ui.progressRender->setValue((int)100.0f*renderProgress);
+		t2 = std::chrono::high_resolution_clock::now();
+		duration = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+		timeRemaining = (1.0f - renderProgress) / (renderProgress - originalProgress + 0.00000001f)*duration;
+		ui.labelTime->setText(tr("Elapsed %1 s/ Remaining %2 s").arg(duration).arg(timeRemaining));
+
 		QCoreApplication::processEvents();
-		std::this_thread::sleep_for(200ms);
+		std::this_thread::sleep_for(500ms);
 	}
 
 	thread.join();
-	
+	ui.pushPause->setEnabled(false);
+	ui.labelTime->setText(tr(""));
+
+	if (cancelFlag)
+	{
+		cancelFlag = false;
+		return;
+	}
 	
 	if (result.code != PI_OK)
 	{
@@ -745,22 +789,44 @@ void QtGuiApplication::on_pushTraceAndRender_clicked()
 	tracer::PI_Message result;
 	using namespace std::chrono_literals;
 
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point t2;
+	long long duration = 0;
+	long long timeRemaining = 0;
+
+
 	std::thread thread([&]() { result = tracer::traceAndRender(); done = true; });
 
+	ui.pushPause->setEnabled(true);
 	float traceProgress = 0;
 	float renderProgress = 0;
+	tracer::getProgress(traceProgress, renderProgress);
+	float originalProgress = renderProgress;
 
 	while (!done)
 	{
 		tracer::getProgress(traceProgress, renderProgress);
 		ui.progressTrace->setValue((int)100.0f*renderProgress);
 		ui.progressRender->setValue((int)100.0f*renderProgress);
+		t2 = std::chrono::high_resolution_clock::now();
+		duration = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+		timeRemaining = (1.0f - renderProgress) / (renderProgress - originalProgress + 0.00000001f)*duration;
+		
+		ui.labelTime->setText(tr("Elapsed %1 s/ Remaining %2 s").arg(duration).arg(timeRemaining));
+
 		QCoreApplication::processEvents();
-		std::this_thread::sleep_for(200ms);
+		std::this_thread::sleep_for(500ms);
 	}
 
 	thread.join();
-	
+	ui.pushPause->setEnabled(false);
+	ui.labelTime->setText(tr(""));
+
+	if (cancelFlag)
+	{
+		cancelFlag = false;
+		return;
+	}
 
 	if (result.code != PI_OK)
 	{
@@ -809,6 +875,12 @@ void QtGuiApplication::on_pushTraceAndRender_clicked()
 
 	stateNext();
 	stateNext();
+}
+
+void QtGuiApplication::on_pushPause_clicked()
+{
+	tracer::pauseTraceRender();
+	cancelFlag = true;
 }
 
 void QtGuiApplication::on_pushShowWavelength_clicked()

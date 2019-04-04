@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'QtGuiApplication.ui'
 **
-** Created by: Qt User Interface Compiler version 5.12.2
+** Created by: Qt User Interface Compiler version 5.12.0
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
 ********************************************************************************/
@@ -154,6 +154,8 @@ public:
     QPushButton *pushCheckData;
     QPushButton *pushTraceAndRender;
     QSpacerItem *horizontalSpacer_3;
+    QLabel *labelTime;
+    QPushButton *pushPause;
     QPushButton *pushTrace;
     QProgressBar *progressTrace;
     QPushButton *pushRender;
@@ -736,6 +738,16 @@ public:
 
         gridLayout_11->addItem(horizontalSpacer_3, 0, 2, 1, 1);
 
+        labelTime = new QLabel(groupBox_5);
+        labelTime->setObjectName(QString::fromUtf8("labelTime"));
+
+        gridLayout_11->addWidget(labelTime, 0, 3, 1, 1);
+
+        pushPause = new QPushButton(groupBox_5);
+        pushPause->setObjectName(QString::fromUtf8("pushPause"));
+
+        gridLayout_11->addWidget(pushPause, 0, 4, 1, 1);
+
         pushTrace = new QPushButton(groupBox_5);
         pushTrace->setObjectName(QString::fromUtf8("pushTrace"));
 
@@ -745,7 +757,7 @@ public:
         progressTrace->setObjectName(QString::fromUtf8("progressTrace"));
         progressTrace->setValue(0);
 
-        gridLayout_11->addWidget(progressTrace, 1, 1, 1, 2);
+        gridLayout_11->addWidget(progressTrace, 1, 1, 1, 4);
 
         pushRender = new QPushButton(groupBox_5);
         pushRender->setObjectName(QString::fromUtf8("pushRender"));
@@ -756,12 +768,12 @@ public:
         progressRender->setObjectName(QString::fromUtf8("progressRender"));
         progressRender->setValue(0);
 
-        gridLayout_11->addWidget(progressRender, 2, 1, 1, 2);
+        gridLayout_11->addWidget(progressRender, 2, 1, 1, 4);
 
         textEditProcess = new QTextEdit(groupBox_5);
         textEditProcess->setObjectName(QString::fromUtf8("textEditProcess"));
 
-        gridLayout_11->addWidget(textEditProcess, 3, 0, 1, 3);
+        gridLayout_11->addWidget(textEditProcess, 3, 0, 1, 5);
 
 
         gridLayout_13->addWidget(groupBox_5, 0, 0, 1, 1);
@@ -911,7 +923,7 @@ public:
 
         retranslateUi(QtGuiApplicationClass);
 
-        tabWidget->setCurrentIndex(0);
+        tabWidget->setCurrentIndex(2);
         stackedInput->setCurrentIndex(0);
         pushAcceptConfig->setDefault(true);
 
@@ -1013,6 +1025,8 @@ public:
         groupBox_5->setTitle(QApplication::translate("QtGuiApplicationClass", "Processing", nullptr));
         pushCheckData->setText(QApplication::translate("QtGuiApplicationClass", "Data Check-in", nullptr));
         pushTraceAndRender->setText(QApplication::translate("QtGuiApplicationClass", "Trace and Render", nullptr));
+        labelTime->setText(QApplication::translate("QtGuiApplicationClass", "TextLabel", nullptr));
+        pushPause->setText(QApplication::translate("QtGuiApplicationClass", "Pause", nullptr));
         pushTrace->setText(QApplication::translate("QtGuiApplicationClass", "Trace", nullptr));
         pushRender->setText(QApplication::translate("QtGuiApplicationClass", "Render", nullptr));
         groupBox_9->setTitle(QApplication::translate("QtGuiApplicationClass", "Output", nullptr));
