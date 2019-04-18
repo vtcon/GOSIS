@@ -1191,9 +1191,9 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 	{
 		PI_linearRayDensity = 1;
 	}
-	else if (prefs.linearRayDensity >= 50)
+	else if (prefs.linearRayDensity >= 200)
 	{
-		PI_linearRayDensity = 50;
+		PI_linearRayDensity = 200;
 	}
 	else
 	{

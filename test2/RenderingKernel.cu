@@ -18,14 +18,27 @@
 __device__ int maptotriangle(
 	const vec3<MYFLOATTYPE>& p1, const vec3<MYFLOATTYPE>& p2, const vec3<MYFLOATTYPE>& p3,
 	const vec3<MYFLOATTYPE>& px, const vec3<MYFLOATTYPE>& dir, MYFLOATTYPE& alpha, MYFLOATTYPE& beta);
+
 __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
 	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4,
 	point2D<MYFLOATTYPE>& p1, point2D<MYFLOATTYPE>& p2, point2D<MYFLOATTYPE>& p3, point2D<MYFLOATTYPE>& p4);
+
 __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
 	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4);
+
 __device__ MYFLOATTYPE insideTriangle(
 	const point2D<int>& p, const vec3<MYFLOATTYPE>& vtx1, const vec3<MYFLOATTYPE>& vtx2,
 	const vec3<MYFLOATTYPE>& vtx3, const vec3<MYFLOATTYPE>& pdir, const SimpleRetinaDescriptor& retinaDescriptor);
+
+__device__ MYFLOATTYPE insideTriangle2(
+	const point2D<int>& p, const vec3<MYFLOATTYPE>& vtx1, const vec3<MYFLOATTYPE>& vtx2,
+	const vec3<MYFLOATTYPE>& vtx3, const vec3<MYFLOATTYPE>& pdir, const SimpleRetinaDescriptor& retinaDescriptor,
+	MYFLOATTYPE intensity1, MYFLOATTYPE intensity2, MYFLOATTYPE intensity3);
+
+__device__ MYFLOATTYPE SutherlandHogdman2(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
+	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4,
+	MYFLOATTYPE intensity1, MYFLOATTYPE intensity2, MYFLOATTYPE intensity3);
+
 
 __global__ void nonDiffractiveBasicRenderer(SimpleRetinaDescriptor retinaDescriptorIn, RetinaImageChannel* p_rawChannel);
 
@@ -245,11 +258,15 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 		int nxTurnLR = nxNextLineSeed;
 		//move right
 		int nx = nxTurnLR;
-		while ((IOA = insideTriangle({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)) != 0) // the x loop
+		while ((IOA = 
+			insideTriangle({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)*triangleIntensity
+			//insideTriangle2({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor, intensity1, intensity2, intensity3)
+			) != 0) // the x loop
 		{
 			//if point is found, do something(save it)
 			IOA = abs(IOA);
-			dp_rawChannel->addToPixel({ nx, ny }, triangleIntensity*IOA);
+			//dp_rawChannel->addToPixel({ nx, ny }, triangleIntensity*IOA);
+			dp_rawChannel->addToPixel({ nx, ny }, IOA);
 #ifdef _MYDEBUGMODE
 			if (ID == debugID) printf("ID %d added to pixel %d,%d\n", ID, nx, ny);
 #endif
@@ -276,14 +293,18 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//move to the right
 			nx = nx + 1;
 		}
-
+		
 		//start over from the left
 		nx = nxTurnLR - 1;
-		while ((IOA = insideTriangle({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)) != 0) // the x loop
+		while ((IOA = 
+			insideTriangle({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)*triangleIntensity
+			//insideTriangle2({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor, intensity1, intensity2, intensity3)
+			) != 0) // the x loop
 		{
 			//if point is found, do something(save it)
 			IOA = abs(IOA);
-			dp_rawChannel->addToPixel({ nx, ny }, triangleIntensity*IOA);
+			//dp_rawChannel->addToPixel({ nx, ny }, triangleIntensity*IOA);
+			dp_rawChannel->addToPixel({ nx, ny }, IOA);
 #ifdef _MYDEBUGMODE
 			if (ID == debugID) printf("ID %d added to pixel %d,%d \n", ID, nx, ny);
 #endif
@@ -415,18 +436,18 @@ __device__ int maptotriangle(
 	vec3<MYFLOATTYPE> pdir = dir;
 	MYFLOATTYPE A1, A2, A3, B1, B2, B3;
 
+	vec3<MYFLOATTYPE> crossresult = cross(p2 - p1, p3 - p1);
 	//if the triangle is colinear
-	if (norm(cross(p2 - p1, p3 - p1)) < MYEPSILONSMALL)
+	if (norm(crossresult) < MYEPSILONSMALL)
 		return -1;
 
 	//if pdir and triangle coplanar
 	//printf("dot(cross(p2 - p1, p3 - p1), pdir) = %f\n", dot(cross(p2 - p1, p3 - p1), pdir));
-	if (abs(dot(cross(p2 - p1, p3 - p1), pdir)) < MYEPSILONSMALL)
+	if (abs(dot(crossresult, pdir)) < MYEPSILONSMALL)
 		return -1;
 
-
 	//if px and triangle coplanar
-	if (abs(dot(cross(p2 - p1, p3 - p1), px - p1)) < MYEPSILONSMALL)
+	if (abs(dot(crossresult, px - p1)) < MYEPSILONSMALL)
 	{
 		pdir = { 0, 0, 1 };
 	}
@@ -739,7 +760,6 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 	//return true;
 }
 
-
 __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
 	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4)
 {
@@ -894,6 +914,175 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 	return output;
 }
 
+__device__ MYFLOATTYPE SutherlandHogdman2(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
+	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4, MYFLOATTYPE intensity1, MYFLOATTYPE intensity2, MYFLOATTYPE intensity3)
+{
+	point2D<MYFLOATTYPE> p1, p2, p3, p4;
+	bool outputSort = sortCCW(c1, c2, c3, c4, p1, p2, p3, p4);
+
+	if (outputSort == false)
+		return 0;
+
+	point2D<MYFLOATTYPE> inputList[7] = { p1, p2, p3, p4, 0, 0, 0 };
+	short int inputListSize = 4;
+	point2D<MYFLOATTYPE> outputList[7] = { p1, p2, p3, p4, 0, 0, 0 };
+	short int outputListSize = 4;
+
+
+	point2D<MYFLOATTYPE> pS, pE, pT;
+	//edge along beta(or alpha = 0)
+	for (int i = 0; i < outputListSize; i++)
+	{
+		inputList[i] = outputList[i];
+	}
+	inputListSize = outputListSize;
+	//outputList = 0; not really needed
+	outputListSize = 0;
+	pS = inputList[inputListSize - 1];
+	for (int i = 0; i < inputListSize; i++)
+	{
+		pE = inputList[i];
+		//if (E inside clipEdge)
+		if (pE.x >= 0)
+		{
+			//if (S not inside clipEdge)
+			if (pS.x < 0)
+			{
+				//add intersection to the output list
+				//pT = { 0, 0 }; not really needed
+				pT.x = 0;
+				pT.y = pS.y - pS.x*(pE.y - pS.y) / (pE.x - pS.x);
+				outputList[outputListSize] = pT;
+				outputListSize = outputListSize + 1;
+			}
+			//add pE to output list
+			outputList[outputListSize] = pE;
+			outputListSize = outputListSize + 1;
+		}
+		//else if (S inside clipEdge)
+		else if (pS.x >= 0)
+		{
+			//add intersection to the output list
+			//pT = [0; 0];
+			pT.x = 0;
+			pT.y = pS.y - pS.x*(pE.y - pS.y) / (pE.x - pS.x);
+			outputList[outputListSize] = pT;
+			outputListSize = outputListSize + 1;
+		}
+		pS = pE;
+	}
+	if (outputListSize == 0)
+		return 0;
+
+
+	//edge along alpha(or beta = 0)
+	for (int i = 0; i < outputListSize; i++)
+	{
+		inputList[i] = outputList[i];
+	}
+	inputListSize = outputListSize;
+	outputListSize = 0;
+	pS = inputList[inputListSize - 1];
+	for (int i = 0; i < inputListSize; i++)
+	{
+		pE = inputList[i];
+		//if (E inside clipEdge)
+		if (pE.y >= 0)
+		{
+			//if (S not inside clipEdge)
+			if (pS.y < 0)
+			{
+				// add intersection to the output list
+				//pT = [0; 0];
+				pT.x = pS.x - pS.y*(pE.x - pS.x) / (pE.y - pS.y);
+				pT.y = 0;
+				outputList[outputListSize] = pT;
+				outputListSize = outputListSize + 1;
+			}
+			//add pE to output list
+			outputList[outputListSize] = pE;
+			outputListSize = outputListSize + 1;
+		}
+		//else if (S inside clipEdge)
+		else if (pS.y >= 0)
+		{
+			//add intersection to the output list
+			//pT = [0; 0];
+			pT.x = pS.x - pS.y*(pE.x - pS.x) / (pE.y - pS.y);
+			pT.y = 0;
+			outputList[outputListSize] = pT;
+			outputListSize = outputListSize + 1;
+		}
+		pS = pE;
+	}
+	if (outputListSize == 0)
+		return 0.0;
+
+
+	//oblique edge
+	for (int i = 0; i < outputListSize; i++)
+	{
+		inputList[i] = outputList[i];
+	}
+	inputListSize = outputListSize;
+	outputListSize = 0;
+	pS = inputList[inputListSize - 1];
+	for (int i = 0; i < inputListSize; i++)
+	{
+		pE = inputList[i];
+		//if (E inside clipEdge)
+		if ((pE.x + pE.y) <= 1)
+		{
+			//if (S not inside clipEdge)
+			if ((pS.x + pS.y) > 1)
+			{
+				//add intersection to the output list
+				pT.x = (pE.x*(pS.y - pE.y) + (1 - pE.y)*(pS.x - pE.x)) / ((pS.x - pE.x) + (pS.y - pE.y));
+				pT.y = 1 - pT.x;
+				outputList[outputListSize] = pT;
+				outputListSize = outputListSize + 1;
+			}
+			//add pE to output list
+			outputList[outputListSize] = pE;
+			outputListSize = outputListSize + 1;
+		}
+		//else if (S inside clipEdge)
+		else if ((pS.x + pS.y) <= 1)
+		{
+			//add intersection to the output list
+			pT.x = (pE.x*(pS.y - pE.y) + (1 - pE.y)*(pS.x - pE.x)) / ((pS.x - pE.x) + (pS.y - pE.y));
+			pT.y = 1 - pT.x;
+			outputList[outputListSize] = pT;
+			outputListSize = outputListSize + 1;
+		}
+		pS = pE;
+	}
+	if (outputListSize == 0)
+		return 0;
+
+	//start calculating IOA
+	MYFLOATTYPE output = outputList[outputListSize - 1].x*outputList[0].y - outputList[0].x*outputList[outputListSize - 1].y;
+	
+	//calculating IOA and barycenter in one loop
+	point2D<MYFLOATTYPE> barycenter = { (MYFLOATTYPE)0.0,(MYFLOATTYPE)0.0 };
+	for (int i = 0; i < outputListSize - 1; i++)
+	{
+		barycenter.alpha += (outputList[i].x);
+		barycenter.alpha += (outputList[i].y);
+		output += outputList[i].x*outputList[i + 1].y - outputList[i + 1].x*outputList[i].y;
+	}
+
+	barycenter.alpha = barycenter.alpha / (MYFLOATTYPE(outputListSize));
+	barycenter.beta = barycenter.beta / (MYFLOATTYPE(outputListSize));
+
+	MYFLOATTYPE averageValue = (MYFLOATTYPE(1.0) - barycenter.alpha - barycenter.beta)*intensity1 
+								+ barycenter.alpha*intensity2 + barycenter.beta*intensity3;
+
+	output = averageValue * output;
+
+	return output;
+}
+
 __device__ MYFLOATTYPE insideTriangle(
 	const point2D<int>& p, const vec3<MYFLOATTYPE>& vtx1, const vec3<MYFLOATTYPE>& vtx2,
 	const vec3<MYFLOATTYPE>& vtx3, const vec3<MYFLOATTYPE>& pdir, const SimpleRetinaDescriptor& retinaDescriptor)
@@ -917,6 +1106,54 @@ __device__ MYFLOATTYPE insideTriangle(
 		return 0;
 
 	MYFLOATTYPE returnValue = SutherlandHogdman(bp1, bp2, bp3, bp4);
+
+	vec3<MYFLOATTYPE> testVec1 = cross(p2 - p1, p4 - p1);
+	vec3<MYFLOATTYPE> testVec2 = cross(p3 - p2, p1 - p2);
+	vec3<MYFLOATTYPE> testVec3 = cross(p4 - p3, p2 - p3);
+	vec3<MYFLOATTYPE> testVec4 = cross(p1 - p4, p3 - p4);
+
+	MYFLOATTYPE testDir1 = dot(testVec1, pdir);
+	MYFLOATTYPE testDir2 = dot(testVec2, pdir);
+	MYFLOATTYPE testDir3 = dot(testVec3, pdir);
+	MYFLOATTYPE testDir4 = dot(testVec4, pdir);
+
+	if (testDir1 > 0 && testDir2 > 0 && testDir3 > 0 && testDir4 > 0)
+	{
+		return 0;
+	}
+
+	/*
+	if (output1 == 1 && output2 == 1 && output3 == 1 && output4 == 1 && returnValue < 1.0)
+		return 0;
+	*/
+
+	return returnValue;
+}
+
+__device__ MYFLOATTYPE insideTriangle2(
+	const point2D<int>& p, const vec3<MYFLOATTYPE>& vtx1, const vec3<MYFLOATTYPE>& vtx2,
+	const vec3<MYFLOATTYPE>& vtx3, const vec3<MYFLOATTYPE>& pdir, const SimpleRetinaDescriptor& retinaDescriptor,
+	MYFLOATTYPE intensity1, MYFLOATTYPE intensity2, MYFLOATTYPE intensity3)
+{
+	vec3<MYFLOATTYPE> p1, p2, p3, p4;
+	//bool output0 = find4points(p.nx, p.ny, thetaR, R0, p1, p2, p3, p4);
+	bool output0 = retinaDescriptor.array2Cartesian(p, p1, p2, p3, p4);
+	if (!output0)
+		return 0.0;
+
+	//MYFLOATTYPE alpha1, beta1, alpha2, beta2, alpha3, beta3, alpha4, beta4;
+	point2D<MYFLOATTYPE> bp1, bp2, bp3, bp4;
+	int output1 = maptotriangle(vtx1, vtx2, vtx3, p1, pdir, bp1.alpha, bp1.beta);
+	int output2 = maptotriangle(vtx1, vtx2, vtx3, p2, pdir, bp2.alpha, bp2.beta);
+	int output3 = maptotriangle(vtx1, vtx2, vtx3, p3, pdir, bp3.alpha, bp3.beta);
+	int output4 = maptotriangle(vtx1, vtx2, vtx3, p4, pdir, bp4.alpha, bp4.beta);
+
+	//build a caching mechanism here
+
+	if (output1 == -1 || output2 == -1 || output3 == -1 || output4 == -1)
+		return 0;
+
+	MYFLOATTYPE returnValue = SutherlandHogdman2(bp1, bp2, bp3, bp4, intensity1, intensity2, intensity3);
 
 	vec3<MYFLOATTYPE> testVec1 = cross(p2 - p1, p4 - p1);
 	vec3<MYFLOATTYPE> testVec2 = cross(p3 - p2, p1 - p2);

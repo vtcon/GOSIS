@@ -118,7 +118,7 @@ void PreferenceDialog::on_pushOK_clicked()
 	}
 
 	int valRayGen = lineRayGeneration->text().toInt();
-	valRayGen = ((valRayGen <= 1) ? 1 : valRayGen) >= 50 ? 50 : valRayGen;
+	valRayGen = ((valRayGen <= 1) ? 1 : valRayGen) >= 200 ? 200 : valRayGen;
 	lineRayGeneration->setText(QString::number(valRayGen));
 	newPref.linearRayDensity = valRayGen;
 

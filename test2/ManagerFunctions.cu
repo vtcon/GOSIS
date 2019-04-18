@@ -102,8 +102,6 @@ public:
 	{
 		if (isEmpty) return;
 
-		
-
 		mainStorageManager.infoCheckOut(thisOpticalConfig, wavelength);
 		numofsurfaces = thisOpticalConfig->numofsurfaces;
 		b_inbundles = new raybundle<MYFLOATTYPE>[job_size];

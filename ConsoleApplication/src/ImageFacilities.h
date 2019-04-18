@@ -33,6 +33,8 @@ void clearProjectionMap(void *& mapX, void *& mapY);
 
 bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);
 
+//bool importImageCVv2(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness);
+
 bool importCustomApo(double*& p_customApoData, int& customApoDataSize, std::string path);
 
 

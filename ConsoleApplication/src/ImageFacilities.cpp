@@ -916,6 +916,157 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	return true;
 }
 
+/*
+bool importImageCVv2(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness)
+{
+	//read in the image
+	Mat inputimg = imread(path);
+	if (inputimg.data == NULL)
+	{
+		return false;
+	}
+	inputimg.convertTo(inputimg, CV_64FC3, (double)brightness);
+
+	//Mat channelBGR[3]; //BGR is openCV's order
+	//split(inputimg, channelBGR);
+
+	//calculate the stepping vectors
+	//horizontal unit vector is (-1,0,0), vertical unit vector is (0,-1,0)
+	//..., as images are read from topleft to bottomright facing the world coordinate system
+
+	//step1: rotate the vectors
+	float thetaX = rotX / 180.0 * MYPI;
+	float thetaY = rotY / 180.0 * MYPI;
+	float thetaZ = rotZ / 180.0 * MYPI;
+
+	float horzrotated[3];
+	float vertrotated[3];
+
+	horzrotated[0] = -cos(thetaY)*cos(thetaZ);
+	horzrotated[1] = -cos(thetaX)*sin(thetaZ) - cos(thetaZ)*sin(thetaX)*sin(thetaY);
+	horzrotated[2] = cos(thetaX)*cos(thetaZ)*sin(thetaY) - sin(thetaX)*sin(thetaZ);
+
+	vertrotated[0] = cos(thetaY)*sin(thetaZ);
+	vertrotated[1] = sin(thetaX)*sin(thetaY)*sin(thetaZ) - cos(thetaX)*cos(thetaZ);
+	vertrotated[2] = -cos(thetaZ)*sin(thetaX) - cos(thetaX)*sin(thetaY)*sin(thetaZ);
+
+	//step2: scale the vectors
+	float pixelPitchHorz = sizeHorz / inputimg.cols;
+	float pixelPitchVert = sizeVert / inputimg.rows;
+
+	float stepHorz[3] = {
+		horzrotated[0] * pixelPitchHorz,
+		horzrotated[1] * pixelPitchHorz,
+		horzrotated[2] * pixelPitchHorz
+	};
+
+	float stepVert[3] = {
+		vertrotated[0] * pixelPitchVert,
+		vertrotated[1] * pixelPitchVert,
+		vertrotated[2] * pixelPitchVert
+	};
+
+	//step3: find the origin vectors at topleft corner and translate it half a pixel pitch
+	float oldorigin[3] = { posX, posY, posZ };
+
+	auto step = [&stepHorz, &stepVert](float* inputvec, float* outputvec, float countHorz, float countVert)
+	{
+		outputvec[0] = inputvec[0] + countHorz * stepHorz[0] + countVert * stepVert[0];
+		outputvec[1] = inputvec[1] + countHorz * stepHorz[1] + countVert * stepVert[1];
+		outputvec[2] = inputvec[2] + countHorz * stepHorz[2] + countVert * stepVert[2];
+	};
+
+	float origin[3];
+	step(oldorigin, origin, 0.5, 0.5);
+
+	//lookup the inverse scaling
+	Mat reverseLookup_preInv(Mat::zeros(3, 3, CV_64FC1));
+	switch (PI_rawFormat)
+	{
+	case OIC_LMS:
+		reverseLookup_preInv.at<double>(0, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_LMS_L);
+		reverseLookup_preInv.at<double>(1, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_LMS_M);
+		reverseLookup_preInv.at<double>(2, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_LMS_S);
+		reverseLookup_preInv.at<double>(0, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_LMS_L);
+		reverseLookup_preInv.at<double>(1, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_LMS_M);
+		reverseLookup_preInv.at<double>(2, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_LMS_S);
+		reverseLookup_preInv.at<double>(0, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_LMS_L);
+		reverseLookup_preInv.at<double>(1, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_LMS_M);
+		reverseLookup_preInv.at<double>(2, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_LMS_S);
+		break;
+	case OIC_XYZ:
+	default:
+		reverseLookup_preInv.at<double>(0, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_XYZ_X);
+		reverseLookup_preInv.at<double>(1, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_XYZ_Y);
+		reverseLookup_preInv.at<double>(2, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_XYZ_Z);
+		reverseLookup_preInv.at<double>(0, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_XYZ_X);
+		reverseLookup_preInv.at<double>(1, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_XYZ_Y);
+		reverseLookup_preInv.at<double>(2, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_XYZ_Z);
+		reverseLookup_preInv.at<double>(0, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_XYZ_X);
+		reverseLookup_preInv.at<double>(1, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_XYZ_Y);
+		reverseLookup_preInv.at<double>(2, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_XYZ_Z);
+		break;
+	}
+	Mat reverseLookup(reverseLookup_preInv.inv());
+
+	Mat outputChannels[3] = {
+		Mat::zeros(inputimg.size(),CV_64FC1),	//long wavelength channel
+		Mat::zeros(inputimg.size(),CV_64FC1),	//middle wavelength channel
+		Mat::zeros(inputimg.size(),CV_64FC1) };	//short wavelength channel
+	Mat XYZimg(Mat::zeros(inputimg.size(), CV_64FC3));
+	BGRtoXYZ(XYZimg, inputimg, PI_rgbStandard);
+
+	//rasterizing the images
+	outputvec.clear();
+
+	for (int i = 0; i < inputimg.rows; i++)
+	{
+		for (int j = 0; j < inputimg.cols; j++)
+		{
+			float pixelpos[3];
+			step(origin, pixelpos, j, i);
+			tracer::PI_LuminousPoint pointB, pointG, pointR;
+
+			pointR.x = pixelpos[0];
+			pointR.y = pixelpos[1];
+			pointR.z = pixelpos[2];
+			pointR.wavelength = PI_primaryWavelengthR;
+			pointR.intensity =
+				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(0, 0) +
+				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(0, 1) +
+				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(0, 2);
+			pointR.intensity = (pointR.intensity <= 0) ? 0 : pointR.intensity;
+
+			pointG.x = pixelpos[0];
+			pointG.y = pixelpos[1];
+			pointG.z = pixelpos[2];
+			pointG.wavelength = PI_primaryWavelengthG;
+			pointG.intensity =
+				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(1, 0) +
+				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(1, 1) +
+				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(1, 2);
+			pointG.intensity = (pointG.intensity <= 0) ? 0 : pointG.intensity;
+
+			pointB.x = pixelpos[0];
+			pointB.y = pixelpos[1];
+			pointB.z = pixelpos[2];
+			pointB.wavelength = PI_primaryWavelengthB;
+			pointB.intensity =
+				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(2, 0) +
+				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(2, 1) +
+				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(2, 2);
+			pointB.intensity = (pointB.intensity <= 0) ? 0 : pointB.intensity;
+
+			outputvec.push_back(pointB);
+			outputvec.push_back(pointG);
+			outputvec.push_back(pointR);
+		}
+	}
+
+	return true;
+}
+*/
+
 bool importCustomApo(double *& p_customApoData, int & customApoDataSize, std::string path)
 {
 	//just to be safe, or not...
