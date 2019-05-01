@@ -126,19 +126,19 @@ public:
 	{
 		struct
 		{
-			T x; T y; T z; T t;
+			T x; T y; T z;
 		};
 	};
 #ifdef nothing
 	__host__ __device__ vec3(T x = 0, T y = 0, T z = 0) :
-		x(x), y(y), z(z), t(1)
+		x(x), y(y), z(z)
 	{
 		LOG1("vec 3 created")
 	}
 #endif
 
-	__host__ __device__ vec3(T x = 0, T y = 0, T z = 0, T t = 1) :
-		x(x), y(y), z(z), t(t)
+	__host__ __device__ vec3(T x = 0, T y = 0, T z = 0) :
+		x(x), y(y), z(z)
 	{
 		LOG1("vec 3 created")
 	}
@@ -170,7 +170,7 @@ public:
 template<typename T = float>
 __host__ __device__ inline bool operator==(const vec3<T>& lhs, const vec3<T>& rhs) 
 {
-	return ((lhs.x == rhs.x) && (lhs.y == rhs.y) && (lhs.z == rhs.z) && (lhs.t == rhs.t)) ? true : false;
+	return ((lhs.x == rhs.x) && (lhs.y == rhs.y) && (lhs.z == rhs.z)) ? true : false;
 }
 
 template<typename T = float>
