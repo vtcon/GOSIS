@@ -29,44 +29,44 @@ void test3function()
 
 #endif
 
-typedef double(*apodizationFunction_t)(double, double, int, char*);
+typedef float(*apodizationFunction_t)(double, double, int, char*);
 
-__device__ double apdUniform(double rho, double phi, int datasize = 0, char* p_data = nullptr)
+__device__ float apdUniform(double rho, double phi, int datasize = 0, char* p_data = nullptr)
 {
-	if (rho <= 1)
-		return 1.0;
+	if (float(rho) <= 1.0f)
+		return 1.0f;
 	else
-		return 0.0;
+		return 0.0f;
 }
 
-__device__ double apdBartlett(double rho, double phi, int datasize = 0, char* p_data = nullptr)
+__device__ float apdBartlett(double rho, double phi, int datasize = 0, char* p_data = nullptr)
 {
-	if (rho <= 1)
+	if (float(rho) <= 1.0f)
 	{
-		return 1.0 - rho;
+		return (1.0f - float(rho));
 	}
 	else
-		return 0.0;
+		return 0.0f;
 }
 
-__device__ double apdCustom(double rho, double phi, int datasize = 0, char* p_data = nullptr)
+__device__ float apdCustom(double rho, double phi, int datasize = 0, char* p_data = nullptr)
 {
-	if (rho > 1 || datasize == 0 || p_data == nullptr)
+	if (float(rho) > 1.0f || datasize == 0 || p_data == nullptr)
 	{
 		return 0.0;
 	}
 	else
 	{
-		double retVal = 0.0;
-		double *p_reader = reinterpret_cast<double*>(p_data);
+		float retVal = 0.0f;
+		float *p_reader = reinterpret_cast<float*>(p_data);
 		int rowCount = static_cast<int>(p_reader[0]);
 		int colCount = static_cast<int>(p_reader[1]);
-		double dx = rho * cos(phi);
-		double dy = -rho * sin(phi); //the minus is due to the fact that openCV reads the y axis from TOP TO BOTTOM
-		int x = (dx + 1) / 2.0*colCount;
+		float dx = float(rho * cos(phi));
+		float dy = float(-rho * sin(phi)); //the minus is due to the fact that openCV reads the y axis from TOP TO BOTTOM
+		int x = float((dx + 1.0f) / 2.0f*float(colCount));
 		x = (x >= colCount) ? colCount - 1 : x;
 		x = (x < 0) ? 0 : x;
-		int y = (dy + 1) / 2.0*rowCount;
+		int y = float((dy + 1.0f) / 2.0f*float(rowCount));
 		y = (y >= colCount) ? colCount - 1 : y;
 		y = (y < 0) ? 0 : y;
 		retVal = p_reader[y*colCount + x + 2];
@@ -335,8 +335,8 @@ __global__ void quadrictracer(
 		}
 		//check the multiplication factor from the aperture function
 		apodizationFunction_t apdToUse = apdFunctionLookUp(pquad->apodizationType);
-		double apertureFactor = apdToUse(npc_rho, npc_phi, pquad->data_size, pquad->p_data);
-		if (apertureFactor == 0.0) goto deactivate_ray;
+		float apertureFactor = apdToUse(npc_rho, npc_phi, pquad->data_size, pquad->p_data);
+		if (apertureFactor == 0.0f) goto deactivate_ray;
 
 		// if it is a refractive surface, do refractive ray transfer
 		if (pquad->type == mysurface<MYFLOATTYPE>::SurfaceTypes::refractive)
@@ -408,7 +408,7 @@ deactivate_ray:
 		// TO DO: write out ray status, copy input to output
 		(outbundle->prays)[idx] = (inbundle->prays)[idx];
 		(outbundle->prays)[idx].status = raysegment<MYFLOATTYPE>::Status::deactivated;
-		(outbundle->prays)[idx].intensity = 0.0;
+		(outbundle->prays)[idx].intensity = 0.0f;
 	};
 
 	//clean up the test case

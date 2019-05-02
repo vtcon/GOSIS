@@ -18,7 +18,7 @@
 
 namespace ColorimetricLookup
 {
-	MYFLOATTYPE lookup(MYFLOATTYPE wavelength, unsigned short int colorMatchingFunction);
+	float lookup(float wavelength, unsigned short int colorMatchingFunction);
 }
 
 

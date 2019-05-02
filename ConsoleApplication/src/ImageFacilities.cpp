@@ -71,65 +71,65 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 
 	//std::cout << "input img = \n" << XYZmat << "\n";
 
-	double aWhite[3];
-	double aBlack[3];
-	double transformMat[9];
-	double gammaLowerBound = 0.0;
-	double gammaLowerBoundAlpha = 0.0;
-	double gamma = 0.0;
-	double gammaAlpha = 0.0;
-	double gammaBeta = 0.0;
+	float aWhite[3];
+	float aBlack[3];
+	float transformMat[9];
+	float gammaLowerBound = 0.0;
+	float gammaLowerBoundAlpha = 0.0;
+	float gamma = 0.0;
+	float gammaAlpha = 0.0;
+	float gammaBeta = 0.0;
 
 	if (RGBoption == IF_ADOBERGB)//AdobeRGB specification
 	{
-		aWhite[0] = 152.07; aWhite[1] = 160.00; aWhite[2] = 174.25;
-		aBlack[0] = 0.5282; aBlack[1] = 0.5557; aBlack[2] = 0.6052;
+		aWhite[0] = 152.07f; aWhite[1] = 160.00f; aWhite[2] = 174.25f;
+		aBlack[0] = 0.5282f; aBlack[1] = 0.5557f; aBlack[2] = 0.6052f;
 		 
-		transformMat[0] = 2.04159;	transformMat[1] = -0.56501; transformMat[2] = -0.34473;
-		transformMat[3] = -0.96924; transformMat[4] = 1.87597;	transformMat[5] = 0.04156;
-		transformMat[6] = 0.01344;	transformMat[7] = -0.11836; transformMat[8] = 1.01517;
+		transformMat[0] = 2.04159f;	transformMat[1] = -0.56501f; transformMat[2] = -0.34473f;
+		transformMat[3] = -0.96924f; transformMat[4] = 1.87597f;	transformMat[5] = 0.04156f;
+		transformMat[6] = 0.01344f;	transformMat[7] = -0.11836f; transformMat[8] = 1.01517f;
 
-		gammaLowerBound = 0.0;
-		gammaLowerBoundAlpha = 1.0;
-		gamma = 1.0 / 2.19921875;
-		gammaAlpha = 1.0;
-		gammaBeta = 0.0;
+		gammaLowerBound = 0.0f;
+		gammaLowerBoundAlpha = 1.0f;
+		gamma = 1.0f / 2.19921875f;
+		gammaAlpha = 1.0f;
+		gammaBeta = 0.0f;
 	}
 	else //sRGB specification
 	{
-		aWhite[0] = 76.04; aWhite[1] = 80; aWhite[2] = 87.12;
-		aBlack[0] = 0.1901; aBlack[1] = 0.2; aBlack[2] = 0.2178;
+		aWhite[0] = 76.04f; aWhite[1] = 80.0f; aWhite[2] = 87.12f;
+		aBlack[0] = 0.1901f; aBlack[1] = 0.2f; aBlack[2] = 0.2178f;
 
-		transformMat[0] = 3.2406255;	transformMat[1] = -1.537208;	transformMat[2] = -0.4986286;
-		transformMat[3] = -0.9689307;	transformMat[4] = 1.8757561;	transformMat[5] = 0.0415175;
-		transformMat[6] = 0.0557101;	transformMat[7] = -0.2040211;	transformMat[8] = 1.0569959;
+		transformMat[0] = 3.2406255f;	transformMat[1] = -1.537208f;	transformMat[2] = -0.4986286f;
+		transformMat[3] = -0.9689307f;	transformMat[4] = 1.8757561f;	transformMat[5] = 0.0415175f;
+		transformMat[6] = 0.0557101f;	transformMat[7] = -0.2040211f;	transformMat[8] = 1.0569959f;
 
-		gammaLowerBound = 0.0031308;
-		gammaLowerBoundAlpha = 12.92;
-		gamma = 1.0 / 2.4;
-		gammaAlpha = 1.055;
-		gammaBeta = -0.055;
+		gammaLowerBound = 0.0031308f;
+		gammaLowerBoundAlpha = 12.92f;
+		gamma = 1.0f / 2.4f;
+		gammaAlpha = 1.055f;
+		gammaBeta = -0.055f;
 	}
 
 	//split the channels
 	Mat channels[3];
-	channels[0] = Mat::zeros(XYZmat.size(), CV_64FC1);
-	channels[1] = Mat::zeros(XYZmat.size(), CV_64FC1);
-	channels[2] = Mat::zeros(XYZmat.size(), CV_64FC1);
+	channels[0] = Mat::zeros(XYZmat.size(), CV_32FC1);
+	channels[1] = Mat::zeros(XYZmat.size(), CV_32FC1);
+	channels[2] = Mat::zeros(XYZmat.size(), CV_32FC1);
 	split(XYZmat, channels);
 
 	if (maximizeContrast)
 	{
 		//find the brightest value in each of XYZ channels
-		double normX = norm(channels[0], NORM_INF);
-		double normY = norm(channels[1], NORM_INF);
-		double normZ = norm(channels[2], NORM_INF);
+		float normX = (float)norm(channels[0], NORM_INF);
+		float normY = (float)norm(channels[1], NORM_INF);
+		float normZ = (float)norm(channels[2], NORM_INF);
 
 		//std::cout << "normX =" << normX << " normY =" << normY << " normZ =" << normZ << "\n";
 
 		//scale them to absolute value
 		//by scaling each channel the max value set by reference absolute white
-		double selectScale = aWhite[0] / normX;
+		float selectScale = aWhite[0] / normX;
 		if ((normY*selectScale > aWhite[1]) || (normZ*selectScale > aWhite[2]))
 		{
 			selectScale = aWhite[1] / normY;
@@ -157,9 +157,9 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 
 	//create RGB channels
 	Mat rgbs[3];
-	rgbs[0] = Mat::zeros(XYZmat.size(), CV_64FC1); //red
-	rgbs[1] = Mat::zeros(XYZmat.size(), CV_64FC1); //blue
-	rgbs[2] = Mat::zeros(XYZmat.size(), CV_64FC1); //green
+	rgbs[0] = Mat::zeros(XYZmat.size(), CV_32FC1); //red
+	rgbs[1] = Mat::zeros(XYZmat.size(), CV_32FC1); //blue
+	rgbs[2] = Mat::zeros(XYZmat.size(), CV_32FC1); //green
 
 	cv::scaleAdd(channels[0], transformMat[0], rgbs[0], rgbs[0]); //X to R
 	cv::scaleAdd(channels[1], transformMat[1], rgbs[0], rgbs[0]); //Y to R
@@ -180,7 +180,7 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 		{
 			for (int j = 0; j < rgbs[k].rows; j++)
 			{
-				double temp = rgbs[k].at<double>(j, i);
+				float temp = rgbs[k].at<float>(j, i);
 
 				//gamma correction
 				if (temp < gammaLowerBound) //for value lower than bound
@@ -193,10 +193,10 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 				}
 				
 				//clipping
-				temp = (temp < 0) ? 0.0 : temp;
-				temp = (temp > 1.0) ? 1.0 : temp;
+				temp = (temp < 0.0f) ? 0.0f : temp;
+				temp = (temp > 1.0f) ? 1.0f : temp;
 
-				rgbs[k].at<double>(j, i) = temp;
+				rgbs[k].at<float>(j, i) = temp;
 			}
 		}
 	}
@@ -204,7 +204,7 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 
 	//assemble to BGR image
 	Mat bgrs[3] = { rgbs[2], rgbs[1], rgbs[0] };
-	BGRmat = Mat::zeros(XYZmat.size(), CV_64FC3);
+	BGRmat = Mat::zeros(XYZmat.size(), CV_32FC3);
 	cv::merge(bgrs, 3, BGRmat);
 
 
@@ -227,54 +227,54 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 
 	//std::cout << "input img = \n" << XYZmat << "\n";
 
-	double aWhite[3];
-	double aBlack[3];
-	double transformMat[9];
-	double gammaLowerBound = 0.0;
-	double gammaLowerBoundAlpha = 0.0;
-	double gamma = 0.0;
-	double gammaAlpha = 0.0;
-	double gammaBeta = 0.0;
+	float aWhite[3];
+	float aBlack[3];
+	float transformMat[9];
+	float gammaLowerBound = 0.0;
+	float gammaLowerBoundAlpha = 0.0;
+	float gamma = 0.0;
+	float gammaAlpha = 0.0;
+	float gammaBeta = 0.0;
 
 	if (RGBoption == IF_ADOBERGB)//AdobeRGB specification
 	{
-		aWhite[0] = 152.07; aWhite[1] = 160.00; aWhite[2] = 174.25;
-		aBlack[0] = 0.5282; aBlack[1] = 0.5557; aBlack[2] = 0.6052;
+		aWhite[0] = 152.07f; aWhite[1] = 160.00f; aWhite[2] = 174.25f;
+		aBlack[0] = 0.5282f; aBlack[1] = 0.5557f; aBlack[2] = 0.6052f;
 
-		transformMat[0] = 0.57668;	transformMat[1] = 0.18556;	transformMat[2] = 0.18823;
-		transformMat[3] = 0.29734;	transformMat[4] = 0.62736;	transformMat[5] = 0.07529;
-		transformMat[6] = 0.02703;	transformMat[7] = 0.07069;	transformMat[8] = 0.99134;
+		transformMat[0] = 0.57668f;	transformMat[1] = 0.18556f;	transformMat[2] = 0.18823f;
+		transformMat[3] = 0.29734f;	transformMat[4] = 0.62736f;	transformMat[5] = 0.07529f;
+		transformMat[6] = 0.02703f;	transformMat[7] = 0.07069f;	transformMat[8] = 0.99134f;
 
-		gammaLowerBound = 0.0;
-		gammaLowerBoundAlpha = 1.0;
-		gamma = 1.0 / 2.19921875;
-		gammaAlpha = 1.0;
-		gammaBeta = 0.0;
+		gammaLowerBound = 0.0f;
+		gammaLowerBoundAlpha = 1.0f;
+		gamma = 1.0f / 2.19921875f;
+		gammaAlpha = 1.0f;
+		gammaBeta = 0.0f;
 	}
 	else //sRGB specification
 	{
-		aWhite[0] = 76.04; aWhite[1] = 80; aWhite[2] = 87.12;
-		aBlack[0] = 0.1901; aBlack[1] = 0.2; aBlack[2] = 0.2178;
+		aWhite[0] = 76.04f; aWhite[1] = 80.0f; aWhite[2] = 87.12f;
+		aBlack[0] = 0.1901f; aBlack[1] = 0.2f; aBlack[2] = 0.2178f;
 
-		transformMat[0] = 0.412453;		transformMat[1] = 0.357580;		transformMat[2] = 0.180423;
-		transformMat[3] = 0.212671;		transformMat[4] = 0.715160;		transformMat[5] = 0.072169;
-		transformMat[6] = 0.019334;		transformMat[7] = 0.119193;		transformMat[8] = 0.950227;
+		transformMat[0] = 0.412453f;		transformMat[1] = 0.357580f;		transformMat[2] = 0.180423f;
+		transformMat[3] = 0.212671f;		transformMat[4] = 0.715160f;		transformMat[5] = 0.072169f;
+		transformMat[6] = 0.019334f;		transformMat[7] = 0.119193f;		transformMat[8] = 0.950227f;
 
-		gammaLowerBound = 0.04045;
-		gammaLowerBoundAlpha = 12.92;
-		gamma = 1.0 / 2.4;
-		gammaAlpha = 1.055;
-		gammaBeta = -0.055;
+		gammaLowerBound = 0.04045f;
+		gammaLowerBoundAlpha = 12.92f;
+		gamma = 1.0f / 2.4f;
+		gammaAlpha = 1.055f;
+		gammaBeta = -0.055f;
 	}
 
 	//divide bgr value by 255.0
-	BGRmat.convertTo(BGRmat, CV_64FC3, 1.0 / 255.0);
+	BGRmat.convertTo(BGRmat, CV_32FC3, 1.0f / 255.0f);
 
 	//split the channels
 	Mat channels[3];
-	channels[0] = Mat::zeros(BGRmat.size(), CV_64FC1);
-	channels[1] = Mat::zeros(BGRmat.size(), CV_64FC1);
-	channels[2] = Mat::zeros(BGRmat.size(), CV_64FC1);
+	channels[0] = Mat::zeros(BGRmat.size(), CV_32FC1);
+	channels[1] = Mat::zeros(BGRmat.size(), CV_32FC1);
+	channels[2] = Mat::zeros(BGRmat.size(), CV_32FC1);
 	split(BGRmat, channels);
 
 	//std::cout << "channels[0]\n" << channels[0] << "\n";
@@ -289,7 +289,7 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 		{
 			for (int j = 0; j < channels[k].rows; j++)
 			{
-				double temp = channels[k].at<double>(j, i);
+				float temp = channels[k].at<float>(j, i);
 
 				if (temp <= gammaLowerBound) //for value lower than bound
 				{
@@ -297,20 +297,20 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 				}
 				else
 				{
-					temp = pow((temp - gammaBeta) / gammaAlpha, 1.0 / gamma);
+					temp = pow((temp - gammaBeta) / gammaAlpha, 1.0f / gamma);
 				}
 
-				channels[k].at<double>(j, i) = temp;
+				channels[k].at<float>(j, i) = temp;
 			}
 		}
 	}
 
 	//create XYZ channels
 	Mat xyzs[3];
-	xyzs[0] = Mat::zeros(BGRmat.size(), CV_64FC1); //x
+	xyzs[0] = Mat::zeros(BGRmat.size(), CV_32FC1); //x
 	//std::cout << "xyzs[0]\n" << xyzs[0] << "\n";
-	xyzs[1] = Mat::zeros(BGRmat.size(), CV_64FC1); //y
-	xyzs[2] = Mat::zeros(BGRmat.size(), CV_64FC1); //z
+	xyzs[1] = Mat::zeros(BGRmat.size(), CV_32FC1); //y
+	xyzs[2] = Mat::zeros(BGRmat.size(), CV_32FC1); //z
 
 	cv::scaleAdd(channels[0], transformMat[0], xyzs[0], xyzs[0]); //X to R
 	cv::scaleAdd(channels[1], transformMat[1], xyzs[0], xyzs[0]); //Y to R
@@ -329,13 +329,13 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 		{
 			for (int j = 0; j < xyzs[k].rows; j++)
 			{
-				double temp = xyzs[k].at<double>(j, i);
+				float temp = xyzs[k].at<float>(j, i);
 
 				//clipping
-				temp = (temp < 0) ? 0.0 : temp;
-				temp = (temp > 1.0) ? 1.0 : temp;
+				temp = (temp < 0.0f) ? 0.0f : temp;
+				temp = (temp > 1.0f) ? 1.0f : temp;
 
-				xyzs[k].at<double>(j, i) = temp;
+				xyzs[k].at<float>(j, i) = temp;
 			}
 		}
 	}
@@ -347,12 +347,13 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 
 
 	//assemble to XYZ image
-	XYZmat = Mat::zeros(XYZmat.size(), CV_64FC3);
+	XYZmat = Mat::zeros(XYZmat.size(), CV_32FC3);
 	cv::merge(xyzs, 3, XYZmat);
 }
 
 void testopencv()
 {
+#ifdef nothing
 	//quickDisplay();
 
 	double rawdata[] = { 0.3, 0.1, 0.3, 0.9, 1.2, 0.8, 0.4, 0.5 };
@@ -421,19 +422,19 @@ void testopencv()
 		for (int j = 0; j < XYZimg.cols; j++)
 		{
 			outputChannels[0].at<double>(i, j) =
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(0, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(0, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(0, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<double>(0, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<double>(0, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<double>(0, 2);
 
 			outputChannels[1].at<double>(i, j) =
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(1, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(1, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(1, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<double>(1, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<double>(1, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<double>(1, 2);
 
 			outputChannels[2].at<double>(i, j) =
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(2, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(2, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(2, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<double>(2, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<double>(2, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<double>(2, 2);
 		}
 	}
 
@@ -476,6 +477,7 @@ void testopencv()
 	image1.displayRGB();*/
 
 	//quickSave(rawdata, 4, 2, "rawdata.bmp", "resources/image/");
+#endif
 }
 
 
@@ -626,8 +628,8 @@ void update_map_projection_template(Mat& map_x, Mat& map_y, const Mat& src)
 			case 0:
 				if (i > src.cols*0.25 && i < src.cols*0.75 && j > src.rows*0.25 && j < src.rows*0.75)
 				{
-					map_x.at<float>(j, i) = 2 * (i - src.cols*0.25) + 0.5;
-					map_y.at<float>(j, i) = 2 * (j - src.rows*0.25) + 0.5;
+					map_x.at<float>(j, i) = 2.0 * ((float)i - (float)src.cols*0.25) + 0.5;
+					map_y.at<float>(j, i) = 2.0 * ((float)j - (float)src.rows*0.25) + 0.5;
 				}
 				else
 				{
@@ -775,7 +777,7 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	{
 		return false;
 	}
-	inputimg.convertTo(inputimg, CV_64FC3, (double)brightness);
+	inputimg.convertTo(inputimg, CV_32FC3, (float)brightness);
 	
 	//Mat channelBGR[3]; //BGR is openCV's order
 	//split(inputimg, channelBGR);
@@ -785,9 +787,9 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	//..., as images are read from topleft to bottomright facing the world coordinate system
 
 	//step1: rotate the vectors
-	float thetaX = rotX / 180.0 * MYPI;
-	float thetaY = rotY / 180.0 * MYPI;
-	float thetaZ = rotZ / 180.0 * MYPI;
+	float thetaX = rotX / 180.0f * float(MYPI);
+	float thetaY = rotY / 180.0f * float(MYPI);
+	float thetaZ = rotZ / 180.0f * float(MYPI);
 
 	float horzrotated[3];
 	float vertrotated[3];
@@ -830,40 +832,40 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	step(oldorigin, origin, 0.5, 0.5);
 	
 	//lookup the inverse scaling
-	Mat reverseLookup_preInv(Mat::zeros(3, 3, CV_64FC1));
+	Mat reverseLookup_preInv(Mat::zeros(3, 3, CV_32FC1));
 	switch (PI_rawFormat)
 	{
 	case OIC_LMS:
-		reverseLookup_preInv.at<double>(0, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_LMS_L);
-		reverseLookup_preInv.at<double>(1, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_LMS_M);
-		reverseLookup_preInv.at<double>(2, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_LMS_S);
-		reverseLookup_preInv.at<double>(0, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_LMS_L);
-		reverseLookup_preInv.at<double>(1, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_LMS_M);
-		reverseLookup_preInv.at<double>(2, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_LMS_S);
-		reverseLookup_preInv.at<double>(0, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_LMS_L);
-		reverseLookup_preInv.at<double>(1, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_LMS_M);
-		reverseLookup_preInv.at<double>(2, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_LMS_S);
+		reverseLookup_preInv.at<float>(0, 0) = ColorimetricLookup::lookup((float)PI_primaryWavelengthR, CLU_LMS_L);
+		reverseLookup_preInv.at<float>(1, 0) = ColorimetricLookup::lookup((float)PI_primaryWavelengthR, CLU_LMS_M);
+		reverseLookup_preInv.at<float>(2, 0) = ColorimetricLookup::lookup((float)PI_primaryWavelengthR, CLU_LMS_S);
+		reverseLookup_preInv.at<float>(0, 1) = ColorimetricLookup::lookup((float)PI_primaryWavelengthG, CLU_LMS_L);
+		reverseLookup_preInv.at<float>(1, 1) = ColorimetricLookup::lookup((float)PI_primaryWavelengthG, CLU_LMS_M);
+		reverseLookup_preInv.at<float>(2, 1) = ColorimetricLookup::lookup((float)PI_primaryWavelengthG, CLU_LMS_S);
+		reverseLookup_preInv.at<float>(0, 2) = ColorimetricLookup::lookup((float)PI_primaryWavelengthB, CLU_LMS_L);
+		reverseLookup_preInv.at<float>(1, 2) = ColorimetricLookup::lookup((float)PI_primaryWavelengthB, CLU_LMS_M);
+		reverseLookup_preInv.at<float>(2, 2) = ColorimetricLookup::lookup((float)PI_primaryWavelengthB, CLU_LMS_S);
 		break;
 	case OIC_XYZ:
 	default:
-		reverseLookup_preInv.at<double>(0, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_XYZ_X);
-		reverseLookup_preInv.at<double>(1, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_XYZ_Y);
-		reverseLookup_preInv.at<double>(2, 0) = ColorimetricLookup::lookup((double)PI_primaryWavelengthR, CLU_XYZ_Z);
-		reverseLookup_preInv.at<double>(0, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_XYZ_X);
-		reverseLookup_preInv.at<double>(1, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_XYZ_Y);
-		reverseLookup_preInv.at<double>(2, 1) = ColorimetricLookup::lookup((double)PI_primaryWavelengthG, CLU_XYZ_Z);
-		reverseLookup_preInv.at<double>(0, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_XYZ_X);
-		reverseLookup_preInv.at<double>(1, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_XYZ_Y);
-		reverseLookup_preInv.at<double>(2, 2) = ColorimetricLookup::lookup((double)PI_primaryWavelengthB, CLU_XYZ_Z);
+		reverseLookup_preInv.at<float>(0, 0) = ColorimetricLookup::lookup((float)PI_primaryWavelengthR, CLU_XYZ_X);
+		reverseLookup_preInv.at<float>(1, 0) = ColorimetricLookup::lookup((float)PI_primaryWavelengthR, CLU_XYZ_Y);
+		reverseLookup_preInv.at<float>(2, 0) = ColorimetricLookup::lookup((float)PI_primaryWavelengthR, CLU_XYZ_Z);
+		reverseLookup_preInv.at<float>(0, 1) = ColorimetricLookup::lookup((float)PI_primaryWavelengthG, CLU_XYZ_X);
+		reverseLookup_preInv.at<float>(1, 1) = ColorimetricLookup::lookup((float)PI_primaryWavelengthG, CLU_XYZ_Y);
+		reverseLookup_preInv.at<float>(2, 1) = ColorimetricLookup::lookup((float)PI_primaryWavelengthG, CLU_XYZ_Z);
+		reverseLookup_preInv.at<float>(0, 2) = ColorimetricLookup::lookup((float)PI_primaryWavelengthB, CLU_XYZ_X);
+		reverseLookup_preInv.at<float>(1, 2) = ColorimetricLookup::lookup((float)PI_primaryWavelengthB, CLU_XYZ_Y);
+		reverseLookup_preInv.at<float>(2, 2) = ColorimetricLookup::lookup((float)PI_primaryWavelengthB, CLU_XYZ_Z);
 		break;
 	}
 	Mat reverseLookup(reverseLookup_preInv.inv());
 
 	Mat outputChannels[3] = {
-		Mat::zeros(inputimg.size(),CV_64FC1),	//long wavelength channel
-		Mat::zeros(inputimg.size(),CV_64FC1),	//middle wavelength channel
-		Mat::zeros(inputimg.size(),CV_64FC1) };	//short wavelength channel
-	Mat XYZimg(Mat::zeros(inputimg.size(), CV_64FC3));
+		Mat::zeros(inputimg.size(),CV_32FC1),	//long wavelength channel
+		Mat::zeros(inputimg.size(),CV_32FC1),	//middle wavelength channel
+		Mat::zeros(inputimg.size(),CV_32FC1) };	//short wavelength channel
+	Mat XYZimg(Mat::zeros(inputimg.size(), CV_32FC3));
 	BGRtoXYZ(XYZimg, inputimg, PI_rgbStandard);
 
 	//rasterizing the images
@@ -882,9 +884,9 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 			pointR.z = pixelpos[2];
 			pointR.wavelength = PI_primaryWavelengthR;
 			pointR.intensity = 
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(0, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(0, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(0, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<float>(0, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<float>(0, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<float>(0, 2);
 			pointR.intensity = (pointR.intensity <= 0) ? 0 : pointR.intensity;
 			
 			pointG.x = pixelpos[0];
@@ -892,9 +894,9 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 			pointG.z = pixelpos[2];
 			pointG.wavelength = PI_primaryWavelengthG;
 			pointG.intensity = 
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(1, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(1, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(1, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<float>(1, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<float>(1, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<float>(1, 2);
 			pointG.intensity = (pointG.intensity <= 0) ? 0 : pointG.intensity;
 
 			pointB.x = pixelpos[0];
@@ -902,9 +904,9 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 			pointB.z = pixelpos[2];
 			pointB.wavelength = PI_primaryWavelengthB;
 			pointB.intensity = 
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(2, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(2, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(2, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<float>(2, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<float>(2, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<float>(2, 2);
 			pointB.intensity = (pointB.intensity <= 0) ? 0 : pointB.intensity;
 
 			outputvec.push_back(pointB);
@@ -1032,9 +1034,9 @@ bool importImageCVv2(std::vector<tracer::PI_LuminousPoint>& outputvec, std::stri
 			pointR.z = pixelpos[2];
 			pointR.wavelength = PI_primaryWavelengthR;
 			pointR.intensity =
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(0, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(0, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(0, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<double>(0, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<double>(0, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<double>(0, 2);
 			pointR.intensity = (pointR.intensity <= 0) ? 0 : pointR.intensity;
 
 			pointG.x = pixelpos[0];
@@ -1042,9 +1044,9 @@ bool importImageCVv2(std::vector<tracer::PI_LuminousPoint>& outputvec, std::stri
 			pointG.z = pixelpos[2];
 			pointG.wavelength = PI_primaryWavelengthG;
 			pointG.intensity =
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(1, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(1, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(1, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<double>(1, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<double>(1, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<double>(1, 2);
 			pointG.intensity = (pointG.intensity <= 0) ? 0 : pointG.intensity;
 
 			pointB.x = pixelpos[0];
@@ -1052,9 +1054,9 @@ bool importImageCVv2(std::vector<tracer::PI_LuminousPoint>& outputvec, std::stri
 			pointB.z = pixelpos[2];
 			pointB.wavelength = PI_primaryWavelengthB;
 			pointB.intensity =
-				XYZimg.at<Vec3d>(i, j).val[0] * reverseLookup.at<double>(2, 0) +
-				XYZimg.at<Vec3d>(i, j).val[1] * reverseLookup.at<double>(2, 1) +
-				XYZimg.at<Vec3d>(i, j).val[2] * reverseLookup.at<double>(2, 2);
+				XYZimg.at<Vec3f>(i, j).val[0] * reverseLookup.at<double>(2, 0) +
+				XYZimg.at<Vec3f>(i, j).val[1] * reverseLookup.at<double>(2, 1) +
+				XYZimg.at<Vec3f>(i, j).val[2] * reverseLookup.at<double>(2, 2);
 			pointB.intensity = (pointB.intensity <= 0) ? 0 : pointB.intensity;
 
 			outputvec.push_back(pointB);
@@ -1067,7 +1069,7 @@ bool importImageCVv2(std::vector<tracer::PI_LuminousPoint>& outputvec, std::stri
 }
 */
 
-bool importCustomApo(double *& p_customApoData, int & customApoDataSize, std::string path)
+bool importCustomApo(float *& p_customApoData, int & customApoDataSize, std::string path)
 {
 	//just to be safe, or not...
 	if (p_customApoData != nullptr)
@@ -1085,22 +1087,22 @@ bool importCustomApo(double *& p_customApoData, int & customApoDataSize, std::st
 
 	//convert to  double, rescale from 0 to 1
 	Mat rescaledimg;
-	normalize(inputimg, rescaledimg, 1.0, 0.0, NORM_INF, CV_64FC1);
+	normalize(inputimg, rescaledimg, 1.0f, 0.0f, NORM_INF, CV_32FC1);
 
 	//allocate the pointer with new[], write the data (using memcpy is probably more safe)
 	int customApoDataCount = (rescaledimg.rows*rescaledimg.cols + 2);
-	customApoDataSize = customApoDataCount * sizeof(double);
-	p_customApoData = new double[customApoDataCount];
+	customApoDataSize = customApoDataCount * sizeof(float);
+	p_customApoData = new float[customApoDataCount];
 
-	p_customApoData[0] = static_cast<double>(rescaledimg.rows);
-	p_customApoData[1] = static_cast<double>(rescaledimg.cols);
+	p_customApoData[0] = static_cast<float>(rescaledimg.rows);
+	p_customApoData[1] = static_cast<float>(rescaledimg.cols);
 
-	memcpy(&(p_customApoData[2]), rescaledimg.data, rescaledimg.rows*rescaledimg.cols * sizeof(double));
+	memcpy(&(p_customApoData[2]), rescaledimg.data, rescaledimg.rows*rescaledimg.cols * sizeof(float));
 
 	return true;
 }
 
-bool generateGLDrawTexture(unsigned char *& output, double * input, int &rows, int &cols)
+bool generateGLDrawTexture(unsigned char *& output, float * input, int &rows, int &cols)
 {
 	if (input == nullptr || rows <= 0 || cols <= 0)
 	{
@@ -1110,7 +1112,7 @@ bool generateGLDrawTexture(unsigned char *& output, double * input, int &rows, i
 	textureCache.emplace_back(rows, cols, CV_8UC3, Scalar(0));
 	Mat& currentTexture = textureCache.back(); //refers to the newly emplaced cv::Mat
 
-	Mat inputMat(rows, cols, CV_64FC1, input);
+	Mat inputMat(rows, cols, CV_32FC1, input);
 	Mat tempMat;
 	normalize(inputMat, tempMat, 255, 0, NORM_INF, CV_8UC1);
 	cvtColor(tempMat, currentTexture, COLOR_GRAY2BGR, 3);
@@ -1143,11 +1145,11 @@ bool generateGLDrawTextureImage(unsigned char *& output, char* input, int & rows
 	textureCache.emplace_back(rows, cols, CV_8UC3, Scalar(0));
 	Mat& currentTexture = textureCache.back(); //refers to the newly emplaced cv::Mat
 
-#if _PRECISION_MODE == _SINGLE_PRECISION
+//#if _PRECISION_MODE == _SINGLE_PRECISION
 	Mat inputMat(rows, cols, CV_32FC1, input);
-#else
-	Mat inputMat(rows, cols, CV_64FC1, input);
-#endif 
+//#else
+//	Mat inputMat(rows, cols, CV_64FC1, input);
+//#endif 
 
 	//remapping
 	Mat tempMat(inputMat.size(), inputMat.type());

@@ -430,7 +430,7 @@ public:
 
 private:
 	std::mutex v_triangles_lock;
-	std::vector<PerKernelRenderingInput> v_triangles;
+	std::list<PerKernelRenderingInput> v_triangles;
 	PerKernelRenderingInput* hp_triangles = nullptr;
 	PerKernelRenderingInput* dp_triangles = nullptr;
 
@@ -454,6 +454,8 @@ private:
 
 			stageOneCount = offsetUpper - offsetLower + 1;
 
+			if (offsetUpper == 0 || offsetLower == 0) std::cout << "Offset is 0!\n";
+
 			mtable = new std::vector<pointIndex>[stageOneCount];
 
 			//2nd pass
@@ -468,6 +470,7 @@ private:
 		{
 			//clean up resources
 			delete[] mtable;
+			mtable = nullptr;
 		}
 
 		int find(const point2D<int>& tofind) const
@@ -521,6 +524,7 @@ private:
 		int arraySize = thisbundle.size;
 		point2D<int>* inputArray = thisbundle.samplinggrid;
 
+		if (arraySize == 0) std::cout << "Zero size bundle!\n";
 
 		////lambda for searching
 		//auto searchForPoint = [&](const point2D<int>& p) -> int {
@@ -562,6 +566,8 @@ private:
 			results[3] = searchForPoint({ inputArray[i].x + 1, inputArray[i].y });
 			results[4] = searchForPoint({ inputArray[i].x + 1, inputArray[i].y - 1 });
 			results[5] = searchForPoint({ inputArray[i].x, inputArray[i].y - 1 });
+
+			if (results[0] == -1) std::cout << "Result 0 is -1\n";
 
 			if (results[0] != -1)
 			{
@@ -645,9 +651,11 @@ private:
 
 		hp_triangles = new PerKernelRenderingInput[m_triangleCount];
 
+		auto v_triangle_iterator = v_triangles.begin();
 		for (long i = 0; i < m_triangleCount; i++)
 		{
-			hp_triangles[i] = v_triangles[i];
+			hp_triangles[i] = *v_triangle_iterator;
+			v_triangle_iterator++;
 		}
 
 		CUDARUN(cudaMalloc((void**)&dp_triangles, m_triangleCount * sizeof(PerKernelRenderingInput)));
@@ -1037,7 +1045,7 @@ bool constructSurface(mysurface<MYFLOATTYPE>*& p_surface, unsigned short int sur
 
 	//apodization translator, incase somebody mess things up
 	unsigned short int translatedApo = APD_UNIFORM;
-	double* p_customApoData = nullptr;
+	float* p_customApoData = nullptr;
 	int customApoDataSize = 0;
 	switch (apodization)
 	{

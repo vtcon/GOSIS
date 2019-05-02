@@ -23,10 +23,10 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4,
 	point2D<MYFLOATTYPE>& p1, point2D<MYFLOATTYPE>& p2, point2D<MYFLOATTYPE>& p3, point2D<MYFLOATTYPE>& p4);
 
-__device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
+__device__ float SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
 	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4);
 
-__device__ MYFLOATTYPE insideTriangle(
+__device__ float insideTriangle(
 	const point2D<int>& p, const vec3<MYFLOATTYPE>& vtx1, const vec3<MYFLOATTYPE>& vtx2,
 	const vec3<MYFLOATTYPE>& vtx3, const vec3<MYFLOATTYPE>& pdir, const SimpleRetinaDescriptor& retinaDescriptor);
 
@@ -147,10 +147,10 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	vec3<MYFLOATTYPE> pdir = (pdir1 + pdir2 + pdir3) / (MYFLOATTYPE)3.0;
 
 	//intensity of the triangle is the average intensity of three rays
-	MYFLOATTYPE intensity1 = kernelLaunchParams.dp_triangles[ID].intensity1;
-	MYFLOATTYPE intensity2 = kernelLaunchParams.dp_triangles[ID].intensity2;
-	MYFLOATTYPE intensity3 = kernelLaunchParams.dp_triangles[ID].intensity3;
-	MYFLOATTYPE triangleIntensity = (intensity1 + intensity2 + intensity3) / (MYFLOATTYPE)3.0;
+	float intensity1 = kernelLaunchParams.dp_triangles[ID].intensity1;
+	float intensity2 = kernelLaunchParams.dp_triangles[ID].intensity2;
+	float intensity3 = kernelLaunchParams.dp_triangles[ID].intensity3;
+	float triangleIntensity = (intensity1 + intensity2 + intensity3) / 3.0f;
 
 	RetinaImageChannel* dp_rawChannel = kernelLaunchParams.dp_rawChannel;
 	//MYFLOATTYPE thetaR = retinaDescriptor.m_thetaR;
@@ -174,11 +174,11 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	//***********************core program part************************************
 	//pick a point
 	//first guess is the center of three vertices
-	vec3<MYFLOATTYPE> vtxCenter = (vtx1 + vtx2 + vtx3) / static_cast<MYFLOATTYPE>(3);
+	vec3<MYFLOATTYPE> vtxCenter = (vtx1 + vtx2 + vtx3) / static_cast<MYFLOATTYPE>(3.0);
 	vtxCenter.z = sqrt(R0*R0 - vtxCenter.x*vtxCenter.x - vtxCenter.y*vtxCenter.y);
 
 	vec3<MYFLOATTYPE> vtxs[] = {vtxCenter, vtx1, vtx2, vtx3};
-	MYFLOATTYPE outputSearch = 0.0;
+	float outputSearch = 0.0;
 
 	point2D<int> pCur;
 
@@ -212,26 +212,26 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 #ifdef _MYDEBUGMODE
 					printf("outputSearch = %f\n", outputSearch);
 #endif
-					if (outputSearch != 0.0)
+					if (outputSearch != 0.0f)
 					{
 						pCur = pSearch;
 						break;
 					}
 				}
-				if (outputSearch != 0.0)
+				if (outputSearch != 0.0f)
 					break;
 				
 			}
 			searchRadius = searchRadius + 1;
 		}
-		if (outputSearch != 0.0)
+		if (outputSearch != 0.0f)
 			break;
 	}
 #ifdef _MYDEBUGMODE
 	if (ID == debugID) printf("ID %d outputSearch = %f\n", ID, outputSearch);
 #endif
 	//if found no point, quit
-	if (outputSearch == 0)
+	if (outputSearch == 0.0f)
 	{
 		printf("ID %d output search unsuccessful!, x,y position: %f, %f\n", ID, vtxCenter.x, vtxCenter.y);
 		return;
@@ -249,7 +249,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	int nxNextLineSeed = pCur.x;
 	bool foundTurningPointSeed = false;
 	int nxTurningPointSeed = 0;
-	MYFLOATTYPE IOA = 0.0;
+	float IOA = 0.0f;
 
 	while (!quit) // while not quit %the y loop
 	{
@@ -273,7 +273,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//scan for next seed
 			if (foundNextLineSeed == false)
 			{
-				if (insideTriangle({ nx, ny + increY }, vtx1, vtx2, vtx3, pdir, retinaDescriptor))
+				if (insideTriangle({ nx, ny + increY }, vtx1, vtx2, vtx3, pdir, retinaDescriptor) != 0.0f)
 				{
 					foundNextLineSeed = true;
 					nxNextLineSeed = nx;
@@ -283,7 +283,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//if it is the first line, scan for turning point seed
 			if (ny == nySeed && foundTurningPointSeed == false && increY == +1)
 			{
-				if (insideTriangle({ nx, ny - 1 }, vtx1, vtx2, vtx3, pdir, retinaDescriptor))
+				if (insideTriangle({ nx, ny - 1 }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)!=0.0f)
 				{
 					foundTurningPointSeed = true;
 					nxTurningPointSeed = nx;
@@ -311,7 +311,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//scan for next seed
 			if (foundNextLineSeed == false)
 			{
-				if (insideTriangle({ nx, ny + increY }, vtx1, vtx2, vtx3, pdir, retinaDescriptor))
+				if (insideTriangle({ nx, ny + increY }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)!=0.0f)
 				{
 					foundNextLineSeed = true;
 					nxNextLineSeed = nx;
@@ -321,7 +321,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//if it is the first line, scan for turning point seed
 			if (ny == nySeed && foundTurningPointSeed == false && increY == +1)
 			{
-				if (insideTriangle({ nx, ny - 1 }, vtx1, vtx2, vtx3, pdir, retinaDescriptor))
+				if (insideTriangle({ nx, ny - 1 }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)!=0.0f)
 				{
 					foundTurningPointSeed = true;
 					nxTurningPointSeed = nx;
@@ -455,7 +455,7 @@ __device__ int maptotriangle(
 
 	//if any component of pdir is zero
 	unsigned short int nrZero = 0;
-	if (pdir.x == 0)
+	if (pdir.x == 0.0)
 	{
 		nrZero = nrZero + 1;
 		A1 = px.x - p1.x;
@@ -463,7 +463,7 @@ __device__ int maptotriangle(
 		A3 = p3.x - p1.x;
 	}
 
-	if (pdir.y == 0)
+	if (pdir.y == 0.0)
 	{
 		if (nrZero == 1)
 		{
@@ -477,7 +477,7 @@ __device__ int maptotriangle(
 		A3 = p3.y - p1.y;
 	}
 
-	if (pdir.z == 0)
+	if (pdir.z == 0.0)
 	{
 		if (nrZero == 1)
 		{
@@ -497,14 +497,14 @@ __device__ int maptotriangle(
 		A3 = p3.z - p1.z;
 	}
 
-	if (nrZero == 0)
+	if (nrZero == 0.0)
 	{
 		A1 = px.x*pdir.y - p1.x*pdir.y - px.y*pdir.x + p1.y*pdir.x;
 		A2 = p2.x*pdir.y - p1.x*pdir.y - p2.y*pdir.x + p1.y*pdir.x;
 		A3 = p3.x*pdir.y - p1.x*pdir.y - p3.y*pdir.x + p1.y*pdir.x;
 	}
 
-	if (nrZero <= 1)
+	if (nrZero <= 1.0)
 	{
 		MYFLOATTYPE denoLeft, numLeft1, numLeft2, numLeft3, numLeft4,
 			denoRight, numRight1, numRight2, numRight3, numRight4;
@@ -580,9 +580,9 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 	MYFLOATTYPE crp1 = dot(c13, point2D<MYFLOATTYPE>(c12.y, -c12.x));
 	MYFLOATTYPE crp2 = dot(c14, point2D<MYFLOATTYPE>(c12.y, -c12.x));
 
-	if (crp1 == 0)
+	if (crp1 == 0.0)
 	{
-		if (crp2 == 0)
+		if (crp2 == 0.0)
 		{
 			//all colinear
 			return false;
@@ -593,7 +593,7 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 			if (dotcolinear > norm(c12))
 			{
 				p3 = c3;
-				if (crp2 > 0)
+				if (crp2 > 0.0)
 				{
 					p2 = c4; p4 = c2;
 					return true;
@@ -604,10 +604,10 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 					return true;
 				}
 			}
-			else if (dotcolinear > 0)
+			else if (dotcolinear > 0.0)
 			{
 				p3 = c2;
-				if (crp2 > 0)
+				if (crp2 > 0.0)
 				{
 					p2 = c4; p4 = c3;
 					return true;
@@ -621,7 +621,7 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 			else
 			{
 				p3 = c4;
-				if (crp2 > 0)
+				if (crp2 > 0.0)
 				{
 					p2 = c3; p4 = c3;
 					return true;
@@ -634,13 +634,13 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 			}
 		}
 	}
-	else if (crp2 == 0)
+	else if (crp2 == 0.0)
 	{
 		MYFLOATTYPE dotcolinear = dot(c14, normalize(c12));
 		if (dotcolinear > norm(c12))
 		{
 			p3 = c4;
-			if (crp1 > 0)
+			if (crp1 > 0.0)
 			{
 				p2 = c3; p4 = c2;
 				return true;
@@ -651,10 +651,10 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 				return true;
 			}
 		}
-		else if (dotcolinear > 0)
+		else if (dotcolinear > 0.0)
 		{
 			p3 = c2;
-			if (crp1 > 0)
+			if (crp1 > 0.0)
 			{
 				p2 = c3; p4 = c4;
 				return true;
@@ -668,7 +668,7 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 		else
 		{
 			p3 = c3;
-			if (crp1 > 0)
+			if (crp1 > 0.0)
 			{
 				p2 = c4; p4 = c2;
 				return true;
@@ -684,9 +684,9 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 	MYFLOATTYPE dot1 = dot(c12, c13) / (norm(c12)*norm(c13));
 	MYFLOATTYPE dot2 = dot(c12, c14) / (norm(c12)*norm(c14));
 
-	if (crp1 > 0)
+	if (crp1 > 0.0)
 	{
-		if (crp2 > 0)
+		if (crp2 > 0.0)
 		{
 			p4 = c2;
 			if (dot1 > dot2)
@@ -722,7 +722,7 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 	}
 	else
 	{
-		if (crp2 > 0)
+		if (crp2 > 0.0)
 		{
 			p2 = c4; p3 = c2; p4 = c3;
 			return true;
@@ -760,7 +760,7 @@ __device__ bool sortCCW(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYP
 	//return true;
 }
 
-__device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
+__device__ float SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
 	const point2D<MYFLOATTYPE>& c3, const point2D<MYFLOATTYPE>& c4)
 {
 	point2D<MYFLOATTYPE> p1, p2, p3, p4;
@@ -789,14 +789,14 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 	{
 		pE = inputList[i];
 		//if (E inside clipEdge)
-		if (pE.x >= 0)
+		if (pE.x >= 0.0)
 		{
 			//if (S not inside clipEdge)
-			if (pS.x < 0)
+			if (pS.x < 0.0)
 			{
 				//add intersection to the output list
 				//pT = { 0, 0 }; not really needed
-				pT.x = 0;
+				pT.x = 0.0;
 				pT.y = pS.y - pS.x*(pE.y - pS.y) / (pE.x - pS.x);
 				outputList[outputListSize] = pT;
 				outputListSize = outputListSize + 1;
@@ -806,11 +806,11 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 			outputListSize = outputListSize + 1;
 		}
 		//else if (S inside clipEdge)
-		else if (pS.x >= 0)
+		else if (pS.x >= 0.0)
 		{
 			//add intersection to the output list
 			//pT = [0; 0];
-			pT.x = 0;
+			pT.x = 0.0;
 			pT.y = pS.y - pS.x*(pE.y - pS.y) / (pE.x - pS.x);
 			outputList[outputListSize] = pT;
 			outputListSize = outputListSize + 1;
@@ -833,15 +833,15 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 	{
 		pE = inputList[i];
 		//if (E inside clipEdge)
-		if (pE.y >= 0)
+		if (pE.y >= 0.0)
 		{
 			//if (S not inside clipEdge)
-			if (pS.y < 0)
+			if (pS.y < 0.0)
 			{
 				// add intersection to the output list
 				//pT = [0; 0];
 				pT.x = pS.x - pS.y*(pE.x - pS.x) / (pE.y - pS.y);
-				pT.y = 0;
+				pT.y = 0.0;
 				outputList[outputListSize] = pT;
 				outputListSize = outputListSize + 1;
 			}
@@ -850,12 +850,12 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 			outputListSize = outputListSize + 1;
 		}
 		//else if (S inside clipEdge)
-		else if (pS.y >= 0)
+		else if (pS.y >= 0.0)
 		{
 			//add intersection to the output list
 			//pT = [0; 0];
 			pT.x = pS.x - pS.y*(pE.x - pS.x) / (pE.y - pS.y);
-			pT.y = 0;
+			pT.y = 0.0;
 			outputList[outputListSize] = pT;
 			outputListSize = outputListSize + 1;
 		}
@@ -877,14 +877,14 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 	{
 		pE = inputList[i];
 		//if (E inside clipEdge)
-		if ((pE.x + pE.y) <= 1)
+		if ((pE.x + pE.y) <= 1.0)
 		{
 			//if (S not inside clipEdge)
-			if ((pS.x + pS.y) > 1)
+			if ((pS.x + pS.y) > 1.0)
 			{
 				//add intersection to the output list
-				pT.x = (pE.x*(pS.y - pE.y) + (1 - pE.y)*(pS.x - pE.x)) / ((pS.x - pE.x) + (pS.y - pE.y));
-				pT.y = 1 - pT.x;
+				pT.x = (pE.x*(pS.y - pE.y) + (1.0 - pE.y)*(pS.x - pE.x)) / ((pS.x - pE.x) + (pS.y - pE.y));
+				pT.y = 1.0 - pT.x;
 				outputList[outputListSize] = pT;
 				outputListSize = outputListSize + 1;
 			}
@@ -896,7 +896,7 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 		else if ((pS.x + pS.y) <= 1)
 		{
 			//add intersection to the output list
-			pT.x = (pE.x*(pS.y - pE.y) + (1 - pE.y)*(pS.x - pE.x)) / ((pS.x - pE.x) + (pS.y - pE.y));
+			pT.x = (pE.x*(pS.y - pE.y) + (1.0 - pE.y)*(pS.x - pE.x)) / ((pS.x - pE.x) + (pS.y - pE.y));
 			pT.y = 1 - pT.x;
 			outputList[outputListSize] = pT;
 			outputListSize = outputListSize + 1;
@@ -911,7 +911,7 @@ __device__ MYFLOATTYPE SutherlandHogdman(const point2D<MYFLOATTYPE>& c1, const p
 	for (int i = 0; i < outputListSize - 1; i++)
 		output += outputList[i].x*outputList[i + 1].y - outputList[i + 1].x*outputList[i].y;
 
-	return output;
+	return float(output);
 }
 
 __device__ MYFLOATTYPE SutherlandHogdman2(const point2D<MYFLOATTYPE>& c1, const point2D<MYFLOATTYPE>& c2,
@@ -1083,7 +1083,7 @@ __device__ MYFLOATTYPE SutherlandHogdman2(const point2D<MYFLOATTYPE>& c1, const 
 	return output;
 }
 
-__device__ MYFLOATTYPE insideTriangle(
+__device__ float insideTriangle(
 	const point2D<int>& p, const vec3<MYFLOATTYPE>& vtx1, const vec3<MYFLOATTYPE>& vtx2,
 	const vec3<MYFLOATTYPE>& vtx3, const vec3<MYFLOATTYPE>& pdir, const SimpleRetinaDescriptor& retinaDescriptor)
 {
@@ -1091,7 +1091,7 @@ __device__ MYFLOATTYPE insideTriangle(
 	//bool output0 = find4points(p.nx, p.ny, thetaR, R0, p1, p2, p3, p4);
 	bool output0 = retinaDescriptor.array2Cartesian(p, p1, p2, p3, p4);
 	if (!output0)
-		return 0.0;
+		return 0.0f;
 
 	//MYFLOATTYPE alpha1, beta1, alpha2, beta2, alpha3, beta3, alpha4, beta4;
 	point2D<MYFLOATTYPE> bp1, bp2, bp3, bp4;
@@ -1105,7 +1105,7 @@ __device__ MYFLOATTYPE insideTriangle(
 	if (output1 == -1 || output2 == -1 || output3 == -1 || output4 == -1)
 		return 0;
 
-	MYFLOATTYPE returnValue = SutherlandHogdman(bp1, bp2, bp3, bp4);
+	float returnValue = SutherlandHogdman(bp1, bp2, bp3, bp4);
 
 	vec3<MYFLOATTYPE> testVec1 = cross(p2 - p1, p4 - p1);
 	vec3<MYFLOATTYPE> testVec2 = cross(p3 - p2, p1 - p2);
@@ -1117,9 +1117,9 @@ __device__ MYFLOATTYPE insideTriangle(
 	MYFLOATTYPE testDir3 = dot(testVec3, pdir);
 	MYFLOATTYPE testDir4 = dot(testVec4, pdir);
 
-	if (testDir1 > 0 && testDir2 > 0 && testDir3 > 0 && testDir4 > 0)
+	if (testDir1 > 0.0 && testDir2 > 0.0 && testDir3 > 0.0 && testDir4 > 0.0)
 	{
-		return 0;
+		return 0.0f;
 	}
 
 	/*

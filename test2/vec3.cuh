@@ -203,8 +203,8 @@ __host__ __device__ vec3<T> operator*(const vec3<T>& lhs, T rhs)
 template<typename T = float>
 __host__ __device__ vec3<T> operator/(const vec3<T>& lhs, T rhs)
 {
-	if (rhs == 0) printf("Division by zero!");
-	return (rhs == 0) ? vec3<T>(FP_NAN, FP_NAN, FP_NAN)
+	if (rhs == 0.0) printf("Division by zero!");
+	return (rhs == 0.0) ? vec3<T>(FP_NAN, FP_NAN, FP_NAN)
 		: vec3<T>(lhs.x / rhs, lhs.y / rhs, lhs.z / rhs);
 }
 

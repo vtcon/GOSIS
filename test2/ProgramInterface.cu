@@ -275,11 +275,11 @@ PI_Message tracer::test()
 			int count = 2;
 			PI_Surface* surfaces = new PI_Surface[count];
 			surfaces[0].z = 40.0; surfaces[0].diameter = 40.0; surfaces[0].radius = 40.0;
-			surfaces[0].refractiveIndex = 1.5168; surfaces[0].asphericity = 0.95;
+			surfaces[0].refractiveIndex = 1.5168f; surfaces[0].asphericity = 0.95f;
 			surfaces[0].apodization = PI_APD_CUSTOM; surfaces[0].customApoPath = "C:/testcustomapo.jpg";
 
 			surfaces[1].diameter = 40.0; surfaces[1].radius = -60.0;
-			float angularResol = 0.16;//0.16 is OK
+			float angularResol = 0.16f;//0.16 is OK
 
 			float angularExtend = 90.0;
 
@@ -454,7 +454,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 		//todo: data integrity check here
 
 		auto curveSign = (toAdd[i].radius > 0) ? MF_CONVEX : MF_CONCAVE;
-		toAdd[i].diameter = (abs(toAdd[i].diameter) < 2.0*abs(toAdd[i].radius)) ? abs(toAdd[i].diameter) : 2.0*abs(toAdd[i].radius);
+		toAdd[i].diameter = (abs(toAdd[i].diameter) < 2.0f*abs(toAdd[i].radius)) ? abs(toAdd[i].diameter) : 2.0f*abs(toAdd[i].radius);
 		bool output = constructSurface((newConfig->surfaces)[i], MF_REFRACTIVE, vec3<MYFLOATTYPE>(toAdd[i].x, toAdd[i].y, toAdd[i].z), abs(toAdd[i].radius), abs(toAdd[i].diameter), curveSign, previousN, toAdd[i].refractiveIndex, toAdd[i].asphericity, toAdd[i].apodization, toAdd[i].customApoPath);
 		if (!output) return { PI_UNKNOWN_ERROR,"Error adding surface" };
 		previousN = toAdd[i].refractiveIndex;
@@ -465,7 +465,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 
 	//for the final image surface
 	//todo: data integrity check here
-	toAdd[numofsurfaces - 1].diameter = (abs(toAdd[numofsurfaces - 1].diameter) < 2.0*abs(toAdd[numofsurfaces - 1].radius)) ? abs(toAdd[numofsurfaces - 1].diameter) : 2.0*abs(toAdd[numofsurfaces - 1].radius);
+	toAdd[numofsurfaces - 1].diameter = (abs(toAdd[numofsurfaces - 1].diameter) < 2.0f*abs(toAdd[numofsurfaces - 1].radius)) ? abs(toAdd[numofsurfaces - 1].diameter) : 2.0f*abs(toAdd[numofsurfaces - 1].radius);
 	bool output = constructSurface((newConfig->surfaces)[numofsurfaces-1], MF_IMAGE, vec3<MYFLOATTYPE>(toAdd[count-1].x, toAdd[count - 1].y, toAdd[count - 1].z), -abs(toAdd[count - 1].radius), toAdd[count - 1].diameter, MF_CONCAVE, 0.0, FP_INFINITE, toAdd[count-1].asphericity);
 
 	//copy to sibling surfaces on GPU side
@@ -495,7 +495,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 	//if not, take the from-the-diameter-resulting extend
 	
 	MYFLOATTYPE maxAngularExtend = asin(toAdd[numofsurfaces - 1].diameter / (2.0*R)) / MYPI * 180.0;
-	angularExtend = (angularExtend < maxAngularExtend) ? angularExtend : maxAngularExtend;
+	angularExtend = (angularExtend < (float)maxAngularExtend) ? angularExtend : (float)maxAngularExtend;
 	
 	p_retinaDescriptor = new SimpleRetinaDescriptor(angularResolution, R, angularExtend, angularExtend); //doesn't need to explicitly delete this
 	newConfig->createImageChannel(p_retinaDescriptor);
@@ -1319,11 +1319,11 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 
 PI_Message tracer::defaultPreference()
 {
-	PI_ThreadsPerKernelLaunch = 16;
-	PI_linearRayDensity = 30;
+	PI_ThreadsPerKernelLaunch = 32;
+	PI_linearRayDensity = 25;
 	PI_rgbStandard = IF_ADOBERGB;
-	PI_traceJobSize = 3;
-	PI_renderJobSize = 3;
+	PI_traceJobSize = 10;
+	PI_renderJobSize = 10;
 	PI_rawFormat = OIC_XYZ;
 	PI_projectionMethod = IF_PROJECTION_PLATE_CARREE;
 	PI_displayWindowSize = 800;
@@ -1352,14 +1352,14 @@ PI_Message tracer::drawOpticalConfig(float wavelength, bool suppressRefractiveSu
 	{
 		SurfaceDrawInfo& currentsurface = surfaceInfos[i];
 		auto p_surfacedata = dynamic_cast<quadricsurface<MYFLOATTYPE>*>(thisOpticalConfig->surfaces[i]);
-		currentsurface.posX = p_surfacedata->pos.x;
-		currentsurface.posY = p_surfacedata->pos.y;
-		currentsurface.posZ = p_surfacedata->pos.z;
-		currentsurface.asphericity = p_surfacedata->param.C - 1.0f;
-		currentsurface.radius = abs(p_surfacedata->param.I) / 2.0f;
-		currentsurface.radiusSign = (p_surfacedata->param.I < 0) ? true : false;
+		currentsurface.posX = (float)p_surfacedata->pos.x;
+		currentsurface.posY = (float)p_surfacedata->pos.y;
+		currentsurface.posZ = (float)p_surfacedata->pos.z;
+		currentsurface.asphericity = (float)p_surfacedata->param.C - 1.0f;
+		currentsurface.radius = (float)abs(p_surfacedata->param.I) / 2.0f;
+		currentsurface.radiusSign = (p_surfacedata->param.I < 0.0) ? true : false;
 		currentsurface.isFlat = (p_surfacedata->param.I == 0.0) ? true : false;
-		currentsurface.diameter = p_surfacedata->diameter;
+		currentsurface.diameter = (float)p_surfacedata->diameter;
 		currentsurface.rings = (i == (surfaceInfos.size() - 1)) ? PI_imageSurfaceRings : PI_refractiveSurfaceRings;
 		currentsurface.arms = (i == (surfaceInfos.size() - 1)) ? PI_imageSurfaceArms : PI_refractiveSurfaceArms;
 
@@ -1375,10 +1375,10 @@ PI_Message tracer::drawOpticalConfig(float wavelength, bool suppressRefractiveSu
 		if (p_surfacedata->data_size != 0 && p_surfacedata->p_data != nullptr && suppressRefractiveSurfaceTexture == false)
 		{
 			//read and parse data from mysurface class
-			double* p_datareader = reinterpret_cast<double*>(p_surfacedata->p_data);
+			float* p_datareader = reinterpret_cast<float*>(p_surfacedata->p_data);
 			int rows = static_cast<int>(p_datareader[0]);
 			int cols = static_cast<int>(p_datareader[1]);
-			double* p_datastart = &(p_datareader[2]);
+			float* p_datastart = &(p_datareader[2]);
 
 			//create draw data for texture
 			unsigned char* p_tempOutput = nullptr;
@@ -1483,14 +1483,14 @@ PI_Message tracer::drawImage(int uniqueID)
 		std::vector<SurfaceDrawInfo> surfaceInfos(1);
 		SurfaceDrawInfo& currentsurface = surfaceInfos[0];
 		auto p_surfacedata = dynamic_cast<quadricsurface<MYFLOATTYPE>*>(thisOpticalConfig->surfaces[thisOpticalConfig->numofsurfaces - 1]);
-		currentsurface.posX = p_surfacedata->pos.x;
-		currentsurface.posY = p_surfacedata->pos.y;
-		currentsurface.posZ = p_surfacedata->pos.z;
-		currentsurface.asphericity = p_surfacedata->param.C - 1.0f;
-		currentsurface.radius = abs(p_surfacedata->param.I) / 2.0f;
-		currentsurface.radiusSign = (p_surfacedata->param.I < 0) ? true : false;
+		currentsurface.posX = (float)p_surfacedata->pos.x;
+		currentsurface.posY = (float)p_surfacedata->pos.y;
+		currentsurface.posZ = (float)p_surfacedata->pos.z;
+		currentsurface.asphericity = (float)p_surfacedata->param.C - 1.0f;
+		currentsurface.radius = (float)abs(p_surfacedata->param.I) / 2.0f;
+		currentsurface.radiusSign = (p_surfacedata->param.I < 0.0) ? true : false;
 		currentsurface.isFlat = (p_surfacedata->param.I == 0.0) ? true : false;
-		currentsurface.diameter = p_surfacedata->diameter;
+		currentsurface.diameter = (float)p_surfacedata->diameter;
 		currentsurface.rings = PI_imageSurfaceRings;
 		currentsurface.arms = PI_imageSurfaceArms;
 

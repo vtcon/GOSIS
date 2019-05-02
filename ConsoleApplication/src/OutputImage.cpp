@@ -44,7 +44,7 @@ public:
 	long outputRows = 0;
 	long outputCols = 0;
 	cv::Mat CVoutputImage;
-	double* raw_data = nullptr;
+	float* raw_data = nullptr;
 
 	~OutputImageImpl()
 	{
@@ -56,7 +56,7 @@ public:
 		freeData();
 		try
 		{
-			raw_data = new double[outputRows*outputCols];
+			raw_data = new float[outputRows*outputCols];
 		}
 		catch (std::exception e)
 		{
@@ -119,25 +119,25 @@ void OutputImage::createOutputImage(unsigned short int outputFormat)
 	}
 
 	//pimpl->allocateData();
-	pimpl->CVoutputImage = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_64FC3);
+	pimpl->CVoutputImage = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_32FC3);
 	std::vector<cv::Mat> fullsizeChannels(3);
-	fullsizeChannels[0] = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_64FC1);// X or L
-	fullsizeChannels[1] = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_64FC1);// Y or M
-	fullsizeChannels[2] = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_64FC1);// Z or S
+	fullsizeChannels[0] = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_32FC1);// X or L
+	fullsizeChannels[1] = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_32FC1);// Y or M
+	fullsizeChannels[2] = cv::Mat::zeros(pimpl->outputRows, pimpl->outputCols, CV_32FC1);// Z or S
 
 	//copy and scale and color matching for each channel
 	for (OutputImageChannel currentChannel : allChannels)
 	{
 		//convert channel sub_image into CV_64F format
 		cv::Mat temp1, temp2; //bad coding...
-		if (currentChannel.dataType == OIC_FLOAT)
+		if (currentChannel.dataType == OIC_DOUBLE)
 		{
-			cv::Mat temp2 = cv::Mat(currentChannel.rows, currentChannel.columns, CV_32FC1, currentChannel.fdata);
-			temp2.convertTo(temp1, CV_64FC1);
+			cv::Mat temp2 = cv::Mat(currentChannel.rows, currentChannel.columns, CV_64FC1, currentChannel.fdata);
+			temp2.convertTo(temp1, CV_32FC1);
 		}
-		else if (currentChannel.dataType == OIC_DOUBLE)
+		else if (currentChannel.dataType == OIC_FLOAT)
 		{
-			temp1 = cv::Mat(currentChannel.rows, currentChannel.columns, CV_64FC1, currentChannel.ddata);
+			temp1 = cv::Mat(currentChannel.rows, currentChannel.columns, CV_32FC1, currentChannel.ddata);
 		}
 
 		
@@ -187,7 +187,7 @@ bool OutputImage::saveRaw(std::string path)
 	myfile.open(path, std::ios::out|std::ios::binary);
 	myfile << pimpl->CVoutputImage.rows << " ";
 	myfile << pimpl->CVoutputImage.cols << " ";
-	myfile << (int)CV_64FC3 << " ";
+	myfile << (int)CV_32FC3 << " ";
 	myfile << pimpl->CVoutputImage;
 
 	myfile.close();

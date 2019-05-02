@@ -229,10 +229,10 @@ void init_1D_fan(raybundle<T>* bundle, T z_position, T startTheta, T endTheta, T
 	if (startTheta == endTheta)
 		endTheta = startTheta + 1;
 
-	startTheta = (startTheta >= 0 && startTheta < 90) ? startTheta : 0.0;
-	startTheta = startTheta / 180.0 * MYPI;
-	endTheta = (endTheta > startTheta && endTheta < 90) ? endTheta : 89.0;
-	endTheta = endTheta / 180.0 * MYPI;
+	startTheta = (startTheta >= T(0.0) && startTheta < T(90.0)) ? startTheta : (T)0.0;
+	startTheta = startTheta / (T)180.0 * (T)MYPI;
+	endTheta = (endTheta > startTheta && endTheta < (T)90.0) ? endTheta : (T)89.0;
+	endTheta = endTheta / (T)180.0 * (T)MYPI;
 
 	T step = (endTheta - startTheta) / bundle->size;
 	T currentTheta = startTheta;
@@ -244,8 +244,8 @@ void init_1D_fan(raybundle<T>* bundle, T z_position, T startTheta, T endTheta, T
 		dir.z = -cos(currentTheta);
 		dir.x = sin(currentTheta)*sin(phi);
 		dir.y = sin(currentTheta)*cos(phi);
-		bundle->prays[i] = raysegment<T>(vec3<T>(0, 0, z_position), dir);
-		bundle->prays[i].intensity = 1.0;
+		bundle->prays[i] = raysegment<T>(vec3<T>((T)0.0, (T)0.0, z_position), dir);
+		bundle->prays[i].intensity = 1.0f;
 		bundle->samplinggrid[i] = point2D<int>(i, 0);
 		/*
 		printf("i = %d, (u,v) = (%d,%d), pos = (%f,%f,%f), dir = (%f,%f,%f) \n", i
@@ -262,10 +262,10 @@ template<typename T>
 void init_2D_dualpolar(raybundle<T>* bundle, vec3<T> originpos, T min_horz, T max_horz, T min_vert, T max_vert, T step)
 {
 	//clamping the limits to pi/2
-	min_horz = (min_horz < -MYPI / 2) ? -MYPI / 2 : min_horz;
-	min_vert = (min_vert < -MYPI / 2) ? -MYPI / 2 : min_vert;
-	max_horz = (max_horz > MYPI / 2) ? MYPI / 2 : max_horz;
-	max_vert = (max_vert > MYPI / 2) ? MYPI / 2 : max_vert;
+	min_horz = (min_horz < -(T)MYPI / (T)2.0) ? -(T)MYPI / (T)2.0 : min_horz;
+	min_vert = (min_vert < -(T)MYPI / (T)2.0) ? -(T)MYPI / (T)2.0 : min_vert;
+	max_horz = (max_horz > (T)MYPI / (T)2.0) ? (T)MYPI / (T)2.0 : max_horz;
+	max_vert = (max_vert > (T)MYPI / (T)2.0) ? (T)MYPI / (T)2.0 : max_vert;
 
 	//checking the max and min limits, they must be at least one step apart
 	min_horz = (min_horz > max_horz - step) ? (max_horz - step) : min_horz;
@@ -306,9 +306,9 @@ void init_2D_dualpolar(raybundle<T>* bundle, vec3<T> originpos, T min_horz, T ma
 			semi_axis_vert = (angle_vert < 0) ? min_vert : max_vert;
 			if (((angle_horz / semi_axis_horz)*(angle_horz / semi_axis_horz) +
 				(angle_vert / semi_axis_vert)*(angle_vert / semi_axis_vert)
-				<= 1)
-				&& (angle_horz < MYPI / 2 && angle_vert < MYPI / 2)
-				&& (sin(angle_horz)*sin(angle_horz) + sin(angle_vert)*sin(angle_vert) <= 1)
+				<= (T)1.0)
+				&& (angle_horz < (T)MYPI / (T)2.0 && angle_vert < (T)MYPI / 2.0)
+				&& (sin(angle_horz)*sin(angle_horz) + sin(angle_vert)*sin(angle_vert) <= (T)1.0)
 				)
 			{
 				//register
@@ -320,7 +320,7 @@ void init_2D_dualpolar(raybundle<T>* bundle, vec3<T> originpos, T min_horz, T ma
 				*/
 				x = sin(angle_horz);
 				y = sin(angle_vert);
-				z = -sqrt(1 - x * x - y * y);
+				z = -sqrt((T)1.0 - x * x - y * y);
 				temp_prays[bundle->size] = raysegment<T>(originpos, vec3<T>(x, y, z));
 				bundle->size += 1;
 			}
@@ -363,8 +363,8 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 
 	//find the vertical extends
 	T deltaz = abs(origin.z - epz);
-	T rho = sqrt(origin.x*origin.x + origin.y*origin.y);
-	if (origin.y > 0) rho = -rho;
+	T rho = sqrt((T)origin.x*(T)origin.x + (T)origin.y*(T)origin.y);
+	if ((T)origin.y > (T)0.0) rho = -rho;
 	vec3<T> center = vec3<T>(deltaz, rho, 0);
 	vec3<T> up = center + vec3<T>(0, epr, 0);
 	vec3<T> down = center + vec3<T>(0, -epr, 0);
@@ -395,16 +395,16 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 	T max_vert = thetaup;
 
 	//find the transformation matrix
-	vec3<T> kp(origin.x, origin.y, origin.z - epz);
-	vec3<T> jp(0, 1, 0);
-	vec3<T> ip(1, 0, 0);
-	if (origin.x == 0 && origin.y == 0)
+	vec3<T> kp((T)origin.x, (T)origin.y, (T)origin.z - epz);
+	vec3<T> jp((T)0.0, (T)1.0, (T)0.0);
+	vec3<T> ip((T)1.0, (T)0.0, (T)0.0);
+	if ((T)origin.x == (T)0.0 && (T)origin.y == (T)0.0)
 	{
-		kp = vec3<T>(0, 0, 1);
+		kp = vec3<T>((T)0.0, (T)0.0, (T)1.0);
 	}
 	else
 	{
-		jp = vec3<T>(abs(origin.x), abs(origin.y), 0);
+		jp = vec3<T>((T)abs(origin.x), (T)abs(origin.y), (T)0.0);
 		jp.z = (-jp.x*kp.x - jp.y*kp.y) / (kp.z);
 		ip = cross(jp, kp);
 		ip = normalize(ip);
@@ -523,7 +523,7 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 template<typename T>
 void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig, LuminousPoint point)
 {
-	vec3<T> origin(point.x, point.y, point.z);
+	vec3<T> origin(T(point.x), T(point.y), T(point.z));
 
 	T epr = static_cast<T>(thisOpticalConfig->entrance.y);
 	T epz = static_cast<T>(thisOpticalConfig->entrance.z);
@@ -544,7 +544,7 @@ void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 	T phiMin = atan(-epr / d);
 
 	//clamping the step size to the min of any of the four extends
-	T step = 0.1;
+	T step = T(0.1);
 	if ((phiMax + abs(phiMin)) <= (thetaup + abs(thetadown)))
 	{
 		step = (phiMax + abs(phiMin)) / PI_linearRayDensity;
@@ -629,7 +629,7 @@ void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 				vec3<T> pretransformed(x, y, z);
 				vec3<T> transformed(dot(pretransformed, transformmat[0]), dot(pretransformed, transformmat[1]), dot(pretransformed, transformmat[2]));
 				temp_prays[bundle->size] = raysegment<T>(origin, transformed);
-				temp_prays[bundle->size].intensity = 1.0*step*step*point.intensity;
+				temp_prays[bundle->size].intensity = 1.0f*float(step)*float(step)*point.intensity;
 				bundle->size += 1;
 			}
 		}

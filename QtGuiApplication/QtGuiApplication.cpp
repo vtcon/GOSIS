@@ -1068,10 +1068,10 @@ void QtGuiApplication::on_pushSelectImage_clicked()
 	{
 		QString errorstr;
 
-		if (brightness <= 0.0 || brightness > 1.0)
-		{
-			errorstr.append("Image must have  brightness value between 0 and 1.0!\n");
-		}
+		//if (brightness <= 0.0 || brightness > 1.0)
+		//{
+		//	errorstr.append("Image must have  brightness value between 0 and 1.0!\n");
+		//}
 
 		if (posZ <= 0)
 		{

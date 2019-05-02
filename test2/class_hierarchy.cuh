@@ -25,14 +25,14 @@ class raysegment
 public:
 	vec3<T> pos, dir;
 	point2D<int> spos;
-	T intensity = 0.0; //radiant intensity in W/sr
+	float intensity = 0.0; //radiant intensity in W/sr
 
 	//obsolete: 1 is active, 0 is deactivated, 2 is finised, more to come
 
 	static enum Status {active, deactivated, finished, inactive};
 	Status status = active;
 
-	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const point2D<int>& spos = point2D<int>(0, 0), T intensity = 0) :
+	__host__ __device__ raysegment(const vec3<T>& pos = vec3<T>(0, 0, 0), const vec3<T>& dir = vec3<T>(0, 0, -1), const point2D<int>& spos = point2D<int>(0, 0), float intensity = 0.0) :
 		pos(pos), dir(dir), spos(spos), intensity(intensity)
 	{
 		LOG1("ray segment created")
@@ -817,8 +817,8 @@ public:
 	point2D<int> m_dimension;
 	point2D<int> m_zeroOffset;
 	PixelArrayDescriptor* mp_descriptor;
-	MYFLOATTYPE* hp_raw = nullptr;
-	MYFLOATTYPE* dp_raw = nullptr;
+	float* hp_raw = nullptr;
+	float* dp_raw = nullptr;
 	RetinaImageChannel* dp_sibling = nullptr;
 
 	__host__ RetinaImageChannel(const PixelArrayDescriptor& retinaDescriptor)
@@ -828,7 +828,7 @@ public:
 		createHostImage();
 	}
 
-	__host__ void setToValue(MYFLOATTYPE value, const PixelArrayDescriptor& retinaDescriptor)
+	__host__ void setToValue(float value, const PixelArrayDescriptor& retinaDescriptor)
 	{
 		for (int i = 0; i < m_dimension.x; i++)
 		{
@@ -861,14 +861,14 @@ public:
 	__host__ void createHostImage()
 	{
 		deleteHostImage();
-		hp_raw = new MYFLOATTYPE[m_dimension.x*m_dimension.y];
+		hp_raw = new float[m_dimension.x*m_dimension.y];
 		clearHostImage();
 	}
 
 	__host__ void clearHostImage()
 	{
 		if (hp_raw != nullptr)
-			memset(hp_raw, 0, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE));
+			memset(hp_raw, 0, m_dimension.x * m_dimension.y * sizeof(float));
 	}
 
 	__host__ void deleteHostImage()
@@ -882,8 +882,8 @@ public:
 	{
 		if (hp_raw == nullptr) createHostImage();
 		deleteSibling();
-		CUDARUN(cudaMalloc((void**)&dp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE)));
-		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyHostToDevice));
+		CUDARUN(cudaMalloc((void**)&dp_raw, m_dimension.x * m_dimension.y * sizeof(float)));
+		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(float), cudaMemcpyHostToDevice));
 		CUDARUN(cudaMalloc((void**)&dp_sibling, sizeof(RetinaImageChannel)));
 		CUDARUN(cudaMemcpy(dp_sibling, this, sizeof(RetinaImageChannel), cudaMemcpyHostToDevice));
 		//clearSibling();
@@ -901,19 +901,19 @@ public:
 	{
 		if (hp_raw == nullptr) createHostImage();
 		if (dp_raw == nullptr) createSibling();
-		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyHostToDevice));
+		CUDARUN(cudaMemcpy(dp_raw, hp_raw, m_dimension.x * m_dimension.y * sizeof(float), cudaMemcpyHostToDevice));
 	}
 
 	__host__ void copyFromSibling()
 	{
 		if (hp_raw == nullptr) createHostImage();
 		if (dp_raw != nullptr)
-			CUDARUN(cudaMemcpy(hp_raw, dp_raw, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE), cudaMemcpyDeviceToHost));
+			CUDARUN(cudaMemcpy(hp_raw, dp_raw, m_dimension.x * m_dimension.y * sizeof(float), cudaMemcpyDeviceToHost));
 	}
 
 	__host__ void clearSibling() //callable from host's side
 	{
-		CUDARUN(cudaMemset(dp_raw, 0, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE)));
+		CUDARUN(cudaMemset(dp_raw, 0, m_dimension.x * m_dimension.y * sizeof(float)));
 	}
 
 	__host__ void saveToFile(const std::string& folderpath, const std::string& filename, const std::string& format)
@@ -921,25 +921,26 @@ public:
 
 	__device__ void resetDeviceImage() //callable from device's side
 	{
-		memset(dp_raw, 0, m_dimension.x * m_dimension.y * sizeof(MYFLOATTYPE));
+		memset(dp_raw, 0, m_dimension.x * m_dimension.y * sizeof(float));
 	}
 
-	__device__ void writePixel(const point2D<int>& pixelCoor, MYFLOATTYPE value)
+	__device__ void writePixel(const point2D<int>& pixelCoor, float value)
 	{
 		dp_raw[(pixelCoor.y + m_zeroOffset.y)*m_dimension.x + (pixelCoor.x + m_zeroOffset.x)] = value;
 	}
 
-	__device__ void addToPixel(const point2D<int>& pixelCoor, MYFLOATTYPE value)
+	__device__ void addToPixel(const point2D<int>& pixelCoor, float value)
 	{
 		atomicAdd(&(dp_raw[(pixelCoor.y + m_zeroOffset.y)*m_dimension.x + (pixelCoor.x + m_zeroOffset.x)]), value);
 	}
 
-	__device__ MYFLOATTYPE getPixelValue(const point2D<int>& pixelCoor)
+	__device__ float getPixelValue(const point2D<int>& pixelCoor)
 	{
 		return dp_raw[(pixelCoor.y + m_zeroOffset.y)*m_dimension.x + (pixelCoor.x + m_zeroOffset.x)];
 	}
 
 private:
+	/*
 #if _PRECISION_MODE == _DOUBLE_PRECISION
 	//CUDA doesn't have native double-precision atomicAdd
 	__device__ double atomicAdd(double* address, double val)
@@ -956,6 +957,7 @@ private:
 		return __longlong_as_double(old);
 	}
 #endif
+	*/
 };
 
 class OpticalConfig
