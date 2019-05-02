@@ -923,7 +923,7 @@ public:
 
         retranslateUi(QtGuiApplicationClass);
 
-        tabWidget->setCurrentIndex(2);
+        tabWidget->setCurrentIndex(0);
         stackedInput->setCurrentIndex(0);
         pushAcceptConfig->setDefault(true);
 

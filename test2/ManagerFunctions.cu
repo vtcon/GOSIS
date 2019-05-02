@@ -729,22 +729,23 @@ int KernelLauncher(int argc, char** argv)//this is the non-Async variant
 	}
 
 	//create event for timing: to GPU manager
+	/*
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
-
+	*/
 	job->preLaunchPreparation();
-
+	/*
 	//start timing 
 	CUDARUN(cudaDeviceSynchronize());
 	CUDARUN(cudaEventRecord(start, 0));
-
+	*/
 	while (job->goAhead())
 	{
 		job->kernelLaunch();
 		job->update();
 	}
-
+	/*
 	//kernel finished, stop timing, print out elapsed time: in gpu manager
 	CUDARUN(cudaEventRecord(stop, 0));
 	CUDARUN(cudaEventSynchronize(stop));
@@ -753,7 +754,7 @@ int KernelLauncher(int argc, char** argv)//this is the non-Async variant
 	std::cout<<"kernel run time: " << elapsedtime << " ms\n";
 	CUDARUN(cudaEventDestroy(start));
 	CUDARUN(cudaEventDestroy(stop));
-
+	*/
 	job->postLaunchCleanUp();
 
 	//delete the jobs
@@ -771,24 +772,24 @@ int KernelLauncher2(int argc, char** argv)
 		delete job; //TODO: fix why the destructor wasn't called
 		return -2;
 	}
-
+	/*
 	//create event for timing: to GPU manager
 	cudaEvent_t start, stop;
 	CUDARUN(cudaEventCreate(&start));
 	CUDARUN(cudaEventCreate(&stop));
-	
+	*/
 	job->preLaunchPreparation();
-
+	/*
 	//start timing 
 	CUDARUN(cudaEventRecord(start));
 	CUDARUN(cudaEventSynchronize(start));
-
+	*/
 	while (job->goAhead())
 	{
 		job->kernelLaunch();
 		job->update();
 	}
-
+	/*
 	//kernel finished, stop timing, print out elapsed time: in gpu manager
 	CUDARUN(cudaEventRecord(stop));
 	CUDARUN(cudaEventSynchronize(stop)); 
@@ -798,7 +799,7 @@ int KernelLauncher2(int argc, char** argv)
 	CUDARUN(cudaEventDestroy(start));
 	CUDARUN(cudaEventDestroy(stop));
 	CUDARUN(cudaDeviceSynchronize());
-
+	*/
 	job->postLaunchCleanUp();
 
 	//delete the jobs

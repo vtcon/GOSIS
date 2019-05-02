@@ -92,7 +92,7 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Keep>true</Keep>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
-      <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <CodeGeneration>compute_75,sm_75</CodeGeneration>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
       <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
     </CudaCompile>

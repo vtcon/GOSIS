@@ -7,8 +7,8 @@
 #define _PRECISION_MODE _DOUBLE_PRECISION
 
 //define the required compute capabilities here, then change in the Properties/CUDA C++/Device, and recompile whole solution
-#define CUDA_CC_MAJOR 3
-#define CUDA_CC_MINOR 0
+#define CUDA_CC_MAJOR 7
+#define CUDA_CC_MINOR 5
 
 
 
