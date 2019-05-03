@@ -58,7 +58,7 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Keep>true</Keep>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
-      <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <CodeGeneration>compute_60,sm_60</CodeGeneration>
       <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
       <InterleaveSourceInPTX>true</InterleaveSourceInPTX>
       <PtxAsOptionV>true</PtxAsOptionV>
@@ -92,9 +92,11 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Keep>true</Keep>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
-      <CodeGeneration>compute_75,sm_75</CodeGeneration>
+      <CodeGeneration>compute_60,sm_60</CodeGeneration>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
       <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
+      <Optimization>Od</Optimization>
+      <TypeInfo>true</TypeInfo>
     </CudaCompile>
     <CudaLink>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

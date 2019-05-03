@@ -22,6 +22,7 @@ extern int PI_ThreadsPerKernelLaunch;
 extern int PI_traceJobSize;
 extern int PI_renderJobSize;
 extern int PI_maxParallelThread;
+extern float PI_renderProgress;
 
 // external function definitions:
 extern __global__ void quadrictracer(QuadricTracerKernelLaunchParams kernelparams);
