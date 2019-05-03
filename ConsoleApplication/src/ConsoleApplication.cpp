@@ -162,6 +162,7 @@ void roughUI()
 	*/
 
 	//test data
+	/*
 	{
 		int count = 4;
 		PI_Surface* surfaces = new PI_Surface[count];
@@ -207,6 +208,7 @@ void roughUI()
 		addOpticalConfigAt(650.0, count, surfaces, angularResol, angularExtend);
 		delete[] surfaces;
 	}
+	*/
 	/*
 	std::cout << "Please enter the number of points\n";
 	int pcount = 0;
@@ -225,6 +227,7 @@ void roughUI()
 		addPoint(point);
 	}
 	*/
+	/*
 	{
 		PI_LuminousPoint point;
 		point.x = 20;	point.y = 20;	point.z = 160;	point.wavelength = 555.0;
@@ -248,12 +251,13 @@ void roughUI()
 		point.x = -40;	point.y = -30;	point.z = 180;	point.wavelength = 650.0;	point.intensity = 5.0;
 		addPoint(point);
 	}
-
+	*/
 	/*
 	int rayDensity = 20;
 	std::cout << "Enter desired linear ray generation density: \n";
 	std::cin >> rayDensity;
 	*/
+	/*
 	std::cout << "Starting...\n";
 
 	checkData();
@@ -268,6 +272,7 @@ void roughUI()
 
 	clearStorage();
 	//delete[] surfaces;
+	*/
 }
 
 int main()

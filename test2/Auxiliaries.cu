@@ -77,7 +77,7 @@ OpticalConfig::EntrancePupilLocation locateSimpleEntrancePupil(OpticalConfig* cu
 		result = result + eachPoint;
 		//std::cout << "Found new point y=" << eachPoint.a << " z=" << eachPoint.b << "\n";
 	}
-	result = result / v_rims.size();
+	result = result / (MYFLOATTYPE)v_rims.size();
 	std::cout << "Entrance pupil found at y=" << result.a << " z=" << result.b << "\n";
 
 	currentConfig->setEntrancePupil({ result.a, result.b, 0.0 });
@@ -483,7 +483,7 @@ void init_2D_dualpolar_v2(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 				*/
 				x = sin(angle_horz);
 				y = sin(angle_vert);
-				z = -sqrt(1 - x * x - y * y);
+				z = -sqrt(1.0 - x * x - y * y);
 				vec3<T> pretransformed(x, y, z);
 				vec3<T> transformed(dot(pretransformed, transformmat[0]), dot(pretransformed, transformmat[1]), dot(pretransformed, transformmat[2]));
 				temp_prays[bundle->size] = raysegment<T>(origin, transformed);
@@ -625,7 +625,7 @@ void init_2D_dualpolar_v3(raybundle<T>* bundle, OpticalConfig* thisOpticalConfig
 				*/
 				x = sin(angle_horz);
 				y = sin(angle_vert);
-				z = -sqrt(1 - x * x - y * y);
+				z = -sqrt(1.0 - x * x - y * y);
 				vec3<T> pretransformed(x, y, z);
 				vec3<T> transformed(dot(pretransformed, transformmat[0]), dot(pretransformed, transformmat[1]), dot(pretransformed, transformmat[2]));
 				temp_prays[bundle->size] = raysegment<T>(origin, transformed);

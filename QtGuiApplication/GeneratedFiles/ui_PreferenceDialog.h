@@ -25,7 +25,7 @@ QT_BEGIN_NAMESPACE
 class Ui_PreferenceDialog
 {
 public:
-    QGridLayout *gridLayout_3;
+    QGridLayout *gridLayout_5;
     QGroupBox *groupBox;
     QGridLayout *gridLayout_2;
     QLabel *label_13;
@@ -55,6 +55,10 @@ public:
     QLineEdit *lineWavelengthG;
     QLabel *label_12;
     QLineEdit *lineWavelengthB;
+    QGroupBox *groupBox_3;
+    QGridLayout *gridLayout_3;
+    QLabel *label_14;
+    QLineEdit *lineTestKernelRepetition;
     QSpacerItem *verticalSpacer;
     QGridLayout *gridLayout;
     QPushButton *pushCancel;
@@ -66,16 +70,16 @@ public:
     {
         if (PreferenceDialog->objectName().isEmpty())
             PreferenceDialog->setObjectName(QString::fromUtf8("PreferenceDialog"));
-        PreferenceDialog->resize(546, 590);
+        PreferenceDialog->resize(546, 661);
         QSizePolicy sizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         sizePolicy.setHorizontalStretch(0);
         sizePolicy.setVerticalStretch(0);
         sizePolicy.setHeightForWidth(PreferenceDialog->sizePolicy().hasHeightForWidth());
         PreferenceDialog->setSizePolicy(sizePolicy);
-        gridLayout_3 = new QGridLayout(PreferenceDialog);
-        gridLayout_3->setSpacing(6);
-        gridLayout_3->setContentsMargins(11, 11, 11, 11);
-        gridLayout_3->setObjectName(QString::fromUtf8("gridLayout_3"));
+        gridLayout_5 = new QGridLayout(PreferenceDialog);
+        gridLayout_5->setSpacing(6);
+        gridLayout_5->setContentsMargins(11, 11, 11, 11);
+        gridLayout_5->setObjectName(QString::fromUtf8("gridLayout_5"));
         groupBox = new QGroupBox(PreferenceDialog);
         groupBox->setObjectName(QString::fromUtf8("groupBox"));
         QSizePolicy sizePolicy1(QSizePolicy::Preferred, QSizePolicy::Expanding);
@@ -108,6 +112,8 @@ public:
         gridLayout_2->addWidget(label, 1, 0, 1, 1);
 
         comboThreadCount = new QComboBox(groupBox);
+        comboThreadCount->addItem(QString());
+        comboThreadCount->addItem(QString());
         comboThreadCount->addItem(QString());
         comboThreadCount->addItem(QString());
         comboThreadCount->addItem(QString());
@@ -166,7 +172,7 @@ public:
         gridLayout_2->addWidget(lineRenderSize, 4, 1, 1, 1);
 
 
-        gridLayout_3->addWidget(groupBox, 0, 0, 1, 1);
+        gridLayout_5->addWidget(groupBox, 0, 0, 1, 1);
 
         groupBox_2 = new QGroupBox(PreferenceDialog);
         groupBox_2->setObjectName(QString::fromUtf8("groupBox_2"));
@@ -265,11 +271,34 @@ public:
         gridLayout_4->addWidget(lineWavelengthB, 7, 1, 1, 1);
 
 
-        gridLayout_3->addWidget(groupBox_2, 1, 0, 1, 1);
+        gridLayout_5->addWidget(groupBox_2, 1, 0, 1, 1);
+
+        groupBox_3 = new QGroupBox(PreferenceDialog);
+        groupBox_3->setObjectName(QString::fromUtf8("groupBox_3"));
+        gridLayout_3 = new QGridLayout(groupBox_3);
+        gridLayout_3->setSpacing(6);
+        gridLayout_3->setContentsMargins(11, 11, 11, 11);
+        gridLayout_3->setObjectName(QString::fromUtf8("gridLayout_3"));
+        label_14 = new QLabel(groupBox_3);
+        label_14->setObjectName(QString::fromUtf8("label_14"));
+        sizePolicy2.setHeightForWidth(label_14->sizePolicy().hasHeightForWidth());
+        label_14->setSizePolicy(sizePolicy2);
+
+        gridLayout_3->addWidget(label_14, 0, 0, 1, 1);
+
+        lineTestKernelRepetition = new QLineEdit(groupBox_3);
+        lineTestKernelRepetition->setObjectName(QString::fromUtf8("lineTestKernelRepetition"));
+        sizePolicy5.setHeightForWidth(lineTestKernelRepetition->sizePolicy().hasHeightForWidth());
+        lineTestKernelRepetition->setSizePolicy(sizePolicy5);
+
+        gridLayout_3->addWidget(lineTestKernelRepetition, 0, 1, 1, 1);
+
+
+        gridLayout_5->addWidget(groupBox_3, 2, 0, 1, 1);
 
         verticalSpacer = new QSpacerItem(20, 54, QSizePolicy::Minimum, QSizePolicy::Expanding);
 
-        gridLayout_3->addItem(verticalSpacer, 2, 0, 1, 1);
+        gridLayout_5->addItem(verticalSpacer, 3, 0, 1, 1);
 
         gridLayout = new QGridLayout();
         gridLayout->setSpacing(6);
@@ -294,7 +323,7 @@ public:
         gridLayout->addWidget(pushOK, 0, 1, 1, 1);
 
 
-        gridLayout_3->addLayout(gridLayout, 3, 0, 1, 1);
+        gridLayout_5->addLayout(gridLayout, 4, 0, 1, 1);
 
 
         retranslateUi(PreferenceDialog);
@@ -310,12 +339,14 @@ public:
         label_13->setText(QApplication::translate("PreferenceDialog", "Maximum CPU Threads", nullptr));
         lineCPUThread->setText(QApplication::translate("PreferenceDialog", "10", nullptr));
         label->setText(QApplication::translate("PreferenceDialog", "GPU Threads Per Kernel Launch", nullptr));
-        comboThreadCount->setItemText(0, QApplication::translate("PreferenceDialog", "16", nullptr));
-        comboThreadCount->setItemText(1, QApplication::translate("PreferenceDialog", "8", nullptr));
-        comboThreadCount->setItemText(2, QApplication::translate("PreferenceDialog", "32", nullptr));
+        comboThreadCount->setItemText(0, QApplication::translate("PreferenceDialog", "32", nullptr));
+        comboThreadCount->setItemText(1, QApplication::translate("PreferenceDialog", "16", nullptr));
+        comboThreadCount->setItemText(2, QApplication::translate("PreferenceDialog", "8", nullptr));
+        comboThreadCount->setItemText(3, QApplication::translate("PreferenceDialog", "64", nullptr));
+        comboThreadCount->setItemText(4, QApplication::translate("PreferenceDialog", "128", nullptr));
 
         label_2->setText(QApplication::translate("PreferenceDialog", "Linear Ray Generation Density", nullptr));
-        lineRayGeneration->setText(QApplication::translate("PreferenceDialog", "30", nullptr));
+        lineRayGeneration->setText(QApplication::translate("PreferenceDialog", "25", nullptr));
         label_3->setText(QApplication::translate("PreferenceDialog", "Points Traced per Kernel Launch", nullptr));
         lineTraceSize->setText(QApplication::translate("PreferenceDialog", "10", nullptr));
         label_4->setText(QApplication::translate("PreferenceDialog", "Points Rendered per Kernel Launch", nullptr));
@@ -343,6 +374,9 @@ public:
         lineWavelengthG->setText(QApplication::translate("PreferenceDialog", "530", nullptr));
         label_12->setText(QApplication::translate("PreferenceDialog", "Short Wavelength (Blue)", nullptr));
         lineWavelengthB->setText(QApplication::translate("PreferenceDialog", "465", nullptr));
+        groupBox_3->setTitle(QApplication::translate("PreferenceDialog", "Testing and Benchmarking", nullptr));
+        label_14->setText(QApplication::translate("PreferenceDialog", "Test Kernel Repetition", nullptr));
+        lineTestKernelRepetition->setText(QApplication::translate("PreferenceDialog", "10000", nullptr));
         pushCancel->setText(QApplication::translate("PreferenceDialog", "Cancel", nullptr));
         pushDefault->setText(QApplication::translate("PreferenceDialog", "Default", nullptr));
         pushOK->setText(QApplication::translate("PreferenceDialog", "OK", nullptr));

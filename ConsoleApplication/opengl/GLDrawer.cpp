@@ -479,7 +479,7 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 		{
 			//calculate frametime
 			static float lastFrameTime;
-			float thisFrameTime = glfwGetTime();
+			float thisFrameTime = float(glfwGetTime());
 			float deltaTime = thisFrameTime - lastFrameTime;
 			lastFrameTime = thisFrameTime;
 
@@ -656,7 +656,7 @@ int GLDrawer(const std::vector<std::pair<glm::vec3, glm::vec3>>& poArray,
 
 void mouseScrollCallback(GLFWwindow * window, double xoffset, double yoffset)
 {
-	camera.scroll(yoffset);
+	camera.scroll(float(yoffset));
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -677,8 +677,8 @@ void mouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (lbutton_down)
 	{
-		float xoffset = -xpos + lastCursorPos_x;
-		float yoffset = -lastCursorPos_y + ypos;
+		float xoffset = float(-xpos + lastCursorPos_x);
+		float yoffset = float(-lastCursorPos_y + ypos);
 
 		lastCursorPos_x = xpos;
 		lastCursorPos_y = ypos;

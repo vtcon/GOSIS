@@ -5,6 +5,7 @@
 #include "../ConsoleApplication/src/ImageFacilities.h"
 #include "../ConsoleApplication/src/OutputImage.h"
 #include "../ConsoleApplication/src/GLDrawFacilities.h"
+#include "PerformanceTester.cuh"
 
 #include <list>
 #include <string>
@@ -35,8 +36,8 @@ std::unordered_map<int, OutputImage> outputImages;
 bool maximizeContrast = true; //should be set to true if inputs are points, and false if input is an image
 
 //external global variables
-int PI_ThreadsPerKernelLaunch = 16;
-int PI_linearRayDensity = 30;//20 is ok
+int PI_ThreadsPerKernelLaunch = 32;
+int PI_linearRayDensity = 25;//20 is ok
 unsigned int PI_rgbStandard = IF_ADOBERGB;
 int PI_traceJobSize = 10;
 int PI_renderJobSize = 10;
@@ -48,6 +49,7 @@ float PI_primaryWavelengthG = 530;
 float PI_primaryWavelengthB = 465;
 int PI_maxTextureDimension = 2048;
 int PI_maxParallelThread = 10;
+int PI_performanceTestRepetition = 100000;
 
 //internally used global variables, but still should be put on preferences
 int PI_refractiveSurfaceArms = 20;
@@ -83,6 +85,8 @@ extern bool runTestOpenGL;
 extern bool runTestGLDrawFacilities;
 extern void GLtest();
 extern int GLInfoPrint();
+bool runPerformanceTest = true;
+bool normalTraceRenderTest = false;
 
 PI_Message tracer::initialization()
 {
@@ -214,7 +218,37 @@ PI_Message tracer::initialization()
 
 PI_Message tracer::test()
 {
-	
+	if (runPerformanceTest)
+	{
+		std::cout << "Adjust the Preference and Enter the number of repetitions:\n";
+		int repetition = PI_performanceTestRepetition;
+		{
+			std::cout << "Running GPU tracing test with repetition = " << repetition << " times!\n";
+
+			//start clock
+			std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
+			testTracingGPU(repetition);
+
+			//stop clock
+			std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+			std::cout << "GPU tracing completed after " << duration << " ms\n";
+		}
+		{
+			std::cout << "Running CPU tracing test with repetition = " << repetition << " times!\n";
+
+			//start clock
+			std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+
+			testTracingCPU(repetition);
+
+			//stop clock
+			std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+			auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+			std::cout << "CPU tracing completed after " << duration << " ms\n";
+		}
+	}
 	if (runTestOpenCV)
 	{
 		maximizeContrast = false;
@@ -229,7 +263,7 @@ PI_Message tracer::test()
 	{
 		testGLDrawFacilities();
 	}
-	else
+	if (normalTraceRenderTest)
 	{
 		//tracer::importImage("C:/testinput.bmp", 20, 20, 30, 25, 25, 45, 90, 45, 700, 550, 400, 1.0);
 	/*
@@ -532,6 +566,8 @@ PI_Message tracer::checkData()
 		std::cout << "No wavelength is available for checking\n";
 		return { PI_UNKNOWN_ERROR, "No wavelength is available for checking\n" };
 	}
+
+	std::cout << "Data Check OK!\n";
 
 	return { PI_OK, "Check successful!\n" };
 }
@@ -1168,6 +1204,7 @@ PI_Message tracer::getPreferences(PI_Preferences & prefs)
 	prefs.primaryWavelengthG = PI_primaryWavelengthG;
 	prefs.primaryWavelengthB = PI_primaryWavelengthB;
 	prefs.maxParallelThread = PI_maxParallelThread;
+	prefs.performanceTestRepetition = PI_performanceTestRepetition;
 
 	return { PI_OK, "Successfully!\n" };
 }
@@ -1178,13 +1215,13 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 	{
 		PI_ThreadsPerKernelLaunch = 8;
 	}
-	else if (prefs.ThreadsPerKernelLaunch >= 32)
+	else if (prefs.ThreadsPerKernelLaunch >= 128)
 	{
-		PI_ThreadsPerKernelLaunch = 32;
+		PI_ThreadsPerKernelLaunch = 128;
 	}
 	else
 	{
-		PI_ThreadsPerKernelLaunch = 16;
+		PI_ThreadsPerKernelLaunch = prefs.ThreadsPerKernelLaunch;
 	}
 
 	if (prefs.linearRayDensity <= 1)
@@ -1314,6 +1351,9 @@ PI_Message tracer::setPreferences(PI_Preferences & prefs)
 	int maxConcurency = std::thread::hardware_concurrency();
 	PI_maxParallelThread = (((prefs.maxParallelThread <= 0) ? 1 : prefs.maxParallelThread) >= maxConcurency) ? maxConcurency : prefs.maxParallelThread;
 
+	PI_performanceTestRepetition = (((prefs.performanceTestRepetition <= 1) ? 1 : prefs.performanceTestRepetition) >= 2000000000) ? 2000000000 : prefs.performanceTestRepetition;
+
+
 	return { PI_OK, "Successfully!\n" };
 }
 
@@ -1331,6 +1371,7 @@ PI_Message tracer::defaultPreference()
 	PI_primaryWavelengthG = 530;
 	PI_primaryWavelengthB = 465;
 	PI_maxParallelThread = std::thread::hardware_concurrency();
+	PI_performanceTestRepetition = 100000;
 
 	return { PI_OK, "Successful!\n" };
 }

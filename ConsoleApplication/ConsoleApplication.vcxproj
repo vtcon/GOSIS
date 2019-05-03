@@ -195,10 +195,10 @@
     <ClInclude Include="src\ThreadObject.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="opengl\Application.cpp" />
     <ClCompile Include="opengl\InternalTexture.cpp" />
     <ClCompile Include="opengl\GLDrawer.cpp" />
     <ClCompile Include="src\GLDrawFacilities.cpp" />
-    <ClCompile Include="opengl\Application.cpp" />
     <ClCompile Include="opengl\Camera.cpp" />
     <ClCompile Include="opengl\imgui\imgui.cpp" />
     <ClCompile Include="opengl\imgui\imgui_demo.cpp" />

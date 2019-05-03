@@ -65,7 +65,7 @@
       <AdditionalCompilerOptions>
       </AdditionalCompilerOptions>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
-      <GenerateLineInfo>true</GenerateLineInfo>
+      <GenerateLineInfo>false</GenerateLineInfo>
     </CudaCompile>
     <CudaLink>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -92,7 +92,7 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Keep>true</Keep>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
-      <CodeGeneration>compute_75,sm_75</CodeGeneration>
+      <CodeGeneration>compute_30,sm_30</CodeGeneration>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
       <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
     </CudaCompile>
@@ -106,6 +106,7 @@
     <CudaCompile Include="Auxiliaries.cu" />
     <CudaCompile Include="kernel.cu" />
     <CudaCompile Include="ManagerFunctions.cu" />
+    <CudaCompile Include="PerformanceTester.cu" />
     <CudaCompile Include="ProgramInterface.cu" />
     <CudaCompile Include="RenderingKernel.cu" />
     <CudaCompile Include="StorageManager.cu" />
@@ -116,6 +117,7 @@
     <ClInclude Include="CommonClasses.h" />
     <ClInclude Include="ManagerFunctions.cuh" />
     <ClInclude Include="mycommon.cuh" />
+    <ClInclude Include="PerformanceTester.cuh" />
     <ClInclude Include="ProgramInterface.h" />
     <ClInclude Include="StorageManager.cuh" />
     <ClInclude Include="test2API.h" />

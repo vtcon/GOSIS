@@ -49,7 +49,7 @@ void quickDisplay()
 	double rawdata[] = { 0.3, 0.1, 0.3, 0.9, 1.2, 0.8, 0.4, 0.5 };
 	Mat bigimg;
 	Mat smallimg(2, 4, CV_64FC1, rawdata);
-	float scaleFactor = 1000 / max(smallimg.rows, smallimg.cols);
+	float scaleFactor = 1000.0f / max(smallimg.rows, smallimg.cols);
 	resize(smallimg, bigimg, Size(), scaleFactor, scaleFactor, INTER_NEAREST);
 	Mat imgout, imgoutconverted;
 	normalize(bigimg, imgout, 255.0, 0.0, NORM_INF,CV_8UC1);
@@ -570,12 +570,12 @@ void update_map_projection_alongz(Mat& map_x, Mat& map_y, int rows, int columns,
 		for (int i = 0; i < columns; i++)
 		{
 			//normalized, centered coordinates
-			float nxp = (2.0 * i - columns) / columns;
-			float nyp = (2.0 * j - rows) / rows;
+			float nxp = (2 * i - columns) / columns;
+			float nyp = (2 * j - rows) / rows;
 			if (nxp * nxp + nyp * nyp >= 1)
 			{
-				map_x.at<float>(j, i) = 0.0;
-				map_y.at<float>(j, i) = 0.0;
+				map_x.at<float>(j, i) = 0;
+				map_y.at<float>(j, i) = 0;
 				//printf("Map [%d, %d] to [%f, %f]\n", i, j, 0, 0);
 			}
 			else
@@ -603,8 +603,8 @@ void update_map_projection_plate_carree(Mat& map_x, Mat& map_y, int rows, int co
 		for (int i = 0; i < columns; i++)
 		{
 			//centered coordinates
-			float nxp = (i - columns/2.0);
-			float nyp = (j - rows / 2.0);
+			float nxp = (i - columns/2);
+			float nyp = (j - rows / 2);
 
 			float nxf = nxp * cos(nyp*thetaR);
 
@@ -628,26 +628,26 @@ void update_map_projection_template(Mat& map_x, Mat& map_y, const Mat& src)
 			case 0:
 				if (i > src.cols*0.25 && i < src.cols*0.75 && j > src.rows*0.25 && j < src.rows*0.75)
 				{
-					map_x.at<float>(j, i) = 2.0 * ((float)i - (float)src.cols*0.25) + 0.5;
-					map_y.at<float>(j, i) = 2.0 * ((float)j - (float)src.rows*0.25) + 0.5;
+					map_x.at<float>(j, i) = 2.0f * ((float)i - (float)src.cols*0.25f) + 0.5f;
+					map_y.at<float>(j, i) = 2.0f * ((float)j - (float)src.rows*0.25f) + 0.5f;
 				}
 				else
 				{
-					map_x.at<float>(j, i) = 0;
-					map_y.at<float>(j, i) = 0;
+					map_x.at<float>(j, i) = 0.0f;
+					map_y.at<float>(j, i) = 0.0f;
 				}
 				break;
 			case 1:
-				map_x.at<float>(j, i) = i;
-				map_y.at<float>(j, i) = src.rows - j;
+				map_x.at<float>(j, i) = (float)i;
+				map_y.at<float>(j, i) = (float)src.rows - j;
 				break;
 			case 2:
-				map_x.at<float>(j, i) = src.cols - i;
-				map_y.at<float>(j, i) = j;
+				map_x.at<float>(j, i) = (float)src.cols - i;
+				map_y.at<float>(j, i) = (float)j;
 				break;
 			case 3:
-				map_x.at<float>(j, i) = src.cols - i;
-				map_y.at<float>(j, i) = src.rows - j;
+				map_x.at<float>(j, i) = (float)src.cols - i;
+				map_y.at<float>(j, i) = (float)src.rows - j;
 				break;
 			} // end of switch
 		}
@@ -727,10 +727,10 @@ void generateProjectionMap(void *& mapX, void *& mapY, int rows, int columns, un
 		update_map_projection_none(*p_mapX, *p_mapY, rows, columns);
 		break;
 	case IF_PROJECTION_ALONGZ:
-		update_map_projection_alongz(*p_mapX, *p_mapY, rows, columns, (float)(argv[0]), (float)(argv[1]), (float)(argv[2]), (float)(argv[3]));
+		update_map_projection_alongz(*p_mapX, *p_mapY, rows, columns, (argv[0]), (argv[1]), (argv[2]), (argv[3]));
 		break;
 	case IF_PROJECTION_PLATE_CARREE:
-		update_map_projection_plate_carree(*p_mapX, *p_mapY, rows, columns, (float)(argv[0]), (float)(argv[1]), (float)(argv[2]), (float)(argv[3]));
+		update_map_projection_plate_carree(*p_mapX, *p_mapY, rows, columns, (argv[0]), (argv[1]), (argv[2]), (argv[3]));
 		break;
 	default:
 		std::cout << "projection not found\n";
@@ -777,7 +777,7 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	{
 		return false;
 	}
-	inputimg.convertTo(inputimg, CV_32FC3, (float)brightness);
+	inputimg.convertTo(inputimg, CV_32FC3, brightness);
 	
 	//Mat channelBGR[3]; //BGR is openCV's order
 	//split(inputimg, channelBGR);
@@ -787,9 +787,9 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	//..., as images are read from topleft to bottomright facing the world coordinate system
 
 	//step1: rotate the vectors
-	float thetaX = rotX / 180.0f * float(MYPI);
-	float thetaY = rotY / 180.0f * float(MYPI);
-	float thetaZ = rotZ / 180.0f * float(MYPI);
+	float thetaX = rotX / 180.0 * MYPI;
+	float thetaY = rotY / 180.0 * MYPI;
+	float thetaZ = rotZ / 180.0 * MYPI;
 
 	float horzrotated[3];
 	float vertrotated[3];
@@ -1087,7 +1087,7 @@ bool importCustomApo(float *& p_customApoData, int & customApoDataSize, std::str
 
 	//convert to  double, rescale from 0 to 1
 	Mat rescaledimg;
-	normalize(inputimg, rescaledimg, 1.0f, 0.0f, NORM_INF, CV_32FC1);
+	normalize(inputimg, rescaledimg, 1.0, 0.0, NORM_INF, CV_32FC1);
 
 	//allocate the pointer with new[], write the data (using memcpy is probably more safe)
 	int customApoDataCount = (rescaledimg.rows*rescaledimg.cols + 2);

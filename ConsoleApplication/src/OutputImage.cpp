@@ -113,9 +113,9 @@ void OutputImage::createOutputImage(unsigned short int outputFormat)
 	for (OutputImageChannel currentChannel : allChannels)
 	{
 		if (currentChannel.offsetX + currentChannel.scaling*currentChannel.columns > pimpl->outputCols)
-			pimpl->outputCols = currentChannel.offsetX + currentChannel.scaling*currentChannel.columns;
+			pimpl->outputCols = currentChannel.offsetX + int(currentChannel.scaling*currentChannel.columns);
 		if (currentChannel.offsetY + currentChannel.scaling*currentChannel.rows > pimpl->outputRows)
-			pimpl->outputRows = currentChannel.offsetY + currentChannel.scaling*currentChannel.rows;
+			pimpl->outputRows = currentChannel.offsetY + int(currentChannel.scaling*currentChannel.rows);
 	}
 
 	//pimpl->allocateData();

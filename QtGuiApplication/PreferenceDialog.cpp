@@ -18,7 +18,10 @@ bool operator==(const tracer::PI_Preferences& lhs, const tracer::PI_Preferences&
 	bool cond10 = lhs.primaryWavelengthG == rhs.primaryWavelengthG;
 	bool cond11 = lhs.primaryWavelengthB == rhs.primaryWavelengthB;
 	bool cond12 = lhs.maxParallelThread == rhs.maxParallelThread;
-	return cond1 && cond2 && cond3 && cond4 && cond5 && cond6 && cond7 && cond8 && cond9 && cond10 && cond11 && cond12;
+	bool cond13 = lhs.performanceTestRepetition == rhs.performanceTestRepetition;
+	return cond1 && cond2 && cond3 && cond4 && cond5
+		&& cond6 && cond7 && cond8 && cond9 && cond10
+		&& cond11 && cond12 && cond13;
 }
 
 bool operator!=(const tracer::PI_Preferences& lhs, const tracer::PI_Preferences& rhs)
@@ -35,13 +38,19 @@ PreferenceDialog::PreferenceDialog(QWidget *parent)
 	initialPref = loadPref;
 	switch (loadPref.ThreadsPerKernelLaunch)
 	{
-	case 8:
-		comboThreadCount->setCurrentIndex(1);
+	case 128:
+		comboThreadCount->setCurrentIndex(4);
 		break;
-	case 32:
+	case 64:
+		comboThreadCount->setCurrentIndex(3);
+		break;
+	case 8:
 		comboThreadCount->setCurrentIndex(2);
 		break;
 	case 16:
+		comboThreadCount->setCurrentIndex(1);
+		break;
+	case 32:
 	default:
 		comboThreadCount->setCurrentIndex(0);
 		break;
@@ -87,6 +96,7 @@ PreferenceDialog::PreferenceDialog(QWidget *parent)
 	lineWavelengthG->setText(QString::number(loadPref.primaryWavelengthG));
 	lineWavelengthB->setText(QString::number(loadPref.primaryWavelengthB));
 	lineCPUThread->setText(QString::number(loadPref.maxParallelThread));
+	lineTestKernelRepetition->setText(QString::number(loadPref.performanceTestRepetition));
 }
 
 PreferenceDialog::~PreferenceDialog()
@@ -105,15 +115,21 @@ void PreferenceDialog::on_pushOK_clicked()
 
 	switch (comboThreadCount->currentIndex())
 	{
+	case 4:
+		newPref.ThreadsPerKernelLaunch = 128;
+		break;
+	case 3:
+		newPref.ThreadsPerKernelLaunch = 64;
+		break;
 	case 2:
-		newPref.ThreadsPerKernelLaunch = 32;
+		newPref.ThreadsPerKernelLaunch = 8;
 		break;
 	case 1:
-		newPref.ThreadsPerKernelLaunch = 8;
+		newPref.ThreadsPerKernelLaunch = 16;
 		break;
 	case 0:
 	default:
-		newPref.ThreadsPerKernelLaunch = 16;
+		newPref.ThreadsPerKernelLaunch = 32;
 		break;
 	}
 
@@ -188,6 +204,11 @@ void PreferenceDialog::on_pushOK_clicked()
 	lineWavelengthB->setText(QString::number(valWavelengthB));
 	newPref.primaryWavelengthB = valWavelengthB;
 
+	int testKernelRepetition = lineTestKernelRepetition->text().toInt();
+	testKernelRepetition = ((testKernelRepetition <= 1) ? 1 : testKernelRepetition) >= 2000000000 ? 2000000000 : testKernelRepetition;
+	lineTestKernelRepetition->setText(QString::number(testKernelRepetition));
+	newPref.performanceTestRepetition = testKernelRepetition;
+
 	//if the same as initial pref, just accept
 	//else set new pref and accept
 	if (newPref != initialPref)
@@ -207,13 +228,19 @@ void PreferenceDialog::on_pushDefault_clicked()
 	tracer::getPreferences(loadPref);
 	switch (loadPref.ThreadsPerKernelLaunch)
 	{
-	case 8:
-		comboThreadCount->setCurrentIndex(1);
+	case 128:
+		comboThreadCount->setCurrentIndex(4);
 		break;
-	case 32:
+	case 64:
+		comboThreadCount->setCurrentIndex(3);
+		break;
+	case 8:
 		comboThreadCount->setCurrentIndex(2);
 		break;
 	case 16:
+		comboThreadCount->setCurrentIndex(1);
+		break;
+	case 32:
 	default:
 		comboThreadCount->setCurrentIndex(0);
 		break;
@@ -259,4 +286,5 @@ void PreferenceDialog::on_pushDefault_clicked()
 	lineWavelengthG->setText(QString::number(loadPref.primaryWavelengthG));
 	lineWavelengthB->setText(QString::number(loadPref.primaryWavelengthB));
 	lineCPUThread->setText(QString::number(loadPref.maxParallelThread));
+	lineTestKernelRepetition->setText(QString::number(loadPref.performanceTestRepetition));
 }

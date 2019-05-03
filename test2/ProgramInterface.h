@@ -68,8 +68,8 @@ namespace tracer
 
 	struct EXPORT PI_Preferences
 	{
-		int ThreadsPerKernelLaunch = 16;
-		int linearRayDensity = 30;//20 is ok
+		int ThreadsPerKernelLaunch = 32;
+		int linearRayDensity = 25;//20 is ok
 		unsigned int rgbStandard = PI_ADOBERGB;
 		int traceJobSize = 10;
 		int renderJobSize = 10;
@@ -80,6 +80,7 @@ namespace tracer
 		float primaryWavelengthG = 530;
 		float primaryWavelengthB = 465;
 		int maxParallelThread = 10;
+		int performanceTestRepetition = 100000;
 	};
 
 	//Program API functions

@@ -164,7 +164,7 @@ void drawSurfaces(const std::vector<SurfaceDrawInfo>& surfaceInfos, bool suppres
 	GLDrawer(poArray, vaoArray, iboArray, tiArray);
 }
 
-bool runTestGLDrawFacilities = true;
+bool runTestGLDrawFacilities = false;
 void testGLDrawFacilities()
 {
 	std::vector<SurfaceDrawInfo> surfaceInfos;

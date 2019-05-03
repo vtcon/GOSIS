@@ -933,7 +933,7 @@ public:
 
     void retranslateUi(QMainWindow *QtGuiApplicationClass)
     {
-        QtGuiApplicationClass->setWindowTitle(QApplication::translate("QtGuiApplicationClass", "QtGuiApplication", nullptr));
+        QtGuiApplicationClass->setWindowTitle(QApplication::translate("QtGuiApplicationClass", "GOSIS", nullptr));
         actionNew->setText(QApplication::translate("QtGuiApplicationClass", "New", nullptr));
         actionOpen->setText(QApplication::translate("QtGuiApplicationClass", "Open", nullptr));
         actionSave->setText(QApplication::translate("QtGuiApplicationClass", "Save", nullptr));
