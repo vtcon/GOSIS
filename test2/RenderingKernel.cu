@@ -178,7 +178,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 	vtxCenter.z = sqrt(R0*R0 - vtxCenter.x*vtxCenter.x - vtxCenter.y*vtxCenter.y);
 
 	vec3<MYFLOATTYPE> vtxs[] = {vtxCenter, vtx1, vtx2, vtx3};
-	float outputSearch = 0.0;
+	float outputSearch = 0.0f;
 
 	point2D<int> pCur;
 
@@ -293,7 +293,8 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//move to the right
 			nx = nx + 1;
 		}
-		
+		bool repeatquit = quit;
+
 		//start over from the left
 		nx = nxTurnLR - 1;
 		while ((IOA = 
@@ -331,6 +332,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//move to the left
 			nx = nx - 1;
 		}
+		repeatquit = quit;
 
 		//move to next line
 		if (foundNextLineSeed == true)

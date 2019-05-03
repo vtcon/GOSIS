@@ -567,7 +567,7 @@ private:
 			results[4] = searchForPoint({ inputArray[i].x + 1, inputArray[i].y - 1 });
 			results[5] = searchForPoint({ inputArray[i].x, inputArray[i].y - 1 });
 
-			if (results[0] == -1) std::cout << "Result 0 is -1\n";
+			//if (results[0] == -1) std::cout << "Result 0 is -1\n";
 
 			if (results[0] != -1)
 			{
