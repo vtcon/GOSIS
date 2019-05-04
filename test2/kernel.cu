@@ -51,9 +51,9 @@ __device__ float apdBartlett(double rho, double phi, int datasize = 0, char* p_d
 
 __device__ float apdCustom(double rho, double phi, int datasize = 0, char* p_data = nullptr)
 {
-	if (float(rho) > 1.0f || datasize == 0 || p_data == nullptr)
+	if (rho > 1.0 || datasize == 0 || p_data == nullptr)
 	{
-		return 0.0;
+		return 0.0f;
 	}
 	else
 	{
@@ -63,13 +63,14 @@ __device__ float apdCustom(double rho, double phi, int datasize = 0, char* p_dat
 		int colCount = static_cast<int>(p_reader[1]);
 		float dx = float(rho * cos(phi));
 		float dy = float(-rho * sin(phi)); //the minus is due to the fact that openCV reads the y axis from TOP TO BOTTOM
-		int x = float((dx + 1.0f) / 2.0f*float(colCount));
+		int x = (dx + 1) / 2 * colCount;
 		x = (x >= colCount) ? colCount - 1 : x;
 		x = (x < 0) ? 0 : x;
-		int y = float((dy + 1.0f) / 2.0f*float(rowCount));
-		y = (y >= colCount) ? colCount - 1 : y;
+		int y = (dy + 1)*rowCount / 2;
+		y = (y >= rowCount) ? rowCount - 1 : y;
 		y = (y < 0) ? 0 : y;
-		retVal = p_reader[y*colCount + x + 2];
+		int readIndex = y * colCount + x + 2;
+		retVal = p_reader[readIndex];
 		return retVal;
 	}
 }
@@ -325,7 +326,9 @@ __global__ void quadrictracer(
 		//if ((at.pos.x*at.pos.x + at.pos.y*at.pos.y) > (pquad->diameter*pquad->diameter / 4.0)) goto deactivate_ray;
 
 		//calculate normalized pupil coordinate at the intersection
-		double npc_rho = (double)(sqrt(at.pos.x*at.pos.x + at.pos.y*at.pos.y) / (pquad->diameter / 2));
+		double npc_rho = 0.0;
+		npc_rho = sqrt(at.pos.x*at.pos.x + at.pos.y*at.pos.y);
+		npc_rho = npc_rho * 2.0 / (pquad->diameter);
 		double npc_phi = 0.0;
 		if (npc_rho != 0.0)
 		{
@@ -333,6 +336,8 @@ __global__ void quadrictracer(
 			if (at.pos.y < 0)
 				npc_phi = -npc_phi;
 		}
+		
+
 		//check the multiplication factor from the aperture function
 		apodizationFunction_t apdToUse = apdFunctionLookUp(pquad->apodizationType);
 		float apertureFactor = apdToUse(npc_rho, npc_phi, pquad->data_size, pquad->p_data);
