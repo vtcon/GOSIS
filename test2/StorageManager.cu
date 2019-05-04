@@ -202,7 +202,10 @@ void StorageManager::pleaseDelete(RayBundleColumn*& todelete)
 
 bool StorageManager::add(LuminousPoint toAdd)
 {
-	//check if point already exists, if yes, quit, else add it
+	//below code has been neglected for improved performance
+
+#ifdef nothing
+	//check if point already exists, if yes, quit, else add it 
 	auto pred = [toAdd](const StorageHolder<LuminousPoint>& thisholder)
 	{
 		bool cond = thisholder.content == toAdd;
@@ -216,7 +219,9 @@ bool StorageManager::add(LuminousPoint toAdd)
 	}
 
 	if (token != pointLedger.end()) return false; //if point already exists
+#endif // nothing
 
+	
 	{
 		std::lock_guard<std::mutex> lock(pointLedgerLock);
 		pointLedger.emplace_back(StorageHolder<LuminousPoint>(toAdd, StorageHolder<LuminousPoint>::Status::uninitialized));

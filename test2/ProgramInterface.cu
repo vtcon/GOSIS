@@ -1121,11 +1121,12 @@ PI_Message tracer::getVRAMUsageInfo(unsigned long & total, unsigned long & free)
 PI_Message tracer::importImage(const char * path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness)
 {
 	//open CV is needed, so the main work is not done here
-	std::vector<tracer::PI_LuminousPoint> inputPoints;
+	std::list<tracer::PI_LuminousPoint> inputPoints;
 	bool result = importImageCV(inputPoints, path, posX, posY, posZ, sizeHorz, sizeVert, rotX, rotY, rotZ, brightness);
 	if (result)
 	{
 		int newImagePoints = 0;
+		std::cout << "Adding image points to central storage!\n";
 		for (auto point : inputPoints)
 		{
 			LuminousPoint toAdd;

@@ -71,6 +71,8 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 
 	//std::cout << "input img = \n" << XYZmat << "\n";
 
+	std::cout << "Converting XYZ to BGR\n";
+
 	float aWhite[3];
 	float aBlack[3];
 	float transformMat[9];
@@ -212,6 +214,8 @@ void XYZtoBGR(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 	BGRmat.convertTo(BGRmat, -1, 255.0, 0.0);
 	normalize(BGRmat, BGRmat, 255.0, 0.0, NORM_INF, CV_8UC3);
 	//std::cout << "scaled bgr = \n" << BGRmat << "\n";
+
+	std::cout << "Conversion done!\n";
 }
 
 void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
@@ -226,6 +230,8 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 	*/
 
 	//std::cout << "input img = \n" << XYZmat << "\n";
+
+	std::cout << "Converting BGR to XYZ\n";
 
 	float aWhite[3];
 	float aBlack[3];
@@ -349,6 +355,8 @@ void BGRtoXYZ(Mat& XYZmat, Mat& BGRmat, unsigned int RGBoption)
 	//assemble to XYZ image
 	XYZmat = Mat::zeros(XYZmat.size(), CV_32FC3);
 	cv::merge(xyzs, 3, XYZmat);
+
+	std::cout << "Conversion done!\n";
 }
 
 void testopencv()
@@ -769,7 +777,7 @@ void clearProjectionMap(void *& mapX, void *& mapY)
 	return;
 }
 
-bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness)
+bool importImageCV(std::list<tracer::PI_LuminousPoint>& outputvec, std::string path, float posX, float posY, float posZ, float sizeHorz, float sizeVert, float rotX, float rotY, float rotZ, float brightness)
 {
 	//read in the image
 	Mat inputimg = imread(path);
@@ -869,6 +877,7 @@ bool importImageCV(std::vector<tracer::PI_LuminousPoint>& outputvec, std::string
 	BGRtoXYZ(XYZimg, inputimg, PI_rgbStandard);
 
 	//rasterizing the images
+	std::cout << "Rasterizing the image!\n";
 	outputvec.clear();
 
 	for (int i = 0; i < inputimg.rows; i++)
