@@ -95,7 +95,7 @@
       <CodeGeneration>compute_60,sm_60</CodeGeneration>
       <Include>$(SolutionDir)ConsoleApplication\src</Include>
       <Defines>_CUDACOMPILER;_WINDLL;%(Defines)</Defines>
-      <Optimization>Od</Optimization>
+      <Optimization>O2</Optimization>
       <TypeInfo>true</TypeInfo>
     </CudaCompile>
     <CudaLink>

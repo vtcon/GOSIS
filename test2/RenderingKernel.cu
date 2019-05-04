@@ -240,6 +240,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 #ifdef _MYDEBUGMODE
 	if (ID == debugID) printf("ID %d pCur = %d,%d\n", ID, pCur.x, pCur.y);
 #endif
+#ifdef something
 	//extend from that point
 	//int nxSeed = pCur.x; 
 	int nySeed = pCur.y;
@@ -261,7 +262,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 		while ((IOA = 
 			insideTriangle({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)*triangleIntensity
 			//insideTriangle2({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor, intensity1, intensity2, intensity3)
-			) != 0) // the x loop
+			) != 0.0f) // the x loop
 		{
 			//if point is found, do something(save it)
 			IOA = abs(IOA);
@@ -293,14 +294,14 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//move to the right
 			nx = nx + 1;
 		}
-		bool repeatquit = quit;
+		quit = false;
 
 		//start over from the left
 		nx = nxTurnLR - 1;
 		while ((IOA = 
 			insideTriangle({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor)*triangleIntensity
 			//insideTriangle2({ nx, ny }, vtx1, vtx2, vtx3, pdir, retinaDescriptor, intensity1, intensity2, intensity3)
-			) != 0) // the x loop
+			) != 0.0f) // the x loop
 		{
 			//if point is found, do something(save it)
 			IOA = abs(IOA);
@@ -332,7 +333,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			//move to the left
 			nx = nx - 1;
 		}
-		repeatquit = quit;
+		quit = false;
 
 		//move to next line
 		if (foundNextLineSeed == true)
@@ -350,6 +351,7 @@ __global__ void nonDiffractiveBasicRenderer(RendererKernelLaunchParams kernelLau
 			quit = true;
 		}
 	}
+#endif
 }
 
 /*
@@ -1093,7 +1095,7 @@ __device__ float insideTriangle(
 	//bool output0 = find4points(p.nx, p.ny, thetaR, R0, p1, p2, p3, p4);
 	bool output0 = retinaDescriptor.array2Cartesian(p, p1, p2, p3, p4);
 	if (!output0)
-		return 0.0f;
+		return 0;
 
 	//MYFLOATTYPE alpha1, beta1, alpha2, beta2, alpha3, beta3, alpha4, beta4;
 	point2D<MYFLOATTYPE> bp1, bp2, bp3, bp4;
@@ -1109,6 +1111,7 @@ __device__ float insideTriangle(
 
 	float returnValue = SutherlandHogdman(bp1, bp2, bp3, bp4);
 
+
 	vec3<MYFLOATTYPE> testVec1 = cross(p2 - p1, p4 - p1);
 	vec3<MYFLOATTYPE> testVec2 = cross(p3 - p2, p1 - p2);
 	vec3<MYFLOATTYPE> testVec3 = cross(p4 - p3, p2 - p3);
@@ -1119,9 +1122,24 @@ __device__ float insideTriangle(
 	MYFLOATTYPE testDir3 = dot(testVec3, pdir);
 	MYFLOATTYPE testDir4 = dot(testVec4, pdir);
 
-	if (testDir1 > 0.0 && testDir2 > 0.0 && testDir3 > 0.0 && testDir4 > 0.0)
+	bool outside =
+		(testDir1 > MYEPSILONSMALL)
+		&& (testDir2 > MYEPSILONSMALL)
+		&& (testDir3 > MYEPSILONSMALL) 
+		&& (testDir4 > MYEPSILONSMALL);
+
+	//trouble is here!
+#ifdef nothing
+	if (outside)
 	{
 		return 0.0f;
+	}
+#endif
+
+	if (outside)
+	{
+		printf("testVec = %f, testDir = %f, pdir = (%f,%f,%f)\n", testVec1, testDir1, pdir.x, pdir.y, pdir.z);
+		returnValue = 0.0f;
 	}
 
 	/*
