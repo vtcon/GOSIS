@@ -539,6 +539,7 @@ PI_Message tracer::addOpticalConfigAt(float wavelength, int count, PI_Surface *&
 
 PI_Message tracer::checkData()
 {
+#ifdef nothing
 	float* currentwavelength = nullptr;
 	int runCounts = 0;
 	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::uninitialized); runCounts++)
@@ -566,7 +567,7 @@ PI_Message tracer::checkData()
 		std::cout << "No wavelength is available for checking\n";
 		return { PI_UNKNOWN_ERROR, "No wavelength is available for checking\n" };
 	}
-
+#endif // nothing
 	std::cout << "Data Check OK!\n";
 
 	return { PI_OK, "Check successful!\n" };
@@ -578,21 +579,24 @@ PI_Message tracer::trace()
 
 	float* currentwavelength = nullptr;
 	int runCounts = 0;
-	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::initialized); runCounts++)
+	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::uninitialized); runCounts++)
 	{
 		//trace all points
 		activeWavelength = *currentwavelength;
 		std::cout << "Tracing at wavelength = " << activeWavelength << "\n";
 
 		PI_running = true;
-		while (KernelLauncher(0, nullptr) != -2)
+		while (ColumnCreator4() != -2)
 		{
-			tracedCount = tracedCount + PI_traceJobSize;
-			updateProgressTrace();
-			if (PI_cancelTraceRender)
+			while (KernelLauncher(0, nullptr) != -2)
 			{
-				PI_running = false;
-				return { PI_OK, "Trace cancelled!\n" };
+				tracedCount = tracedCount + PI_traceJobSize;
+				updateProgressTrace();
+				if (PI_cancelTraceRender)
+				{
+					PI_running = false;
+					return { PI_OK, "Trace cancelled!\n" };
+				}
 			}
 		}
 		PI_running = false;
@@ -710,7 +714,7 @@ PI_Message tracer::traceAndRender()
 	float* currentwavelength = nullptr;
 	int runCounts = 0;
 
-	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::initialized); runCounts++)
+	for (; bool output = mainStorageManager.takeOne(currentwavelength, StorageHolder<float>::Status::uninitialized); runCounts++)
 	{
 		//trace all points
 		activeWavelength = *currentwavelength;
@@ -730,22 +734,26 @@ PI_Message tracer::traceAndRender()
 
 		//run the tracer
 		PI_running = true;
-		while (KernelLauncher(0, nullptr) != -2)
+		while (ColumnCreator4() != -2)
 		{
-			//run the renderer
-			while (KernelLauncher2(0, nullptr) != -2)
+			while (KernelLauncher(0, nullptr) != -2)
 			{
-				renderedCount = renderedCount + PI_renderJobSize;
-				updateProgressRender();
-				if (PI_cancelTraceRender)
+				//run the renderer
+				while (KernelLauncher2(0, nullptr) != -2)
 				{
-					thisOpticalConfig->p_rawChannel->copyFromSibling();
-					thisOpticalConfig->p_rawChannel->deleteSibling();
-					PI_running = false;
-					return { PI_OK, "Operation cancelled!\n" };
+					renderedCount = renderedCount + PI_renderJobSize;
+					updateProgressRender();
+					if (PI_cancelTraceRender)
+					{
+						thisOpticalConfig->p_rawChannel->copyFromSibling();
+						thisOpticalConfig->p_rawChannel->deleteSibling();
+						PI_running = false;
+						return { PI_OK, "Operation cancelled!\n" };
+					}
 				}
 			}
 		}
+		
 		PI_running = false;
 
 		//copy data out

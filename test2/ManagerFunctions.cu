@@ -946,7 +946,7 @@ int ColumnCreator4()
 	std::list<std::thread> list_thread;
 
 	int runCount = 0;
-	for (int i = 0; i < PI_maxParallelThread; i++, runCount++)
+	for (int i = 0; i < PI_traceJobSize; i++, runCount++)
 	{
 		LuminousPoint* temp_p_point = nullptr;
 		bool output = mainStorageManager.takeOne(temp_p_point, StorageHolder<LuminousPoint>::Status::uninitialized, wavelength1);
